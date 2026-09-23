@@ -1,1 +1,0 @@
-First migration (V1__users.sql) lands in Phase 1. See docs/02-architecture/database-design.md for the full migration order.

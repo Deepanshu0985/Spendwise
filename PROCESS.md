@@ -35,16 +35,21 @@ Live status tracker, updated as work happens. For the full plan with durations a
 **Done:**
 - [x] Local dev database switched from H2 to a dedicated Neon Postgres dev branch, separate from the Neon branch designated for prod (see `DECISIONS.md`) — needed since RLS, this phase's core feature, has no H2 equivalent
 - [x] Dev branch cleaned of two rounds of leftover unrelated demo objects from prior experiments on the same Neon project (including a colliding `users` table); prod branch left baselined around its own demo tables since it isn't in active use yet
-- [x] Verified end to end: backend connects to the clean dev branch, Flyway initializes with no baseline needed, `/api/v1/health` responds; `test` profile still runs fast on in-memory H2, unaffected
+- [x] `V1__create_users_table.sql`, `V2__create_sessions_table.sql`, `V3__create_password_reset_tokens_table.sql` — Postgres-native (gen_random_uuid(), TIMESTAMPTZ); `test` profile now skips Flyway entirely and lets Hibernate generate H2 schema from entities instead, since these migrations don't parse on H2 at all (see `DECISIONS.md`)
+- [x] **ADR-019**: RLS deliberately excluded from these 3 tables (auth-bootstrap chicken-and-egg problem); isolation enforced by explicit `user_id` filtering instead, verified with two real users (Bob never sees Alice's sessions or profile)
+- [x] `TenantContext`/`MutableTenantContext` + `ThreadLocalTenantContext`, `TenantContextAspect` (`@Order(1)`, inside the `@Order(0)` transactional advisor) issuing `SELECT set_config('app.current_user_id', ?, true)` at the start of every `@Transactional` method — confirmed firing correctly in real Postgres logs
+- [x] `SessionStore` + impl, `SecureTokenGenerator`/`TokenHasher` (SHA-256, not bcrypt — tokens are already high-entropy, need indexed lookup), `PasswordEncoder` (BCrypt) bean — no full Spring Security, since it would conflict with ADR-009's custom cookie-session design
+- [x] `AuthService`/`AuthServiceImpl`: register, login, logout, list/revoke-all sessions, password-reset request+confirm (with the reset flow **never logging the raw token**, per security.md — `EmailSender` is stubbed via `LoggingEmailSender` until Resend gets a real API key, D-04)
+- [x] `AuthController`, `UserController` (`GET /users/me`), `SessionAuthenticationFilter`, `CsrfTokenFilter` (double-submit cookie), `SessionCleanupJob`
+- [x] Verified end-to-end via curl against the real Neon dev branch: register, duplicate-email rejection (409), wrong-password rejection (401), login sets a correct `HttpOnly; Secure; SameSite=Lax` cookie, `/users/me`, session listing, logout, revoke-all, full password-reset request→confirm→login-with-new-password cycle, weak-password rejection (400), CSRF rejection (403) and acceptance, two-user session/profile isolation
+- [x] Found and fixed two real bugs along the way (see `DECISIONS.md`): blank `.env` values silently defeating Spring's `${VAR:default}` fallback, and filters not being reachable by `@RestControllerAdvice`
 
 **Left:**
-- [ ] `users`, `sessions`, `password_reset_tokens` migrations
-- [ ] Cookie sessions (ADR-009): register/login/logout, `SessionStore` interface + impl
-- [ ] `SET LOCAL app.current_user_id` transaction interceptor (`TenantContext`)
-- [ ] RLS enabled and forced on `users`/`sessions`/`password_reset_tokens`
-- [ ] Password reset flow via Resend (ADR-016)
-- [ ] Cross-user access test matrix + pooled-connection leakage test (exit gate)
-- [ ] CI: add a PostgreSQL service for the RLS-dependent tests (marked TODO in `ci.yml`)
+- [ ] Automated JUnit/integration test suite codifying the above (currently verified manually via curl, not yet in the repo as tests)
+- [ ] CI: add a PostgreSQL service so the isolation and pooled-connection-leakage tests actually run in CI, not just locally (marked TODO in `ci.yml`)
+- [ ] Real `ResendEmailSender` once a Resend API key exists (D-04) — `LoggingEmailSender` stands in for now
+- [ ] Rate limiting on auth endpoints — deliberately deferred to Phase 14 per `development-roadmap.md`'s own sequencing, not forgotten
+- [ ] Session-listing/revoke-all could use direct JUnit coverage of `AuthServiceImpl` beyond the manual curl pass
 
 ## Phase 2 — Accounts and Categories
 Not started.

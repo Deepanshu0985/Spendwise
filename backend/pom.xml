@@ -63,6 +63,24 @@
             <optional>true</optional>
         </dependency>
 
+        <!--
+          Standalone crypto module only - NOT spring-boot-starter-security. The full
+          starter auto-configures its own filter chain, form login and session
+          management, which would conflict with ADR-009's custom cookie-session
+          design. This gives adaptive password hashing (BCryptPasswordEncoder)
+          without any of that.
+        -->
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-crypto</artifactId>
+        </dependency>
+
+        <!-- Proxy-based @Aspect support for the tenant-context interceptor (SET LOCAL app.current_user_id). -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-aop</artifactId>
+        </dependency>
+
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>

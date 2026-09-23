@@ -1,5 +1,17 @@
 # Decisions Log
 
+## Bug: blank .env values silently defeat Spring's `${VAR:default}` fallback
+
+**What happened.** `application.properties` declares `session.ttl=${SESSION_TTL:30d}`. `.env` had `SESSION_TTL=` (blank). `source .env` exports `SESSION_TTL` as an empty string - a defined variable, not an absent one - so Spring's placeholder resolver never falls back to `30d`; it resolves to an empty string, which fails to bind to `Duration` and produces `null`. This surfaced as a `NullPointerException` in `SessionStoreImpl.create()` calling `Instant.plus(null)`, only when actually logging in (the earlier register/duplicate/wrong-password calls never touched `sessionTtl`).
+
+**Fix.** Every variable actually consumed locally now has a real, non-blank value in both `.env` and `.env.example` (`SESSION_TTL=30d`, `SESSION_IDLE_TIMEOUT=24h`, `APP_BASE_URL=http://localhost:5173`). `.env.example` carries a comment explaining the gotcha so it isn't rediscovered the hard way again. Variables that are genuinely fine unset for now (STORAGE_*, AI_*, MAIL_API_KEY) stay blank since nothing reads them yet.
+
+## Filters can't be caught by @RestControllerAdvice
+
+**What happened.** `CsrfTokenFilter` threw `ForbiddenException` on a missing/invalid CSRF token, expecting `GlobalExceptionHandler` to turn it into a clean 403 envelope. Instead the client got a generic Spring Boot whitelabel 500. Root cause: servlet `Filter`s run before `DispatcherServlet`, so exceptions thrown from them never reach Spring MVC's `@ExceptionHandler` machinery at all - that only intercepts exceptions from controller method execution.
+
+**Fix.** `CsrfTokenFilter` now catches this itself and writes the `ApiError` envelope directly to the response (status code, content type, serialized JSON via the injected `ObjectMapper`) instead of throwing. Verified via curl: a request with no/mismatched CSRF header now gets a proper `{"error":{"code":"FORBIDDEN",...}}` body with `HTTP 403`, not a whitelabel page. Any future filter that needs to reject a request must do the same - it cannot rely on `GlobalExceptionHandler`.
+
 ## Neon Postgres replaces H2 for local development (partially supersedes ADR-018)
 
 **Decision.** The `dev` Spring profile points at a Neon Postgres branch instead of file-based H2. A dedicated Neon branch separate from `production` is used for local/dev work, never the production branch. `test` continues to use in-memory H2 for fast pure-logic unit tests that don't depend on Postgres-specific behavior.
