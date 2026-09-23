@@ -33,8 +33,9 @@ Live status tracker, updated as work happens. For the full plan with durations a
 ## Phase 1 — Authentication and Isolation
 
 **Done:**
-- [x] Local dev database switched from H2 to a Neon Postgres branch (see `DECISIONS.md`) — needed since RLS, this phase's core feature, has no H2 equivalent
-- [x] Verified end to end: backend connects to Neon, Flyway baselines cleanly around 4 pre-existing unrelated demo tables, `/api/v1/health` responds; `test` profile still runs fast on in-memory H2, unaffected
+- [x] Local dev database switched from H2 to a dedicated Neon Postgres dev branch, separate from the Neon branch designated for prod (see `DECISIONS.md`) — needed since RLS, this phase's core feature, has no H2 equivalent
+- [x] Dev branch cleaned of two rounds of leftover unrelated demo objects from prior experiments on the same Neon project (including a colliding `users` table); prod branch left baselined around its own demo tables since it isn't in active use yet
+- [x] Verified end to end: backend connects to the clean dev branch, Flyway initializes with no baseline needed, `/api/v1/health` responds; `test` profile still runs fast on in-memory H2, unaffected
 
 **Left:**
 - [ ] `users`, `sessions`, `password_reset_tokens` migrations
