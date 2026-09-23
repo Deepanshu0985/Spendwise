@@ -17,3 +17,6 @@ frontend/dist/
 .DS_Store
 .idea/
 *.iml
+
+# Claude Code runtime state (not project config)
+.claude/scheduled_tasks.lock

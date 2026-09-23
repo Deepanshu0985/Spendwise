@@ -31,7 +31,19 @@ Live status tracker, updated as work happens. For the full plan with durations a
 - [ ] Nightly backup cron/systemd timer actually scheduled on the droplet (script is ready, not yet installed anywhere)
 
 ## Phase 1 — Authentication and Isolation
-Not started.
+
+**Done:**
+- [x] Local dev database switched from H2 to a Neon Postgres branch (see `DECISIONS.md`) — needed since RLS, this phase's core feature, has no H2 equivalent
+- [x] Verified end to end: backend connects to Neon, Flyway baselines cleanly around 4 pre-existing unrelated demo tables, `/api/v1/health` responds; `test` profile still runs fast on in-memory H2, unaffected
+
+**Left:**
+- [ ] `users`, `sessions`, `password_reset_tokens` migrations
+- [ ] Cookie sessions (ADR-009): register/login/logout, `SessionStore` interface + impl
+- [ ] `SET LOCAL app.current_user_id` transaction interceptor (`TenantContext`)
+- [ ] RLS enabled and forced on `users`/`sessions`/`password_reset_tokens`
+- [ ] Password reset flow via Resend (ADR-016)
+- [ ] Cross-user access test matrix + pooled-connection leakage test (exit gate)
+- [ ] CI: add a PostgreSQL service for the RLS-dependent tests (marked TODO in `ci.yml`)
 
 ## Phase 2 — Accounts and Categories
 Not started.

@@ -4,10 +4,10 @@ Spring Boot (Maven) backend for the Personal Finance Intelligence App. See `../d
 
 ## Prerequisites
 
-This machine's default `java` on `PATH` is an old Java 8 browser-plugin runtime, which cannot run Spring Boot 3.x. A newer JDK is installed via Homebrew (`brew install openjdk`) but not linked onto `PATH`, so point `JAVA_HOME` at it explicitly:
+This machine's default `java` on `PATH` is an old Java 8 browser-plugin runtime, which cannot run Spring Boot 3.x. The project is pinned to Homebrew's version-pinned `openjdk@21` (see `DECISIONS.md` — the generic `openjdk` formula silently drifted to JDK 27 and broke Lombok). Point `JAVA_HOME` at it explicitly:
 
 ```bash
-export JAVA_HOME=/opt/homebrew/opt/openjdk
+export JAVA_HOME=/opt/homebrew/opt/openjdk@21
 export PATH="$JAVA_HOME/bin:$PATH"
 ```
 
@@ -15,10 +15,11 @@ Add those two lines to `~/.zshrc` to avoid repeating them every session, or expo
 
 ## Run locally (no Docker)
 
-Uses a file-based H2 database at `backend/data/` — nothing else to install or start.
+The `dev` profile connects to a Neon Postgres branch (see `../DECISIONS.md` — "Neon Postgres replaces H2 for local development"), not a local database. Copy `../.env.example` to `../.env` and fill in `DATABASE_URL`/`DATABASE_USER`/`DATABASE_PASSWORD` from your Neon connection details, then load it into the shell before running:
 
 ```bash
-JAVA_HOME=/opt/homebrew/opt/openjdk PATH="/opt/homebrew/opt/openjdk/bin:$PATH" mvn spring-boot:run
+set -a && source ../.env && set +a
+JAVA_HOME=/opt/homebrew/opt/openjdk@21 PATH="/opt/homebrew/opt/openjdk@21/bin:$PATH" mvn spring-boot:run
 ```
 
 Verify it's up:
@@ -27,17 +28,13 @@ Verify it's up:
 curl http://localhost:8080/api/v1/health
 ```
 
-H2 console (browse the local dev database): http://localhost:8080/h2-console — JDBC URL `jdbc:h2:file:./data/financedb`, user `sa`, empty password.
-
-Delete `backend/data/` to reset the local database from scratch.
-
 ## Test
 
 ```bash
-JAVA_HOME=/opt/homebrew/opt/openjdk PATH="/opt/homebrew/opt/openjdk/bin:$PATH" mvn test
+JAVA_HOME=/opt/homebrew/opt/openjdk@21 PATH="/opt/homebrew/opt/openjdk@21/bin:$PATH" mvn test
 ```
 
-Tests run against an in-memory H2 database (`test` profile), never the dev file database.
+Tests run against an in-memory H2 database (`test` profile) — fast, isolated, and never touching Neon. Anything Postgres-specific (Row-Level Security, from Phase 1 on) can't be meaningfully tested against H2 and needs a real Postgres run instead.
 
 ## Production
 

@@ -4,9 +4,9 @@ Two environments until beta. A shared development environment and a permanent st
 
 ## Local
 
-No Docker (ADR-018). The backend runs directly via Maven against a file-based H2 database (`dev` Spring profile); Flyway still owns the schema, so the migration history matches what production applies. A stub `AIModelClient` returning fixtures, so development does not consume provider tokens. Filesystem storage in place of object storage. See `backend/README.md` for run instructions.
+No Docker (ADR-018). The backend runs directly via Maven against a Neon Postgres branch (`dev` Spring profile, see `DECISIONS.md`); Flyway still owns the schema, so the migration history matches what production applies. A stub `AIModelClient` returning fixtures, so development does not consume provider tokens. Filesystem storage in place of object storage. See `backend/README.md` for run instructions.
 
-PostgreSQL-only features have no local equivalent: Row-Level Security (ADR-010) cross-tenant isolation tests and the pooled-connection leakage test must run against a real PostgreSQL instance — in CI, not against local H2 — before merge.
+The `test` profile still uses in-memory H2 for fast, isolated unit tests. Row-Level Security (ADR-010) cross-tenant isolation tests and the pooled-connection leakage test must run against real PostgreSQL — either the local Neon branch or CI's PostgreSQL service — never against H2.
 
 ## Production
 

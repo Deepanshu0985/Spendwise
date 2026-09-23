@@ -1,5 +1,21 @@
 # Decisions Log
 
+## Neon Postgres replaces H2 for local development (partially supersedes ADR-018)
+
+**Decision.** The `dev` Spring profile points at a Neon Postgres branch instead of file-based H2. A dedicated Neon branch separate from `production` is used for local/dev work, never the production branch. `test` continues to use in-memory H2 for fast pure-logic unit tests that don't depend on Postgres-specific behavior.
+
+**Why.** Phase 1 introduces Row-Level Security, which is meaningless against H2 (no equivalent feature) — every previous local run of an RLS or cross-tenant isolation test would have had to hit real PostgreSQL anyway, per ADR-018's own stated consequence. Neon removes the friction ADR-018 was originally trying to avoid (installing/running Docker + Postgres locally) while still being real PostgreSQL, so it satisfies the original no-Docker-friction goal at least as well as H2 did, without H2's RLS gap. Using a separate dev branch (not `production`) keeps schema migrations and RLS policy work, which Phase 1 is full of, off anything labeled production while the project has no real users yet.
+
+**Consequences.** ADR-018 is not fully reversed — Docker is still not used for local development — but its "local dev = H2" specifics are superseded for the `dev` profile from Phase 1 onward. `docs/02-architecture/architecture-decisions.md` and `docs/08-devops/environments.md` are updated in the same change. The Neon connection string (with a live password) must never be committed; it lives only in a local, git-ignored `.env` (see `.env.example` for the template) that `backend/README.md` explains how to load.
+
+The connection given is for the Neon branch literally named `production`, used directly per explicit user instruction rather than a separate dev branch. Since the project has no real users or deployed data yet, this branch functions as the dev database for now - worth remembering to revisit before anything real depends on it.
+
+## Baselined Flyway on Neon instead of dropping its pre-existing demo tables
+
+**Decision.** `spring.flyway.baseline-on-migrate=true` is set in `application-dev.properties`. The Neon `production` branch arrived with 4 pre-existing tables unrelated to this project - `account`, `customers`, `scheduled_transfer`, `transaction` (singular, Neon's own onboarding sample data, a handful of rows each) - which made Flyway refuse to run against a "non-empty schema with no history table." These tables are left in place rather than dropped.
+
+**Why.** User's explicit choice between dropping them and baselining around them. No name collision with our schema exists (ours uses `accounts`/`transactions`, plural) so coexistence is harmless. Verified end to end: `mvn spring-boot:run` against this Neon branch now baselines cleanly (`Successfully baselined schema with version: 1`) and `/api/v1/health` responds.
+
 ## Build the whole product locally first; DigitalOcean + domain provisioning deferred to the end
 
 **Decision.** Deployment (provisioning the ADR-017 droplet, pointing the domain, adding deploy secrets to CI, first live deploy) is deliberately deferred until the rest of the build is further along, rather than deploying incrementally from Phase 0. `ci.yml` runs build/test only, with no deploy step, for now.
