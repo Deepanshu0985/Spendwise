@@ -19,13 +19,14 @@ Live status tracker, updated as work happens. For the full plan with durations a
 - [x] `docker-compose.yml` + `backend/Dockerfile` + `frontend/Dockerfile` + root `Caddyfile` (staging/production shape from `deployment.md`) — verified with a local Colima Docker runtime: both images build clean, all four containers (caddy, backend, frontend, db) start and reach healthy, backend connects to real PostgreSQL and runs Flyway against it, backend and frontend both respond correctly over the compose network. Colima was removed after validation; local dev still doesn't use Docker (ADR-018)
 - [x] `scripts/nightly-backup.sh` and `scripts/restore-drill.sh` authored per `deployment.md` (row-count check now; TODO to wire in the reconciliation-invariant test run once Phase 4 exists)
 - [x] `.github/workflows/ci.yml` (backend `mvn verify`, frontend lint + build) — authored and YAML-valid; cannot be verified running until pushed to an actual GitHub repo (see below)
-- [x] git repository initialized locally (`main` branch, no commits made yet — nothing is committed without you asking)
+- [x] Pushed to [github.com/Deepanshu0985/Spendwise](https://github.com/Deepanshu0985/Spendwise), `main` branch. CI (`ci.yml`) confirmed green on GitHub Actions for both the initial push and a follow-up fix (bumped `actions/setup-java` from v4, flagged deprecated by CI's own first run, to v5)
 
-**Left — needs your action, not just code:**
-- [ ] Create a GitHub remote and push, so `ci.yml` actually runs
-- [ ] Provision the DigitalOcean droplet + Spaces bucket (ADR-017) — requires your DigitalOcean account/payment method, which I have no access to
+**Decision (2026-09-23): deploy step deliberately deferred.** Per the user, the plan is to build the product locally first and only provision DigitalOcean + the domain at the end, rather than deploying continuously from Phase 0 onward. `docker-compose.yml`/`Caddyfile`/`Dockerfile`s/backup scripts are written and locally validated (see `DECISIONS.md`) but nothing is deployed yet, and `ci.yml` intentionally has no deploy step.
+
+**Left — deferred until the end of the build, needs your action then, not more code now:**
+- [ ] Provision the DigitalOcean droplet + Spaces bucket (ADR-017) — requires your DigitalOcean account/payment method
 - [ ] Register/point a real domain at the droplet — `APP_DOMAIN` is currently a placeholder (`example.com`); Caddy's automatic HTTPS is confirmed working correctly and will obtain a real cert the moment this points at a real, publicly-reachable domain
-- [ ] Add deploy secrets to GitHub Actions (SSH key to the droplet, registry credentials) and add the actual deploy step to `ci.yml` (currently build/test only)
+- [ ] Add deploy secrets to GitHub Actions (SSH key to the droplet, registry credentials) and add the actual deploy step to `ci.yml`
 - [ ] First live deploy to production, completing the Phase 0 exit gate ("a push to main reaches production automatically")
 - [ ] Nightly backup cron/systemd timer actually scheduled on the droplet (script is ready, not yet installed anywhere)
 

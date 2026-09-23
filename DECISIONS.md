@@ -1,5 +1,11 @@
 # Decisions Log
 
+## Build the whole product locally first; DigitalOcean + domain provisioning deferred to the end
+
+**Decision.** Deployment (provisioning the ADR-017 droplet, pointing the domain, adding deploy secrets to CI, first live deploy) is deliberately deferred until the rest of the build is further along, rather than deploying incrementally from Phase 0. `ci.yml` runs build/test only, with no deploy step, for now.
+
+**Why.** User-stated preference: build and verify everything locally through the phases, then provision and deploy once there's something substantial to put on the droplet. This doesn't change any of the deployment artifacts themselves — `docker-compose.yml`, both `Dockerfile`s, and the `Caddyfile` are already written and were validated locally with Colima before this decision, so they're ready to use whenever deployment actually happens; only the timing of provisioning real infrastructure changes.
+
 ## Frontend served as its own container by Caddy, not written directly onto the VPS disk
 
 **Decision.** The frontend build produces its own Docker image (`frontend/Dockerfile`, multi-stage: Node build → `caddy:2-alpine` serving the static output), rather than running `npm run build` on the VPS host and bind-mounting the result into the edge Caddy container.
