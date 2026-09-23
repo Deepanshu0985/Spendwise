@@ -1,0 +1,19 @@
+# Backend
+backend/target/
+backend/data/
+# Stray H2 data dir if `mvn spring-boot:run` is ever invoked from the repo root
+# instead of backend/ (the JVM's working directory follows the shell, not -f).
+/data/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+
+# Env / secrets
+.env
+*.env.local
+
+# OS / IDE
+.DS_Store
+.idea/
+*.iml

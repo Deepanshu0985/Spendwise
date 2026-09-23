@@ -1,0 +1,7 @@
+:80 {
+	root * /srv
+	encode gzip
+	file_server
+	# SPA fallback so client-side routes (e.g. /transactions) don't 404 on refresh.
+	try_files {path} /index.html
+}
