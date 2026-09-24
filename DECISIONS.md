@@ -1,5 +1,11 @@
 # Decisions Log
 
+## Backend loads its own .env instead of depending on the shell having sourced it
+
+**What happened.** Running the app from IntelliJ's Run button failed with `Driver org.postgresql.Driver claims to not accept jdbcUrl, ${DATABASE_URL}` - the literal, unresolved placeholder text was passed as the JDBC URL. Root cause: `application-dev.properties` referenced `${DATABASE_URL}` expecting it to already be a process environment variable, which only became true because our documented workflow said to run `source .env` in the shell first. IntelliJ's Run button launches the JVM directly - there is no shell in that path to source anything into, so the environment variable genuinely never existed.
+
+**Fix.** `application-dev.properties` now declares `spring.config.import=optional:file:.env[.properties],optional:file:../.env[.properties]` - Spring Boot's own extension-hint bracket syntax, which loads the `.env` file's `KEY=VALUE` lines as properties directly, regardless of how the JVM was launched or what shell (if any) started it. Both a `backend/`-relative and a project-root-relative path are tried, both `optional:`, since IntelliJ and `mvn` can default to different working directories and whichever one doesn't match just silently no-ops. Verified by launching with `DATABASE_URL`/`DATABASE_USER`/`DATABASE_PASSWORD` explicitly unset from both working directories - both connect to the real Neon dev branch correctly. `backend/README.md`'s manual `source ../.env` step is removed as no longer necessary.
+
 ## Bug: blank .env values silently defeat Spring's `${VAR:default}` fallback
 
 **What happened.** `application.properties` declares `session.ttl=${SESSION_TTL:30d}`. `.env` had `SESSION_TTL=` (blank). `source .env` exports `SESSION_TTL` as an empty string - a defined variable, not an absent one - so Spring's placeholder resolver never falls back to `30d`; it resolves to an empty string, which fails to bind to `Duration` and produces `null`. This surfaced as a `NullPointerException` in `SessionStoreImpl.create()` calling `Instant.plus(null)`, only when actually logging in (the earlier register/duplicate/wrong-password calls never touched `sessionTtl`).

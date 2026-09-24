@@ -15,10 +15,11 @@ Add those two lines to `~/.zshrc` to avoid repeating them every session, or expo
 
 ## Run locally (no Docker)
 
-The `dev` profile connects to a Neon Postgres branch (see `../DECISIONS.md` — "Neon Postgres replaces H2 for local development"), not a local database. Copy `../.env.example` to `../.env` and fill in `DATABASE_URL`/`DATABASE_USER`/`DATABASE_PASSWORD` from your Neon connection details, then load it into the shell before running:
+The `dev` profile connects to a Neon Postgres branch (see `../DECISIONS.md` — "Neon Postgres replaces H2 for local development"), not a local database. Copy `../.env.example` to `../.env` and fill in `DATABASE_URL`/`DATABASE_USER`/`DATABASE_PASSWORD` from your Neon connection details.
+
+`application-dev.properties` loads `../.env` (or `.env` if launched with `backend/` itself as the working directory) directly via `spring.config.import` — no need to `source` it into the shell first. This is what makes IntelliJ's Run button work too: it launches the JVM directly, without ever running a shell that could `source` anything, so the app has to load its own secrets.
 
 ```bash
-set -a && source ../.env && set +a
 JAVA_HOME=/opt/homebrew/opt/openjdk@21 PATH="/opt/homebrew/opt/openjdk@21/bin:$PATH" mvn spring-boot:run
 ```
 
