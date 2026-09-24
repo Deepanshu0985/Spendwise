@@ -9,6 +9,34 @@ on:
 jobs:
   backend:
     runs-on: ubuntu-latest
+    services:
+      # RLS and pooled-connection behavior can't be tested against H2 (ADR-018) -
+      # *Test.java (surefire, H2) run first, then *IT.java (failsafe) against
+      # this real Postgres. Ephemeral per run, so a throwaway password here is
+      # fine (see scripts/init-db-roles.sql, which this same password bootstraps).
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: finance_ci
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      # Runtime role (NOBYPASSRLS) vs. migration role (BYPASSRLS) - see ADR-010
+      # and DECISIONS.md ("Found: the runtime app connection had BYPASSRLS all
+      # along"). Without this split, every RLS-dependent test below would pass
+      # for the wrong reason - the same mistake this split exists to catch.
+      DATABASE_URL: jdbc:postgresql://localhost:5432/finance_ci
+      DATABASE_USER: app_runtime
+      DATABASE_PASSWORD: ci-runtime-password
+      FLYWAY_DATABASE_USER: postgres
+      FLYWAY_DATABASE_PASSWORD: postgres
     steps:
       - uses: actions/checkout@v4
 
@@ -18,11 +46,17 @@ jobs:
           java-version: "21"
           cache: maven
 
-      # Phase 0: backend tests run against H2 only (see ADR-018).
-      # Once Phase 1 adds Row-Level Security, add a `postgres:` service here
-      # and a test profile pointed at it - the RLS isolation tests and the
-      # pooled-connection leakage test only mean anything against real PostgreSQL.
-      - name: Build and test
+      - name: Install postgresql-client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Bootstrap restricted runtime role
+        run: |
+          psql "postgresql://postgres:postgres@localhost:5432/finance_ci" \
+            -v password="$DATABASE_PASSWORD" \
+            -f ../scripts/init-db-roles.sql
+        working-directory: backend
+
+      - name: Build, unit test (H2) and integration test (Postgres)
         working-directory: backend
         run: mvn -B verify
 

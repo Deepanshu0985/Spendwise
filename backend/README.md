@@ -37,6 +37,22 @@ JAVA_HOME=/opt/homebrew/opt/openjdk@21 PATH="/opt/homebrew/opt/openjdk@21/bin:$P
 
 Tests run against an in-memory H2 database (`test` profile) — fast, isolated, and never touching Neon. Anything Postgres-specific (Row-Level Security, from Phase 1 on) can't be meaningfully tested against H2 and needs a real Postgres run instead.
 
+## Integration tests (RLS, real Postgres)
+
+`*IT.java` classes run via the `verify` phase (Maven's failsafe plugin), against the `it` profile, and need a real PostgreSQL instance - CI provides one automatically (`.github/workflows/ci.yml`). To run them locally, point them at a scratch database (do **not** point `DATABASE_URL` at Neon dev for these - they insert/delete real rows) and bootstrap the restricted runtime role first:
+
+```bash
+psql "$SUPERUSER_URL" -v password="some-local-password" -f ../scripts/init-db-roles.sql
+
+DATABASE_URL=jdbc:postgresql://localhost:5432/some_scratch_db \
+DATABASE_USER=app_runtime \
+DATABASE_PASSWORD=some-local-password \
+FLYWAY_DATABASE_USER=postgres \
+FLYWAY_DATABASE_PASSWORD=postgres \
+JAVA_HOME=/opt/homebrew/opt/openjdk@21 PATH="/opt/homebrew/opt/openjdk@21/bin:$PATH" \
+mvn verify
+```
+
 ## Production
 
 Production uses PostgreSQL via Docker Compose on the ADR-017 droplet, activated with `SPRING_PROFILES_ACTIVE=prod` — see `../docs/08-devops/deployment.md` and `../docs/08-devops/environments.md`. Nothing in this local setup affects that path; `application-prod.properties` is untouched.

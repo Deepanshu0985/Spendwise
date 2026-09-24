@@ -1,5 +1,27 @@
 # Decisions Log
 
+## Automated test suite: failsafe + a real `it` profile, not just more manual curl/psql passes
+
+**Decision.** `*Test.java` (Maven's `test` phase, surefire) stay on H2 - fast, no external dependency. `*IT.java` (Maven's `verify` phase, failsafe - added as a new plugin) run against a real PostgreSQL instance via a new `it` Spring profile, which pins `spring.datasource.hikari.maximum-pool-size=1` so the pooled-connection leakage test is actually exercising what it claims to, not hoping the pool happens to reuse a connection.
+
+**Why.** Everything in Phase 1 and 2 had only ever been verified by hand (curl, direct psql) - real verification, but not repeatable and not run on every push. RLS-dependent behavior specifically cannot be tested on H2 at all (ADR-018), so this needed real Postgres from the start, not a "fake it with H2" compromise.
+
+**Two more bugs found while building this, both only surfaced by actually running the tests, not by reading the code:**
+
+1. **psql doesn't substitute `:'var'` inside dollar-quoted `DO $$ ... $$` blocks.** `scripts/init-db-roles.sql`'s first version silently passed the literal text `:'password'` through to `CREATE ROLE ... PASSWORD :'password'`, which is a syntax error - caught immediately by running the script against a scratch Postgres before trusting it in CI. Fixed by moving the `CREATE ROLE` out of a `DO` block entirely, using `SELECT format(...) WHERE NOT EXISTS (...) \gexec` instead - `format(...)`'s `%L` does the safe literal-quoting, `\gexec` makes the conditional idempotent, and the substitution happens in an ordinary (non-dollar-quoted) statement where psql's `:'var'` actually works.
+
+2. **JDK's `CookieManager` won't resend a `Secure` cookie over plain `http://localhost`.** Every single IT test failed CSRF validation on the first run - not because CSRF was broken, but because `TestHttpClient`'s original `java.net.CookieManager`-based cookie handling correctly refused to send the (correctly) `Secure`-flagged `csrf_token`/session cookies back over the test server's non-TLS connection. This is right behavior for a real browser in production and exactly wrong for a test harness with no TLS. Fixed by having `TestHttpClient` track cookies manually (parse `Set-Cookie`, resend as a plain `Cookie` header, ignoring the `Secure` flag) - the same thing curl was already doing, which is why the original hand-verification never hit this.
+
+**Consequences.** `mvn verify` (already the command CI ran, even before this) now requires a real Postgres to succeed - the CI Postgres service and role bootstrap below were added in the same change, not a follow-up, specifically because merely adding the failsafe plugin would otherwise break the next CI run.
+
+## CI PostgreSQL service, wired in the same change as the failsafe plugin
+
+**Decision.** `.github/workflows/ci.yml`'s `backend` job now runs a `postgres:16` service container, bootstraps the restricted `app_runtime` role via `scripts/init-db-roles.sql` (a throwaway CI-only password, fine since the whole container is destroyed at the end of the job), then runs the same `mvn -B verify` command as before.
+
+**Why.** `scripts/init-db-roles.sql` is written once and reused for CI now and the self-hosted Postgres prod path later (still not wired there - deploy is deferred), rather than duplicating the role-creation SQL inline in the workflow YAML and in DECISIONS.md's original manual Neon setup.
+
+**Consequences.** RLS and pooled-connection-leakage behavior is now checked on every push, not only when someone happens to run it locally against Neon. The frontend job is unaffected.
+
 ## Found: the runtime app connection had BYPASSRLS all along
 
 **What happened.** Before writing Phase 2's first RLS-protected tables, I checked whether Neon's default `neondb_owner` role - the one `DATABASE_USER` had used for everything since Phase 1 - has the `BYPASSRLS` role attribute. It does (`rolbypassrls = t`). ADR-010 already documented the intended shape of this ("migrations run under a role with BYPASSRLS," implying the runtime role should not) but it had never actually been implemented - Phase 1 didn't need it (ADR-019 excludes those three tables from RLS entirely), so the gap was latent and harmless until now. Had this shipped unnoticed, every RLS policy from Phase 2 onward would have been silently ineffective for real application traffic: `FORCE ROW LEVEL SECURITY` does nothing against a role with `BYPASSRLS`, regardless of ownership.

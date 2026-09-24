@@ -102,6 +102,26 @@
                     </excludes>
                 </configuration>
             </plugin>
+            <!--
+              *Test.java (surefire, `mvn test`) run on H2 - fast, no real Postgres
+              needed. *IT.java (failsafe, bound to the verify phase - `mvn verify`)
+              need real PostgreSQL for RLS/pooled-connection behavior to mean
+              anything, per ADR-018's own consequence. Both are already the
+              default include patterns for each plugin, so no extra config needed
+              beyond adding failsafe with its standard goals.
+            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>integration-test</goal>
+                            <goal>verify</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
     </build>
 </project>
