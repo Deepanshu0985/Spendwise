@@ -52,7 +52,20 @@ Live status tracker, updated as work happens. For the full plan with durations a
 - [ ] Session-listing/revoke-all could use direct JUnit coverage of `AuthServiceImpl` beyond the manual curl pass
 
 ## Phase 2 — Accounts and Categories
-Not started.
+
+**Done:**
+- [x] Found and fixed a critical gap: the runtime app connection (`neondb_owner`) had `BYPASSRLS` all along, which would have made every Phase 2+ RLS policy silently ineffective for real traffic. Created a restricted `app_runtime` role (`NOBYPASSRLS`), split runtime vs. migration credentials via `spring.flyway.user`/`spring.flyway.password` (`DATABASE_USER` vs `FLYWAY_DATABASE_USER`). Same gap still exists in the self-hosted Postgres path (`docker-compose.yml`) — not fixed yet since deploy is deferred, tracked below.
+- [x] `V4__create_accounts_table.sql`, `V5__create_categories_table.sql` (18 seeded system categories per ADR-015 — corrected from the originally-documented 19; "Uncategorized" isn't a real row), `V6__create_merchants_table.sql` — all with RLS enabled and forced from the start
+- [x] Fixed a real gap in `categories`' RLS: the single-policy pattern originally documented in `database-design.md` protects `SELECT` but not `UPDATE`/`DELETE` on system rows. Split into 4 command-scoped policies (select/insert/update/delete) so system categories are readable by everyone but writable by no one
+- [x] Found and fixed a second RLS edge case: `current_setting(..., true)` can return `''` instead of `NULL` on a reused pooled connection, and `''::uuid` throws a hard error rather than matching zero rows. Added `NULLIF(..., '')` guard to every policy via `V7__fix_rls_policy_empty_string_guard.sql`; reproduced the raw error via direct psql before and after to confirm the fix
+- [x] `Account`/`AccountService`/`AccountController` (CRUD + soft-deactivate, matching the project's never-hard-delete-financial-records stance), `Category`/`CategoryService`/`CategoryController` (custom categories only — system rows are read-only to users), `Merchant`/`MerchantService`/`MerchantController` with a basic normalization stub (lowercase, strip punctuation/whitespace) and duplicate-name rejection (409)
+- [x] Extracted `CurrentUserGuard` once the "throw if unauthenticated" pattern hit 5 controllers — refactored `AuthController`/`UserController` to use it too
+- [x] Verified end to end against the real Neon dev branch, three independent ways: (1) via the API with two real users, confirming Bob never sees Alice's accounts/categories/merchants; (2) via direct psql as `app_runtime` with no tenant context, confirming RLS-protected tables return zero rows rather than leaking everything; (3) via direct psql as Bob's context, confirming he cannot read Alice's account, and cannot UPDATE or DELETE a system category (`UPDATE 0`/`DELETE 0`) even though he can SELECT it
+
+**Left:**
+- [ ] The same `BYPASSRLS`-role gap exists in `docker-compose.yml`'s self-hosted Postgres (single `POSTGRES_USER` used for everything) — needs a restricted runtime role + init script before that path is ever used for real
+- [ ] Automated JUnit/integration test suite (verified manually via curl + direct psql, not yet codified as tests) — same gap as Phase 1
+- [ ] CI PostgreSQL service — still not added; Phase 1 and Phase 2 RLS/isolation behavior has only been verified locally against Neon, never in CI
 
 ## Phase 3 — Transactions
 Not started.

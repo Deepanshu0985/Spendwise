@@ -1,8 +1,8 @@
 package com.finance.user;
 
 import com.finance.common.ApiResponse;
+import com.finance.common.CurrentUserGuard;
 import com.finance.common.TenantContext;
-import com.finance.common.exception.UnauthorizedException;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -19,10 +19,6 @@ public class UserController {
 
     @GetMapping("/api/v1/users/me")
     public ApiResponse<UserProfileResponse> me() {
-        var userId = tenantContext.currentUserId();
-        if (userId == null) {
-            throw new UnauthorizedException("Not authenticated.");
-        }
-        return ApiResponse.of(UserProfileResponse.from(userService.getById(userId)));
+        return ApiResponse.of(UserProfileResponse.from(userService.getById(CurrentUserGuard.require(tenantContext))));
     }
 }

@@ -1,8 +1,8 @@
 package com.finance.auth;
 
 import com.finance.common.ApiResponse;
+import com.finance.common.CurrentUserGuard;
 import com.finance.common.TenantContext;
-import com.finance.common.exception.UnauthorizedException;
 import com.finance.user.User;
 import com.finance.user.UserProfileResponse;
 import jakarta.servlet.http.HttpServletRequest;
@@ -64,7 +64,7 @@ public class AuthController {
 
     @GetMapping("/sessions")
     public ApiResponse<List<SessionResponse>> listSessions() {
-        UUID userId = requireCurrentUserId();
+        UUID userId = CurrentUserGuard.require(tenantContext);
         List<SessionResponse> sessions = authService.listActiveSessions(userId).stream()
                 .map(SessionResponse::from)
                 .toList();
@@ -73,7 +73,7 @@ public class AuthController {
 
     @DeleteMapping("/sessions")
     public ResponseEntity<Void> revokeAllSessions(HttpServletResponse response) {
-        UUID userId = requireCurrentUserId();
+        UUID userId = CurrentUserGuard.require(tenantContext);
         authService.revokeAllSessions(userId);
         response.addHeader(HttpHeaders.SET_COOKIE, cookieFactory.clear().toString());
         return ResponseEntity.noContent().build();
@@ -90,13 +90,5 @@ public class AuthController {
     public ResponseEntity<Void> confirmPasswordReset(@Valid @RequestBody PasswordResetConfirmRequest request) {
         authService.confirmPasswordReset(request.token(), request.password());
         return ResponseEntity.noContent().build();
-    }
-
-    private UUID requireCurrentUserId() {
-        UUID userId = tenantContext.currentUserId();
-        if (userId == null) {
-            throw new UnauthorizedException("Not authenticated.");
-        }
-        return userId;
     }
 }

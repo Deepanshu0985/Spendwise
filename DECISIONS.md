@@ -1,5 +1,22 @@
 # Decisions Log
 
+## Found: the runtime app connection had BYPASSRLS all along
+
+**What happened.** Before writing Phase 2's first RLS-protected tables, I checked whether Neon's default `neondb_owner` role - the one `DATABASE_USER` had used for everything since Phase 1 - has the `BYPASSRLS` role attribute. It does (`rolbypassrls = t`). ADR-010 already documented the intended shape of this ("migrations run under a role with BYPASSRLS," implying the runtime role should not) but it had never actually been implemented - Phase 1 didn't need it (ADR-019 excludes those three tables from RLS entirely), so the gap was latent and harmless until now. Had this shipped unnoticed, every RLS policy from Phase 2 onward would have been silently ineffective for real application traffic: `FORCE ROW LEVEL SECURITY` does nothing against a role with `BYPASSRLS`, regardless of ownership.
+
+**Fix.** Created a second Postgres role, `app_runtime`, explicitly `NOBYPASSRLS`, granted `SELECT/INSERT/UPDATE/DELETE` on all tables plus default privileges so future migrations' tables are covered automatically:
+```sql
+CREATE ROLE app_runtime WITH LOGIN PASSWORD '...' NOBYPASSRLS NOSUPERUSER NOCREATEDB NOCREATEROLE;
+GRANT USAGE ON SCHEMA public TO app_runtime;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO app_runtime;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO app_runtime;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO app_runtime;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO app_runtime;
+```
+`DATABASE_USER`/`DATABASE_PASSWORD` (the runtime `spring.datasource.*` credentials) now point to `app_runtime`; `FLYWAY_DATABASE_USER`/`FLYWAY_DATABASE_PASSWORD` (new) point to the privileged `neondb_owner` and are wired to `spring.flyway.user`/`spring.flyway.password` in `application.properties`, which Spring Boot's Flyway auto-configuration supports natively as an override distinct from the main datasource - exactly the "migrations use a different, more privileged user" scenario it's designed for. Verified: the app boots and passes health checks with this split in place before any RLS policy exists to test against; the actual RLS-bypass-proof verification happens once Phase 2's tables exist.
+
+**Still open:** the self-hosted PostgreSQL container in `docker-compose.yml` (staging/production) has the same single-role gap - `POSTGRES_USER` is used for everything there too. Not fixed yet since deploy is deferred (see the build-locally-first decision), but tracked in `PROCESS.md` so it isn't forgotten by the time it matters.
+
 ## Backend loads its own .env instead of depending on the shell having sourced it
 
 **What happened.** Running the app from IntelliJ's Run button failed with `Driver org.postgresql.Driver claims to not accept jdbcUrl, ${DATABASE_URL}` - the literal, unresolved placeholder text was passed as the JDBC URL. Root cause: `application-dev.properties` referenced `${DATABASE_URL}` expecting it to already be a process environment variable, which only became true because our documented workflow said to run `source .env` in the shell first. IntelliJ's Run button launches the JVM directly - there is no shell in that path to source anything into, so the environment variable genuinely never existed.

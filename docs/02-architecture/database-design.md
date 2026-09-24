@@ -75,7 +75,8 @@ Account types: `BANK`, `CREDIT_CARD`, `CASH`, `WALLET`, `OTHER`.
 | Interest | INCOME |
 | Refunds | INCOME |
 | Other Income | INCOME |
-| Uncategorized | — (reserved fallback bucket, see `analytics-specification.md`) |
+
+18 seed rows, not 19: **"Uncategorized" is not a categories row.** Per `analytics-specification.md`, it is the analytics layer's display label for a transaction whose `category_id IS NULL` - "no category" means exactly that, not a category named "Uncategorized" a user could select or unselect. Giving it a real row would also have no valid `category_type` (it isn't inherently income or expense), which is why the category-type CHECK constraint only allows `EXPENSE`/`INCOME`.
 
 `Fees & Charges`, `Interest` and `Refunds` map to the `FEE_CHARGED`/`INTEREST_CHARGED`/`INTEREST_EARNED`/`REFUND` transaction types so manual entry and AI categorization share one vocabulary.
 
@@ -132,19 +133,34 @@ Every user-owned table carries `user_id` directly, including `transaction_splits
 ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE transactions FORCE ROW LEVEL SECURITY;
 CREATE POLICY tenant ON transactions
-  USING (user_id = current_setting('app.current_user_id', true)::uuid);
+  USING (user_id = current_setting('app.current_user_id', true)::uuid)
+  WITH CHECK (user_id = current_setting('app.current_user_id', true)::uuid);
 ```
 
-`FORCE` is required. Without it the owning role — which is the application role — bypasses every policy.
+`FORCE` is required. Without it the owning role — which is the application role — bypasses every policy. So does a role with the `BYPASSRLS` attribute, `FORCE` or not: the runtime application role must not have it, even though a convenient default role (e.g. a managed Postgres provider's default owner role) may. Migrations run under a separate, privileged role that does have `BYPASSRLS`; the runtime role does not. Getting this backwards — granting the request-serving connection `BYPASSRLS` — makes every policy below silently inert for real traffic while looking fully configured.
 
-`categories` carries the exception for shared system rows:
+`categories` carries the exception for shared system rows, split by command rather than one blanket policy: a single `USING (is_system OR user_id = ...)` protects `SELECT` correctly but is a real gap on `UPDATE`/`DELETE` — without a narrower `WITH CHECK`, `is_system` alone would let any authenticated user rewrite or delete a shared system row.
 
 ```sql
-CREATE POLICY tenant ON categories
+CREATE POLICY categories_select ON categories
+  FOR SELECT
   USING (is_system OR user_id = current_setting('app.current_user_id', true)::uuid);
+
+CREATE POLICY categories_insert ON categories
+  FOR INSERT
+  WITH CHECK (NOT is_system AND user_id = current_setting('app.current_user_id', true)::uuid);
+
+CREATE POLICY categories_update ON categories
+  FOR UPDATE
+  USING (NOT is_system AND user_id = current_setting('app.current_user_id', true)::uuid)
+  WITH CHECK (NOT is_system AND user_id = current_setting('app.current_user_id', true)::uuid);
+
+CREATE POLICY categories_delete ON categories
+  FOR DELETE
+  USING (NOT is_system AND user_id = current_setting('app.current_user_id', true)::uuid);
 ```
 
-The current user is set with `SET LOCAL app.current_user_id` **inside the transaction**. Plain `SET` persists on a pooled connection and would serve one user's data to the next request. Migrations run under a role with `BYPASSRLS`. See ADR-010.
+The current user is set with `SET LOCAL app.current_user_id` **inside the transaction**. Plain `SET` persists on a pooled connection and would serve one user's data to the next request. Migrations run under a role with `BYPASSRLS`; the runtime application role must explicitly not have it (`NOBYPASSRLS`), granted table privileges directly instead — see ADR-010 and `DECISIONS.md`.
 
 ## Category Allocation View
 
