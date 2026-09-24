@@ -12,14 +12,17 @@ jobs:
     services:
       # RLS and pooled-connection behavior can't be tested against H2 (ADR-018) -
       # *Test.java (surefire, H2) run first, then *IT.java (failsafe) against
-      # this real Postgres. Ephemeral per run, so a throwaway password here is
-      # fine (see scripts/init-db-roles.sql, which this same password bootstraps).
+      # this real Postgres. The container is destroyed at the end of every run
+      # and never holds real data, but its credentials still come from repo
+      # secrets rather than being hardcoded in this file, which a public repo
+      # (this one) gets scanned for regardless of whether the value is
+      # actually sensitive.
       postgres:
         image: postgres:16
         env:
           POSTGRES_DB: finance_ci
           POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
+          POSTGRES_PASSWORD: ${{ secrets.CI_POSTGRES_SUPERUSER_PASSWORD }}
         ports:
           - 5432:5432
         options: >-
@@ -34,9 +37,9 @@ jobs:
       # for the wrong reason - the same mistake this split exists to catch.
       DATABASE_URL: jdbc:postgresql://localhost:5432/finance_ci
       DATABASE_USER: app_runtime
-      DATABASE_PASSWORD: ci-runtime-password
+      DATABASE_PASSWORD: ${{ secrets.CI_POSTGRES_PASSWORD }}
       FLYWAY_DATABASE_USER: postgres
-      FLYWAY_DATABASE_PASSWORD: postgres
+      FLYWAY_DATABASE_PASSWORD: ${{ secrets.CI_POSTGRES_SUPERUSER_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
 
@@ -51,7 +54,7 @@ jobs:
 
       - name: Bootstrap restricted runtime role
         run: |
-          psql "postgresql://postgres:postgres@localhost:5432/finance_ci" \
+          psql "postgresql://postgres:${FLYWAY_DATABASE_PASSWORD}@localhost:5432/finance_ci" \
             -v password="$DATABASE_PASSWORD" \
             -f ../scripts/init-db-roles.sql
         working-directory: backend
