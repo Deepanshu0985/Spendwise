@@ -117,7 +117,15 @@ Live status tracker, updated as work happens. For the full plan with durations a
 - [ ] Frontend dashboard wiring (S03) - deferred; frontend remains a skeleton per the project's build-backend-first-through-all-phases approach
 
 ## Phase 5 — Internal Dogfooding
-Not started.
+
+**Done:**
+- [x] Verified the backend boots cleanly against the real Neon dev branch (not scratch Postgres) and `/api/v1/health` responds - confirmed with a fresh `mvn spring-boot:run`, left running in the background on `localhost:8080` for daily use
+- [x] Decided the dogfooding mechanism for this phase: direct API calls (curl), not a frontend - see `DECISIONS.md`
+
+**Left:**
+- [ ] Track real personal spending via the API for ~1 week (manual entry only, no statement import)
+- [ ] Fix whatever bugs surface from real use - this phase's only planned "work" per `phase-plan.md`
+- [ ] Exit gate: the app is genuinely easier to reach for than whatever it replaces; if not, revisit the core loop before Phase 6
 
 ## Phase 6 — Statement Import
 Not started.

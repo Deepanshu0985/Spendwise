@@ -1,5 +1,13 @@
 # Decisions Log
 
+## Phase 5: dogfooding via direct API calls, frontend build stays deferred
+
+**Decision.** For the internal-dogfooding soak week, the user tracks real personal spending by calling the backend API directly (curl/a REST client) against the real Neon dev branch, rather than having a minimal frontend built first.
+
+**Why.** The user's explicit choice when asked: the frontend remains a skeleton (S01-S12 in `screen-specification.md` are all unbuilt beyond routing and a placeholder dashboard), and building even a minimal usable UI (login, accounts, add/view transactions, dashboard) would be genuinely new feature work - `phase-plan.md`'s own framing of Phase 5 is "none beyond bug fixes surfaced by real use." Keeping frontend deferred here is consistent with that and with the project's standing build-backend-first-through-all-phases approach.
+
+**Consequences.** The backend was verified to boot cleanly against the real Neon dev branch (`mvn spring-boot:run`, `/api/v1/health` responds) and left running for daily use. Any bugs the user hits while using the app for real - via curl, not a UI - are this phase's actual work. Whether the exit gate ("genuinely easier to reach for than whatever it replaces") can be honestly judged through raw API calls, or whether a minimal frontend becomes necessary to judge it properly, is worth revisiting if the week doesn't produce a clear answer either way.
+
 ## Phase 4: analytics computed by a pure in-memory calculator, not SQL aggregation
 
 **Decision.** `AnalyticsRepository` (the domain port) does the minimum possible in SQL - one JdbcTemplate query fetching every `CONFIRMED`, resolved-type transaction (with its splits) in a date range, currency-agnostic, plus two id→name lookup queries for categories/merchants. All of analytics-specification.md's actual math (expenses/income/savings/savings_rate, category and merchant breakdown with the refund-nets-against-its-own-bucket rule, the monthly trend series, zero-filling) lives in `AnalyticsCalculator` (`domain.analytics`), a framework-free static utility operating on plain `TransactionWithSplits` lists.
