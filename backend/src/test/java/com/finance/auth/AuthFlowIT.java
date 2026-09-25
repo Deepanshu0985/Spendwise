@@ -1,5 +1,6 @@
 package com.finance.auth;
 
+import com.finance.infrastructure.security.TokenHasher;
 import com.finance.support.ApiResult;
 import com.finance.support.TestData;
 import com.finance.support.TestHttpClient;

@@ -13,6 +13,24 @@ SOLID is mandatory, not aspirational, and is checked in review alongside correct
 
 Practical consequence for this codebase: a new feature always means at least an interface plus an implementation, wired by Spring through constructor injection. This is deliberately more files than a quick concrete-class-only approach, and that tradeoff is accepted here for testability (mock the interface) and for the AI/statement-processing modules where multiple implementations (per-provider, per-bank-format) are expected from the roadmap itself.
 
+### Layering: domain / application / infrastructure
+
+Every backend feature is organized by architectural layer, not left flat in a single `com.finance.<feature>` package. Four package roots, per feature:
+
+- **`com.finance.domain.<feature>`** — the business entity: plain Java (fields + behavior methods like `rename()`/`update()`), no JPA or Spring annotations. Framework-free enums live here too. Also the **repository port**: an interface in domain types only, never a Spring Data supertype (`JpaRepository`, `JpaSpecificationExecutor`).
+- **`com.finance.application.<feature>`** — the use-case layer: `<Feature>Service` interface + `<Feature>ServiceImpl`, depending only on the domain repository port. Owns **command objects** (e.g. `CreateCategoryCommand`) — the application's own input shape, distinct from the HTTP request DTO, so this layer never depends on `infrastructure.web`.
+- **`com.finance.infrastructure.persistence.<feature>`** — the JPA adapter: `<Feature>JpaEntity` (the actual `@Entity`), `<Feature>JpaRepository` (Spring Data interface), a `<Feature>Mapper` (domain ↔ JPA entity, a plain static utility — no interface, same reasoning as `SessionCookieFactory`), and `<Feature>RepositoryImpl` (implements the domain port).
+- **`com.finance.infrastructure.web.<feature>`** — the REST adapter: `<Feature>Controller` (maps request DTO → command, calls the service, maps the result → response DTO) and the `Create/UpdateXRequest`/`XResponse` records.
+
+Pragmatic exceptions, decided rather than accidental:
+- A pure, side-effect-free business-rule interface+impl with no persistence/web I/O (e.g. `MerchantNormalizer`) lives entirely in `domain.<feature>` — it doesn't need an infrastructure adapter just to be Spring-registered.
+- Purely technical, non-domain concerns don't get the four-way split: the auth mechanism (`Session`, `PasswordResetToken`, token hashing/generation, cookies) lives as a unit in `infrastructure.security`; idempotency bookkeeping lives as a unit in `infrastructure.idempotency`. `User` itself, being a genuine domain concept, still gets the full split.
+- The `ApiException` hierarchy and `ApiError`/`ErrorCode` live in `application.exception`, since application/domain code throws them — keeping them out of `infrastructure` preserves the dependency direction (infra depends on application, never the reverse). `GlobalExceptionHandler` (the HTTP translation of those exceptions) is a genuine web-adapter concern and stays in `infrastructure.web.common`.
+- `TenantContext`/`CurrentUserGuard`/`ApiResponse`/`PageMeta` and other generic request-scoped plumbing live in `infrastructure.tenancy` / `infrastructure.web.common` — controllers resolve `UUID userId` via `CurrentUserGuard` before calling any service, so application services only ever take a plain `UUID`, never a `TenantContext`.
+- `Pageable`/`Page` (Spring Data Commons, not JPA-specific) are an accepted exception in domain repository port signatures, rather than inventing a parallel pagination abstraction for no real benefit at this project's scale.
+
+See `DECISIONS.md` ("Retrofit backend to domain/application/infrastructure layering") for the full worked example and rationale.
+
 ## Java/Spring
 Constructor injection, thin controllers, DTO boundaries, service-layer business orchestration, focused repositories, explicit enums/types and validation at boundaries.
 

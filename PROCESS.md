@@ -87,8 +87,16 @@ Live status tracker, updated as work happens. For the full plan with durations a
 **Left:**
 - [ ] Clean up/decide fate of the scratch Postgres (Colima `scratch-pg` container, port 55433) now that Phase 3's IT suite passes against it — left running for now in case more Phase 3/4 local IT runs are needed soon
 
-## Phase 4 — Analytics
-Not started.
+## Cross-cutting — Backend layering retrofit (domain/application/infrastructure)
+
+**Done:**
+- [x] Every feature (`account`, `category`, `merchant`, `user`, `auth`, `transaction`) restructured from a flat `com.finance.<feature>` package into `domain.<feature>` / `application.<feature>` / `infrastructure.persistence.<feature>` / `infrastructure.web.<feature>` — see `DECISIONS.md` and `docs/09-project/coding-standards.md`'s new "Layering" section for the full convention and rationale
+- [x] Cross-cutting infra relocated: tenant context → `infrastructure.tenancy`, generic web plumbing (`ApiResponse`/`CurrentUserGuard`/`PageMeta`/`CsrfTokenFilter`/`GlobalExceptionHandler`) → `infrastructure.web.common`, the `ApiException` hierarchy + `ApiError`/`ErrorCode` → `application.exception`, idempotency → `infrastructure.idempotency`, the whole auth mechanism (sessions, password-reset tokens, token hashing/generation, cookies) → `infrastructure.security` as a single unit
+- [x] Stale flat placeholder packages for not-yet-built phases (`ai`, `analytics`, `budget`, `goal`, `insight`, `recurring`, `statement`) deleted — they'll be created directly under the new convention when their phase starts
+- [x] Done feature-by-feature (`category` piloted first) with a full `mvn compile` / `test-compile` / `verify` gate after every step — all 16 IT tests + 1 unit test green throughout and at the end, no SQL/schema/RLS changes
+
+**Left:**
+- [ ] Commit and push this retrofit; confirm CI green on the resulting commit
 
 ## Phase 4 — Analytics
 Not started.
