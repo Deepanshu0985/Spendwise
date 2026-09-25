@@ -82,9 +82,10 @@ Live status tracker, updated as work happens. For the full plan with durations a
 - [x] Verified: `mvn verify` — 16 IT tests (up from 14) + 1 unit test, all green against scratch Postgres (Colima + `postgres:16-alpine`, not Neon — IT tests insert/delete real rows and Neon dev is meant to be kept clean for manual poking)
 - [x] Explicitly scoped **out**: one-sided-transfer review/flagging (matching an unpaired transfer leg) — documented in `TransferServiceImpl`'s javadoc and `DECISIONS.md` as a Phase 6 statement-import concern, since the manual transfer endpoint's request DTO always requires both account ids and therefore always creates an already-paired transaction
 
+- [x] Committed and pushed (`3aa8d58`); CI green on both `backend` and `frontend` jobs (run `36175091663`)
+
 **Left:**
-- [ ] Commit and push Phase 3 work; confirm CI green on the resulting commit
-- [ ] Clean up/decide fate of the scratch Postgres (Colima `scratch-pg` container, port 55433) now that Phase 3's IT suite passes against it
+- [ ] Clean up/decide fate of the scratch Postgres (Colima `scratch-pg` container, port 55433) now that Phase 3's IT suite passes against it — left running for now in case more Phase 3/4 local IT runs are needed soon
 
 ## Phase 4 — Analytics
 Not started.
