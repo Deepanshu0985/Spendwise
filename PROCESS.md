@@ -111,8 +111,9 @@ Live status tracker, updated as work happens. For the full plan with durations a
 - [x] `GlobalExceptionHandler` gained `MissingServletRequestParameterException`/`MethodArgumentTypeMismatchException` handlers - analytics is the first feature with required, typed query params, and both previously fell through to the generic 500 handler
 - [x] Verified: `mvn compile`/`test-compile`/`verify` - 23 IT tests (up from 16) + unit tests all green against scratch Postgres
 
+- [x] Committed and pushed (`ebfc987`); CI green on both `backend` and `frontend` jobs (run `36183995745`)
+
 **Left:**
-- [ ] Commit and push this phase; confirm CI green
 - [ ] Frontend dashboard wiring (S03) - deferred; frontend remains a skeleton per the project's build-backend-first-through-all-phases approach
 
 ## Phase 5 — Internal Dogfooding
