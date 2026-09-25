@@ -95,8 +95,7 @@ Live status tracker, updated as work happens. For the full plan with durations a
 - [x] Stale flat placeholder packages for not-yet-built phases (`ai`, `analytics`, `budget`, `goal`, `insight`, `recurring`, `statement`) deleted — they'll be created directly under the new convention when their phase starts
 - [x] Done feature-by-feature (`category` piloted first) with a full `mvn compile` / `test-compile` / `verify` gate after every step — all 16 IT tests + 1 unit test green throughout and at the end, no SQL/schema/RLS changes
 
-**Left:**
-- [ ] Commit and push this retrofit; confirm CI green on the resulting commit
+- [x] Committed and pushed (`78a19a5`); CI green on both `backend` and `frontend` jobs (run `36181375371`)
 
 ## Phase 4 — Analytics
 Not started.
