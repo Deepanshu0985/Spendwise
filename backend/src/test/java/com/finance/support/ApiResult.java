@@ -10,6 +10,10 @@ public record ApiResult(int status, HttpHeaders headers, JsonNode body) {
         return body.get("data");
     }
 
+    public JsonNode meta() {
+        return body.get("meta");
+    }
+
     public JsonNode error() {
         return body.get("error");
     }

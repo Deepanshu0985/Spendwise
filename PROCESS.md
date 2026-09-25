@@ -98,7 +98,22 @@ Live status tracker, updated as work happens. For the full plan with durations a
 - [x] Committed and pushed (`78a19a5`); CI green on both `backend` and `frontend` jobs (run `36181375371`)
 
 ## Phase 4 — Analytics
-Not started.
+
+**Done:**
+- [x] Built directly under the new domain/application/infrastructure layering (the first feature to start there rather than being retrofitted into it): `domain.analytics` (`PeriodFigures`, `CurrencyExclusion`, `CategoryBreakdownEntry`, `MerchantBreakdownEntry`, `TrendPoint`, the framework-free `AnalyticsCalculator`, and the `AnalyticsRepository` port), `application.analytics` (`AnalyticsService`/`AnalyticsServiceImpl` - period validation, currency default/exclusion), `infrastructure.persistence.analytics` (`AnalyticsRepositoryImpl`, JdbcTemplate directly - no JPA entity, see `DECISIONS.md`), `infrastructure.web.analytics` (`AnalyticsController` + response DTOs)
+- [x] `GET /analytics/monthly`, `/categories`, `/merchants`, `/trends` - all take required `from`/`to` (`LocalDate`) + optional `currency`, capped at 36 months apart (see `DECISIONS.md` for why no `month` param or default)
+- [x] All formulas from `analytics-specification.md` implemented: expenses/income/savings/savings_rate, category breakdown (via split-aware allocation, refund nets against its own category), merchant breakdown, monthly trend series (zero-filled), currency scoping with `excludedCurrencies`/`excludedTransactionCount` never silently dropped
+- [x] The six reconciliation invariants automated as pure unit tests (`AnalyticsCalculatorTest`, no database) against the required September worked-example fixture - all pass: category/merchant breakdown sum to expenses, trend series sums to the period total, split allocations sum to the transaction amount, income − expenses = savings, and a transfer group is equal in magnitude and contributes zero to both
+- [x] Found and fixed a real bug while building the unit tests: `Map.of()`'s immutable maps throw `NullPointerException` on a null-key lookup (the "Uncategorized"/"Unknown merchant" bucket case) where `HashMap`/`LinkedHashMap` don't - fixed in `AnalyticsCalculator` by checking for the null id before touching the map, not by relying on a particular `Map` implementation
+- [x] `AnalyticsServiceImplTest` (Mockito) covers period validation (>36 months, `to` before `from`) and currency resolution (default vs requested) without touching Postgres
+- [x] `AnalyticsFlowIT` (6 tests) automates the worked example end to end through the real HTTP API against real Postgres - monthly summary, category/merchant breakdown, trend, currency exclusion, and the missing-period/over-36-months/backwards-range 400s
+- [x] `ResourceIsolationIT` gained a two-user analytics isolation test (B's `/analytics/monthly` is unaffected by A's transactions)
+- [x] `GlobalExceptionHandler` gained `MissingServletRequestParameterException`/`MethodArgumentTypeMismatchException` handlers - analytics is the first feature with required, typed query params, and both previously fell through to the generic 500 handler
+- [x] Verified: `mvn compile`/`test-compile`/`verify` - 23 IT tests (up from 16) + unit tests all green against scratch Postgres
+
+**Left:**
+- [ ] Commit and push this phase; confirm CI green
+- [ ] Frontend dashboard wiring (S03) - deferred; frontend remains a skeleton per the project's build-backend-first-through-all-phases approach
 
 ## Phase 5 — Internal Dogfooding
 Not started.

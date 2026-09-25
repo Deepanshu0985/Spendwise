@@ -100,6 +100,31 @@ class ResourceIsolationIT {
         assertThat(crossTenantDelete.status()).isEqualTo(404);
     }
 
+    @Test
+    void secondUserNeverSeesTheFirstUsersAnalyticsFigures() {
+        TestHttpClient userA = registerAndLogin("isolation-an-a");
+        TestHttpClient userB = registerAndLogin("isolation-an-b");
+
+        String accountId = userA.post("/accounts", Map.of("name", "A's Account", "accountType", "BANK", "currency", "INR"))
+                .data().get("id").asText();
+        ApiResult create = userA.post(
+                "/transactions",
+                Map.of(
+                        "accountId", accountId,
+                        "transactionDate", "2026-09-18",
+                        "amount", 5000,
+                        "currency", "INR",
+                        "transactionType", "INCOME"));
+        assertThat(create.status()).isEqualTo(200);
+
+        ApiResult bMonthly = userB.get("/analytics/monthly?from=2026-09-01&to=2026-09-30&currency=INR");
+        assertThat(bMonthly.status()).isEqualTo(200);
+        assertThat(bMonthly.data().get("income").decimalValue()).isEqualByComparingTo("0");
+
+        ApiResult aMonthly = userA.get("/analytics/monthly?from=2026-09-01&to=2026-09-30&currency=INR");
+        assertThat(aMonthly.data().get("income").decimalValue()).isEqualByComparingTo("5000");
+    }
+
     private java.util.List<String> namesOf(ApiResult listResult) {
         assertThat(listResult.status()).isEqualTo(200);
         java.util.List<String> names = new java.util.ArrayList<>();

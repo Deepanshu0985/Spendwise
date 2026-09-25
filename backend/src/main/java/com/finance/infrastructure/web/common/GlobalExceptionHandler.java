@@ -9,8 +9,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.util.List;
 import java.util.UUID;
@@ -41,6 +43,30 @@ public class GlobalExceptionHandler {
                 ErrorCode.VALIDATION_ERROR.name(),
                 "One or more fields are invalid.",
                 details,
+                newRequestId());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiError.Envelope(error));
+    }
+
+    // Analytics' from/to are the project's first required, typed @RequestParams -
+    // Spring throws these two before the controller method ever runs, and
+    // without a handler here they'd otherwise fall through to the generic
+    // 500 handler below instead of the 400 the API contract requires.
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity<ApiError.Envelope> handleMissingParameter(MissingServletRequestParameterException ex) {
+        ApiError error = new ApiError(
+                ErrorCode.VALIDATION_ERROR.name(),
+                "One or more fields are invalid.",
+                List.of(new ApiError.Detail(ex.getParameterName(), "is required")),
+                newRequestId());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiError.Envelope(error));
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ApiError.Envelope> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
+        ApiError error = new ApiError(
+                ErrorCode.VALIDATION_ERROR.name(),
+                "One or more fields are invalid.",
+                List.of(new ApiError.Detail(ex.getName(), "is malformed")),
                 newRequestId());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiError.Envelope(error));
     }
