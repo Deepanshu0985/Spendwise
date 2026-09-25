@@ -164,10 +164,10 @@ The current user is set with `SET LOCAL app.current_user_id` **inside the transa
 
 ## Category Allocation View
 
-All category aggregation reads this view, never `transactions.category_id` directly.
+All category aggregation reads this view, never `transactions.category_id` directly. `security_invoker = true` is required, not optional: a Postgres view otherwise runs with its *owner's* permissions by default - the privileged migration role it was created under - which would silently bypass RLS on the underlying tables for every caller regardless of `FORCE ROW LEVEL SECURITY`. Verify this empirically before trusting it, the same way the runtime-role BYPASSRLS gap was caught (`DECISIONS.md`).
 
 ```sql
-CREATE VIEW transaction_category_allocations AS
+CREATE VIEW transaction_category_allocations WITH (security_invoker = true) AS
 SELECT t.id AS transaction_id, t.user_id, t.category_id, t.amount, t.transaction_date,
        t.currency, t.transaction_type, t.status
 FROM transactions t

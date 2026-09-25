@@ -70,6 +70,23 @@ Live status tracker, updated as work happens. For the full plan with durations a
 - [ ] The same `BYPASSRLS`-role gap exists in `docker-compose.yml`'s self-hosted Postgres (single `POSTGRES_USER` used for everything) — `scripts/init-db-roles.sql` is written and reusable for this, but not yet wired into the Docker init path since deploy is still deferred
 
 ## Phase 3 — Transactions
+
+**Done:**
+- [x] `V8__create_transactions_table.sql` (RLS enabled/forced from the start, `NULLIF(..., '')` guard built in from the start this time, not retrofitted), `V9__create_transaction_splits_table.sql`, `V10__create_transaction_category_allocations_view.sql` (`WITH (security_invoker = true)` — a Postgres view runs with its owner's, i.e. the privileged migration role's, permissions by default, which would otherwise bypass RLS entirely for anyone querying the view; verified via direct psql with two users before it was ever automated), `V11__create_idempotency_keys_table.sql`
+- [x] `com.finance.transaction` package: `Transaction`/`TransactionSplit` entities, `TransactionType`/`TransactionSource`/`TransactionStatus`/`TransferKind` enums, `TransactionRepository`/`TransactionSplitRepository`, `TransactionSpecifications` (dynamic filtering via `JpaSpecificationExecutor` — date range, account, category, merchant, type, status, currency), `TransactionService`/`TransactionServiceImpl` (create/list/get/update/soft-delete, balanced-splits validation, currency-must-match-account validation), `TransferService`/`TransferServiceImpl` (atomic paired transactions for `CARD_PAYMENT`/other transfer kinds, direction validation), `TransactionController` (`POST/GET/PUT/DELETE /transactions`, `POST /transactions/transfer`)
+- [x] Generic `IdempotencyService`/`IdempotencyServiceImpl` (interface + impl) backed by the RLS-protected `idempotency_keys` table — reusable across `POST /transactions`, `POST /transactions/transfer`, and Phase 6's future statement-confirm endpoint, not one-off per endpoint
+- [x] Found and fixed two schema/entity mismatches while building this, both caught by actually running the test suite (see `DECISIONS.md`): the `key` column renamed to `idempotency_key` (H2 reserves `key`), and `@Lob` removed from `responseBody` in favor of an explicit `columnDefinition = "text"` (Hibernate schema validation failed — `@Lob` on a `String` defaults to Postgres's `oid` type, not the `TEXT` the migration creates)
+- [x] Manually verified end to end via curl against scratch Postgres: create/list/update/soft-delete lifecycle, validation rejections (wrong transaction type on a plain create, currency mismatch, zero amount, unbalanced splits), balanced splits accepted, repeated `Idempotency-Key` returns the original response without duplicating, `CARD_PAYMENT` transfer creates an atomic paired `CARD_PAYMENT_OUT`/`CARD_PAYMENT_IN` with a shared `transferGroupId` and rejects the wrong direction
+- [x] Automated `TransactionFlowIT` added (5 tests: CRUD lifecycle, validation rejections, balanced splits, idempotency replay, transfer atomicity + wrong-direction rejection) — required adding `TestHttpClient.postWithHeader(path, body, headerName, headerValue)` for the `Idempotency-Key` header
+- [x] Automated the two Phase 3 findings that had only been manually verified: `ResourceIsolationIT` gained a two-user transaction isolation test (list/get/update/delete all correctly 404 cross-tenant), `RowLevelSecurityIT` gained a raw-JDBC regression test proving `transaction_category_allocations` applies RLS for the querying user rather than leaking via the view owner's bypass privileges
+- [x] Verified: `mvn verify` — 16 IT tests (up from 14) + 1 unit test, all green against scratch Postgres (Colima + `postgres:16-alpine`, not Neon — IT tests insert/delete real rows and Neon dev is meant to be kept clean for manual poking)
+- [x] Explicitly scoped **out**: one-sided-transfer review/flagging (matching an unpaired transfer leg) — documented in `TransferServiceImpl`'s javadoc and `DECISIONS.md` as a Phase 6 statement-import concern, since the manual transfer endpoint's request DTO always requires both account ids and therefore always creates an already-paired transaction
+
+**Left:**
+- [ ] Commit and push Phase 3 work; confirm CI green on the resulting commit
+- [ ] Clean up/decide fate of the scratch Postgres (Colima `scratch-pg` container, port 55433) now that Phase 3's IT suite passes against it
+
+## Phase 4 — Analytics
 Not started.
 
 ## Phase 4 — Analytics

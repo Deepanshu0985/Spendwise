@@ -103,6 +103,61 @@ class RowLevelSecurityIT {
         assertThat(nameAfter).isEqualTo("Salary");
     }
 
+    @Test
+    void transactionCategoryAllocationsViewAppliesRlsForTheQueryingUserNotTheViewOwner() throws Exception {
+        UUID userAId = createTestUser("rls-view-a");
+        UUID userBId = createTestUser("rls-view-b");
+        UUID categoryId = jdbcTemplate.queryForObject(
+                "SELECT id FROM categories WHERE name = 'Salary' AND is_system = true", UUID.class);
+        UUID accountId = UUID.randomUUID();
+        UUID transactionId = UUID.randomUUID();
+
+        try (Connection connection = dataSource.getConnection()) {
+            connection.setAutoCommit(false);
+            setLocalUser(connection, userAId);
+
+            try (PreparedStatement insertAccount = connection.prepareStatement(
+                    "INSERT INTO accounts (id, user_id, name, account_type, currency) VALUES (?, ?, 'A Account', 'BANK', 'INR')")) {
+                insertAccount.setObject(1, accountId);
+                insertAccount.setObject(2, userAId);
+                insertAccount.executeUpdate();
+            }
+
+            try (PreparedStatement insertTx = connection.prepareStatement(
+                    "INSERT INTO transactions (id, user_id, account_id, category_id, transaction_date, amount, currency, transaction_type, source) "
+                            + "VALUES (?, ?, ?, ?, CURRENT_DATE, 500, 'INR', 'EXPENSE', 'MANUAL')")) {
+                insertTx.setObject(1, transactionId);
+                insertTx.setObject(2, userAId);
+                insertTx.setObject(3, accountId);
+                insertTx.setObject(4, categoryId);
+                insertTx.executeUpdate();
+            }
+            connection.commit();
+        }
+
+        // Regression test for the finding hand-verified via direct psql before
+        // this suite existed (see DECISIONS.md): a Postgres view runs with its
+        // OWNER's permissions by default, and the owner here is the privileged
+        // migration role (BYPASSRLS) - without WITH (security_invoker = true)
+        // on the view, every tenant's rows would leak through it regardless of
+        // the RLS policies on the underlying tables.
+        try (Connection connection = dataSource.getConnection()) {
+            connection.setAutoCommit(false);
+            setLocalUser(connection, userBId);
+            try (PreparedStatement ps = connection.prepareStatement(
+                    "SELECT count(*) FROM transaction_category_allocations WHERE transaction_id = ?")) {
+                ps.setObject(1, transactionId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    assertThat(rs.next()).isTrue();
+                    assertThat(rs.getInt(1))
+                            .as("the view must apply RLS for the querying user, not bypass it via the view owner's privileges")
+                            .isZero();
+                }
+            }
+            connection.commit();
+        }
+    }
+
     private void setLocalUser(Connection connection, UUID userId) throws Exception {
         try (PreparedStatement ps = connection.prepareStatement("SELECT set_config('app.current_user_id', ?, true)")) {
             ps.setString(1, userId.toString());

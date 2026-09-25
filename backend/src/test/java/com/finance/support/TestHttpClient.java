@@ -72,6 +72,13 @@ public final class TestHttpClient {
                 .POST(bodyPublisher(body)));
     }
 
+    /** For headers outside the standard CSRF/cookie set, e.g. Idempotency-Key. */
+    public ApiResult postWithHeader(String path, Object body, String headerName, String headerValue) {
+        return send(withCsrf(HttpRequest.newBuilder(uri(path)))
+                .header(headerName, headerValue)
+                .POST(bodyPublisher(body)));
+    }
+
     private HttpRequest.Builder withCsrf(HttpRequest.Builder builder) {
         withCookiesOnly(builder).header("Content-Type", "application/json");
         if (cookies.containsKey("csrf_token")) {

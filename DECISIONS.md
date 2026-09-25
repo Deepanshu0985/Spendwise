@@ -1,5 +1,31 @@
 # Decisions Log
 
+## Phase 3: codified the two RLS/view findings as automated regression tests, not just manual psql checks
+
+**Decision.** Added `secondUserNeverSeesOrCanModifyTheFirstUsersTransactions()` to `ResourceIsolationIT` (API-level, two real users, same 404-not-403 assertions already used for accounts) and `transactionCategoryAllocationsViewAppliesRlsForTheQueryingUserNotTheViewOwner()` to `RowLevelSecurityIT` (raw JDBC: insert a transaction as user A, then query the view under user B's `app.current_user_id` context and assert zero rows).
+
+**Why.** Both of these were only ever verified by hand during Phase 3 development - two-curl-session isolation testing for the new `/transactions` endpoints, and direct psql testing that `transaction_category_allocations` actually respects `WITH (security_invoker = true)` rather than leaking every tenant's rows via the view owner's (privileged migration role's) bypass privileges. This project's own established pattern (Phase 1/2) is to always automate what was manually verified rather than leave it as a one-time check - a future migration that drops `security_invoker` from the view, or a future endpoint that forgets tenant scoping, would otherwise not be caught until it reached production.
+
+**Consequences.** `mvn verify` now runs 16 IT tests (up from 14), all green against scratch Postgres. No production code changed - this is coverage added after Phase 3's transaction system was already functionally complete.
+
+## Phase 3: idempotency table's `key` column renamed to `idempotency_key`, and `@Lob` removed from the response-body field
+
+**What happened.** Two schema-vs-entity mismatches, both caught by actually running the test suite rather than by reading the code: (1) `IdempotencyKeyRecord`'s `@Column private String key` produced a Postgres `CREATE TABLE` with an unquoted `key` column, which H2 (used by `*Test.java`) rejects outright as a reserved word - the migration and entity had to agree on `idempotency_key` instead, keeping the Java field/getter named `key` since that's an internal implementation detail, not the wire/DB name. (2) `@Lob @Column(name="response_body") private String responseBody` mapped to Postgres's `oid` large-object type by default, but `V11__create_idempotency_keys_table.sql` declares the column as `TEXT` - Hibernate's schema validation (`ddl-auto=validate`) failed at boot with a type mismatch.
+
+**Fix.** Migration and entity both use `idempotency_key` (`V11__create_idempotency_keys_table.sql`, `IdempotencyKeyRecord.java`). `@Lob` was removed in favor of `@Column(name = "response_body", nullable = false, columnDefinition = "text")`, which pins Hibernate to exactly what the migration creates instead of taking JPA's default type mapping for `String`.
+
+## Phase 3: idempotency built as a generic, reusable mechanism, not one-off per endpoint
+
+**Decision.** `IdempotencyService`/`IdempotencyServiceImpl` (interface + impl, per the project's SOLID rule) expose a single `executeIdempotent(userId, idempotencyKey, endpoint, successStatus, supplier)` method that stores the full original response keyed on `(user_id, idempotency_key, endpoint)` and replays it verbatim on a repeat. Both `POST /transactions` and `POST /transactions/transfer` use it via the same `Idempotency-Key` request header.
+
+**Why.** `api-specification.md`'s Idempotency section applies to more than one endpoint (statement-confirm in Phase 6 will need it too) - building it generically once, backed by its own RLS-protected table (`idempotency_keys`), means every future mutating endpoint that needs idempotency opts in with one line rather than reimplementing key storage and replay logic per endpoint.
+
+## Phase 3: manual transfer endpoint explicitly does not do one-sided-transfer flagging
+
+**Decision.** `TransferServiceImpl`'s javadoc records that one-sided-transfer detection/flagging (matching an unpaired `TRANSFER_OUT`/`TRANSFER_IN` that arrived from two different statement imports) is out of scope for `POST /transactions/transfer`.
+
+**Why.** That endpoint's `CreateTransferRequest` requires both `fromAccountId` and `toAccountId` in a single call, so it always creates an atomic, already-paired transaction (verified by the `cardPaymentTransferCreatesAnAtomicPairAndRejectsTheWrongDirection` IT test). The one-sided case phase-plan.md's Phase 3 scope note actually describes only arises from Phase 6's statement-import path, where each side of a transfer can land as a separate, unmatched row from two different bank statements imported independently. Recording this now so it isn't mistakenly treated as missing Phase 3 work later.
+
 ## Automated test suite: failsafe + a real `it` profile, not just more manual curl/psql passes
 
 **Decision.** `*Test.java` (Maven's `test` phase, surefire) stay on H2 - fast, no external dependency. `*IT.java` (Maven's `verify` phase, failsafe - added as a new plugin) run against a real PostgreSQL instance via a new `it` Spring profile, which pins `spring.datasource.hikari.maximum-pool-size=1` so the pooled-connection leakage test is actually exercising what it claims to, not hoping the pool happens to reuse a connection.

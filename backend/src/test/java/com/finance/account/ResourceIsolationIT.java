@@ -63,6 +63,43 @@ class ResourceIsolationIT {
         assertThat(crossTenantDelete.status()).isEqualTo(404);
     }
 
+    @Test
+    void secondUserNeverSeesOrCanModifyTheFirstUsersTransactions() {
+        TestHttpClient userA = registerAndLogin("isolation-tx-a");
+        TestHttpClient userB = registerAndLogin("isolation-tx-b");
+
+        String accountId = userA.post("/accounts", Map.of("name", "A's Account", "accountType", "BANK", "currency", "INR"))
+                .data().get("id").asText();
+        String categoryId = userA.get("/categories").data().get(0).get("id").asText();
+
+        ApiResult create = userA.post(
+                "/transactions",
+                Map.of(
+                        "accountId", accountId,
+                        "categoryId", categoryId,
+                        "transactionDate", "2026-09-18",
+                        "amount", 500,
+                        "currency", "INR",
+                        "transactionType", "EXPENSE"));
+        assertThat(create.status()).isEqualTo(200);
+        String txId = create.data().get("id").asText();
+
+        assertThat(userB.get("/transactions").data()).isEmpty();
+
+        // Same 404-not-403 contract as accounts (error-contract.md): B cannot
+        // learn the transaction exists at all, cross-tenant.
+        ApiResult crossTenantGet = userB.get("/transactions/" + txId);
+        assertThat(crossTenantGet.status()).isEqualTo(404);
+
+        ApiResult crossTenantUpdate = userB.put(
+                "/transactions/" + txId,
+                Map.of("accountId", accountId, "transactionDate", "2026-09-18", "amount", 999, "description", "Hijacked"));
+        assertThat(crossTenantUpdate.status()).isEqualTo(404);
+
+        ApiResult crossTenantDelete = userB.delete("/transactions/" + txId);
+        assertThat(crossTenantDelete.status()).isEqualTo(404);
+    }
+
     private java.util.List<String> namesOf(ApiResult listResult) {
         assertThat(listResult.status()).isEqualTo(200);
         java.util.List<String> names = new java.util.ArrayList<>();
