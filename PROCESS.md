@@ -123,6 +123,8 @@ Live status tracker, updated as work happens. For the full plan with durations a
 - [x] Decided the dogfooding mechanism for this phase: direct API calls (curl), not a frontend - see `DECISIONS.md`
 - [x] `scripts/spendwise-cli.sh` - a small curl wrapper handling the session cookie + CSRF header, so daily manual entry doesn't mean hand-crafting headers every call
 - [x] Added Swagger UI (`/swagger-ui/index.html`) and OpenAPI JSON (`/v3/api-docs`) as a browser-based alternative to the CLI, with the CSRF header wired as an "Authorize" scheme - see `DECISIONS.md`. Disabled in prod. Verified: `mvn verify` green (23 IT tests), all 21 endpoints listed correctly
+- [x] Found and fixed a real bug in `spendwise-cli.sh`: `csrf_token()`'s `grep ... >/dev/null | awk ...` silently returned empty under real bash (the script's own shebang), even though it looked fine when tested interactively in zsh - every mutating call was sending a blank CSRF header. See `DECISIONS.md` for the fix and the "verify the actual script file, not the line in whatever shell is open" lesson
+- [x] `scripts/spendwise-demo.sh` - one-command end-to-end smoke flow (register/login → add account → log two transactions → check `/analytics/monthly` → list transactions), built on `spendwise-cli.sh`. Verified against real Neon dev with the CSRF fix in place; test data cleaned up afterward
 
 **Left:**
 - [ ] Track real personal spending via the API for ~1 week (manual entry only, no statement import)

@@ -1,4 +1,16 @@
-# Decisions Log
+## Bug: `spendwise-cli.sh`'s CSRF token extraction silently returned empty under bash
+
+**What happened.** `csrf_token()` read `grep -w csrf_token "$COOKIE_JAR" >/dev/null | awk '{print $7}'`. When I first verified this line, I ran it interactively in my own shell - which defaults to zsh - where that redirect-plus-pipe combination still happened to deliver grep's matched line to `awk`. I concluded it was harmless and told the user so. It isn't: the script's own shebang is `#!/usr/bin/env bash`, and under real bash, `cmd >/dev/null | next` sends `cmd`'s stdout only to `/dev/null` - `next` (`awk`) receives nothing. Every mutating call the script made (`register`, `login`, `post`, `put`, `delete`) therefore sent an empty `X-CSRF-Token` header, which `CsrfTokenFilter` correctly rejected with 403. It stayed hidden through an earlier round of testing because that check happened to only exercise a `GET` request - which never needs the CSRF header at all - so the broken code path was never actually run.
+
+**Fix.** Removed the stray `>/dev/null` (`grep -w csrf_token "$COOKIE_JAR" | awk '{print $7}'`). Verified by executing the script's actual file (`bash scripts/spendwise-demo.sh ...`), not by re-testing the isolated line in an interactive shell - the whole end-to-end flow (register → login → add account → log transactions → check `/analytics/monthly` → list transactions) now succeeds.
+
+**Lesson, worth remembering given it's easy to repeat:** verifying a shell snippet in an ad hoc interactive shell is not the same as verifying the script it lives in - the interactive shell and the script's shebang can be different shells (zsh vs. bash here) with genuinely different pipe/redirect semantics for the exact same-looking line. Always execute the actual script file to verify a fix, not a copy of the line typed into whatever shell happens to be open.
+
+## Phase 5: added a `spendwise-demo.sh` end-to-end smoke script
+
+**Decision.** `scripts/spendwise-demo.sh`, built on top of `spendwise-cli.sh`, runs the full loop in one command: log in (registering first if the account doesn't exist), add a bank account, log an expense and an income transaction, then check `/analytics/monthly` and list the new account's transactions. Not part of the deployed product - a convenience for quickly re-verifying the core loop still works, per the user's request for "a script other than the code" to add an account, log a few transactions, and check.
+
+**Consequences.** Re-running it creates a fresh "Demo Bank" account and two more transactions each time - it doesn't dedupe against a previous run, since that would need to know which account is "the" demo account across runs. Verified end to end against the real Neon dev branch (with the CSRF fix above); test data created during verification was deleted afterward.
 
 ## Phase 5: added Swagger UI as a browser-based alternative to the curl CLI
 

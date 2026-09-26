@@ -10,7 +10,7 @@ BASE_URL="${SPENDWISE_BASE_URL:-http://localhost:8080/api/v1}"
 COOKIE_JAR="${SPENDWISE_COOKIE_JAR:-$HOME/.spendwise-cookies}"
 
 csrf_token() {
-    grep -w csrf_token "$COOKIE_JAR" >/dev/null | awk '{print $7}'
+    grep -w csrf_token "$COOKIE_JAR" | awk '{print $7}'
 }
 
 api() {
