@@ -1,5 +1,13 @@
 # Decisions Log
 
+## Phase 5: added Swagger UI as a browser-based alternative to the curl CLI
+
+**Decision.** `springdoc-openapi-starter-webmvc-ui` was added, exposing Swagger UI at `/swagger-ui/index.html` and the raw OpenAPI JSON at `/v3/api-docs`, generated from the existing controller annotations with no extra doc-comment burden. `OpenApiConfig` (`infrastructure.web.common`) declares the double-submit CSRF header (ADR-009) as an `apiKey` security scheme, so clicking "Authorize" and pasting the `csrf_token` cookie's value attaches `X-CSRF-Token` to every "Try it out" call automatically, matching what `CsrfTokenFilter` actually checks. Disabled in `application-prod.properties` (`springdoc.api-docs.enabled=false`, `springdoc.swagger-ui.enabled=false`) - not meant to be publicly reachable once deployed.
+
+**Why.** User request, as a better way to exercise the API during Phase 5 dogfooding than hand-built curl calls - a form-based UI with the request/response shapes already visible beats remembering every field name. This is additive tooling only: no application code changed, and the existing `scripts/spendwise-cli.sh` still works for anyone who prefers the terminal.
+
+**Consequences.** Verified: `mvn compile`/`verify` green (23 IT tests unaffected), and `/v3/api-docs` correctly lists all 21 endpoint paths across every controller. To use it: open `/swagger-ui/index.html`, call `POST /auth/register` then `/auth/login` via "Try it out" (the browser's session cookie is sent automatically on same-origin requests even though it's httpOnly), then click "Authorize" and paste the `csrf_token` cookie's value (visible in the browser's dev tools) before trying any other mutating endpoint.
+
 ## Phase 5: dogfooding via direct API calls, frontend build stays deferred
 
 **Decision.** For the internal-dogfooding soak week, the user tracks real personal spending by calling the backend API directly (curl/a REST client) against the real Neon dev branch, rather than having a minimal frontend built first.

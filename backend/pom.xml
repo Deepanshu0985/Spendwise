@@ -86,6 +86,13 @@
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
+
+        <!-- Swagger UI at /swagger-ui/index.html, OpenAPI JSON at /v3/api-docs - generated from the existing @RestController/@RequestBody/@RequestParam annotations, no extra doc-comment burden. Disabled in prod (application-prod.properties). -->
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+            <version>2.6.0</version>
+        </dependency>
     </dependencies>
 
     <build>

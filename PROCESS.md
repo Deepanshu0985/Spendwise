@@ -121,6 +121,8 @@ Live status tracker, updated as work happens. For the full plan with durations a
 **Done:**
 - [x] Verified the backend boots cleanly against the real Neon dev branch (not scratch Postgres) and `/api/v1/health` responds - confirmed with a fresh `mvn spring-boot:run`, left running in the background on `localhost:8080` for daily use
 - [x] Decided the dogfooding mechanism for this phase: direct API calls (curl), not a frontend - see `DECISIONS.md`
+- [x] `scripts/spendwise-cli.sh` - a small curl wrapper handling the session cookie + CSRF header, so daily manual entry doesn't mean hand-crafting headers every call
+- [x] Added Swagger UI (`/swagger-ui/index.html`) and OpenAPI JSON (`/v3/api-docs`) as a browser-based alternative to the CLI, with the CSRF header wired as an "Authorize" scheme - see `DECISIONS.md`. Disabled in prod. Verified: `mvn verify` green (23 IT tests), all 21 endpoints listed correctly
 
 **Left:**
 - [ ] Track real personal spending via the API for ~1 week (manual entry only, no statement import)
