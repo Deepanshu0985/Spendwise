@@ -114,7 +114,7 @@ Live status tracker, updated as work happens. For the full plan with durations a
 - [x] Committed and pushed (`ebfc987`); CI green on both `backend` and `frontend` jobs (run `36183995745`)
 
 **Left:**
-- [ ] Frontend dashboard wiring (S03) - deferred; frontend remains a skeleton per the project's build-backend-first-through-all-phases approach
+- [x] ~~Frontend dashboard wiring (S03)~~ — done; see the new "Frontend build" section below
 
 ## Phase 5 — Internal Dogfooding
 
@@ -127,9 +127,21 @@ Live status tracker, updated as work happens. For the full plan with durations a
 - [x] `scripts/spendwise-demo.sh` - one-command end-to-end smoke flow (register/login → add account → log two transactions → check `/analytics/monthly` → list transactions), built on `spendwise-cli.sh`. Verified against real Neon dev with the CSRF fix in place; test data cleaned up afterward
 
 **Left:**
-- [ ] Track real personal spending via the API for ~1 week (manual entry only, no statement import)
+- [ ] Track real personal spending via the API/frontend for ~1 week (manual entry only, no statement import)
 - [ ] Fix whatever bugs surface from real use - this phase's only planned "work" per `phase-plan.md`
 - [ ] Exit gate: the app is genuinely easier to reach for than whatever it replaces; if not, revisit the core loop before Phase 6
+
+## Frontend build — real working UI for Phases 0-5
+
+**Done:**
+- [x] Built a real React 19 + Vite + React Router 7 + TypeScript (strict) frontend in `frontend/`, wired to the actual backend API (Vite dev proxy to `localhost:8080`, no CORS needed) — not a mockup; see `DECISIONS.md` for the shape decisions (single `apiClient` envelope/CSRF layer, `AuthContext`/`ReferenceDataContext`, register-then-login chaining)
+- [x] Auth: login, register, logout, forgot-password (generic confirmation, no account enumeration), reset-password (`?token=` query param, invalid-link handling), route guards (`RequireAuth` redirects anonymous visits to `/login`; `RedirectIfAuthenticated` redirects an authenticated visit to `/login` or `/register` back to `/`)
+- [x] Accounts: grid view, create/edit modal, deactivate (soft-delete, confirmed via `window.confirm`) — no "reactivate" UI, because the backend's `AccountController` has no reactivate endpoint (create/list/get/update/deactivate only); the frontend correctly reflects the API's actual capability, not a gap to fix
+- [x] Transactions: filterable/paginated table (account/category/type/date-range filters), create/edit modal with inline merchant quick-create, delete (soft-delete, confirmed via `window.confirm`), and a separate transfer modal (`TRANSFER`/`CARD_PAYMENT` kinds) that creates the atomic paired transaction rows
+- [x] Dashboard: period selector (this month / last month / last 3 months), summary cards (income/expenses/savings/savings rate), category breakdown bars, monthly trend chart, top merchants, recent transactions — all CSS-only (no charting library), all real computed figures from `/analytics/*`
+- [x] Scoped out for time (see `DECISIONS.md`): transaction splits UI, free-text transaction search
+- [x] Verified end to end in a real browser against the real Neon dev branch: register → auto-login → create accounts → create/edit a transaction with inline merchant quick-create → record a card-payment transfer (confirmed atomic pair in the transaction list) → dashboard figures update correctly → period selector refetches correctly → logout → both route guards redirect correctly → forgot/reset-password screens render and submit correctly. All UI-test users and their data deleted from the dev database afterward.
+- [x] Verified: `npm run build` (tsc strict + vite build) and `npm run lint` (oxlint) both clean (lint has 3 pre-existing style warnings, no errors)
 
 ## Phase 6 — Statement Import
 Not started.
