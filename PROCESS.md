@@ -23,12 +23,14 @@ Live status tracker, updated as work happens. For the full plan with durations a
 
 **Decision (2026-09-23): deploy step deliberately deferred.** Per the user, the plan is to build the product locally first and only provision DigitalOcean + the domain at the end, rather than deploying continuously from Phase 0 onward. `docker-compose.yml`/`Caddyfile`/`Dockerfile`s/backup scripts are written and locally validated (see `DECISIONS.md`) but nothing is deployed yet, and `ci.yml` intentionally has no deploy step.
 
-**Left — deferred until the end of the build, needs your action then, not more code now:**
+**Left — deferred until actual beta-readiness, needs your action then, not more code now:**
 - [ ] Provision the DigitalOcean droplet + Spaces bucket (ADR-017) — requires your DigitalOcean account/payment method
 - [ ] Register/point a real domain at the droplet — `APP_DOMAIN` is currently a placeholder (`example.com`); Caddy's automatic HTTPS is confirmed working correctly and will obtain a real cert the moment this points at a real, publicly-reachable domain
 - [ ] Add deploy secrets to GitHub Actions (SSH key to the droplet, registry credentials) and add the actual deploy step to `ci.yml`
 - [ ] First live deploy to production, completing the Phase 0 exit gate ("a push to main reaches production automatically")
 - [ ] Nightly backup cron/systemd timer actually scheduled on the droplet (script is ready, not yet installed anywhere)
+
+**Decision (interim, pre-beta): Railway instead of Vercel/DigitalOcean, for now.** The user wants a real, internet-reachable deployment before beta-readiness, covering both frontend and backend. Vercel (already connected as an MCP connector in this session) doesn't support a JVM runtime, so the backend can't run there; Railway builds from the project's existing `Dockerfile`s directly and can host both. DigitalOcean remains the actual V1 production target once beta-ready — see `DECISIONS.md` and ADR-017's update note. The Railway MCP connector was not yet connected as of this entry; connecting it and standing up the actual deployment is the next actionable step, tracked separately from the items above.
 
 ## Phase 1 — Authentication and Isolation
 
@@ -50,6 +52,7 @@ Live status tracker, updated as work happens. For the full plan with durations a
 - [ ] Real `ResendEmailSender` once a Resend API key exists (D-04) — `LoggingEmailSender` stands in for now
 - [ ] Rate limiting on auth endpoints — deliberately deferred to Phase 14 per `development-roadmap.md`'s own sequencing, not forgotten
 - [ ] Session-listing/revoke-all could use direct JUnit coverage of `AuthServiceImpl` beyond the manual curl pass
+- [ ] Google OAuth ("Sign in with Google") as an additional login method — user explicitly wants this, but later, not now (D-19 in `docs/09-project/open-decisions.md`)
 
 ## Phase 2 — Accounts and Categories
 

@@ -87,6 +87,8 @@ The core product must continue functioning when the AI provider is unavailable.
 
 **Consequences.** Statement object storage uses DigitalOcean Spaces (S3-compatible) in the same region, so `STORAGE_ENDPOINT` targets the BLR1 Spaces endpoint and there is no cross-region egress. Moving to the later multi-node shape in `deployment.md` stays on the same provider, so no infrastructure-tooling migration is needed when that step is taken.
 
+**Update (pre-beta interim hosting).** DigitalOcean remains this ADR's target for actual production once the app is ready for beta users. Until then, the user's explicit choice is to hold off provisioning DigitalOcean entirely and instead run an interim deployment on Railway (frontend and backend both, since Railway builds from the project's existing `Dockerfile`s rather than needing a JVM-native serverless runtime) so the app has a real, internet-reachable URL to test with during this pre-beta period. This does not change the V1 production target - it only sequences when DigitalOcean is actually provisioned, matching `deploy-deferred-to-end` in the project's own working notes.
+
 ## ADR-018 Local Development Without Docker
 **Decision.** Local backend development runs directly via Maven against a file-based H2 database, with Spring configuration in `application.properties` (no YAML, no XML bean configuration). Docker Compose and PostgreSQL remain the target for staging and production, unchanged from ADR-002 and `08-devops/deployment.md`.
 

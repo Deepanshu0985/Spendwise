@@ -8,7 +8,7 @@ Decisions that are not yet made, and the phases they block. An undecided item th
 | D-02 | Default category taxonomy: names, hierarchy, system set | Phase 2 | Decided: ADR-015, flat taxonomy |
 | D-03 | LLM provider and model | Phase 11 | Open |
 | D-04 | Email provider for password reset and verification | Phase 1 | Decided: ADR-016, Resend |
-| D-05 | Hosting provider, instance size and region | Phase 0 | Decided: ADR-017, DigitalOcean droplet, Bangalore (BLR1) |
+| D-05 | Hosting provider, instance size and region | Phase 0 | Decided: ADR-017, DigitalOcean droplet, Bangalore (BLR1) for V1 production; interim pre-beta hosting on Railway (see ADR-017's update note) |
 | D-06 | Are raw statement PDFs retained after successful import | Phase 6, privacy | Open |
 | D-07 | Retention periods: staging rows, audit logs, AI conversations, deleted-user data | Privacy | Open |
 | D-08 | Is AI chat history persisted, or stateless per request | Phase 12 | Open |
@@ -22,6 +22,7 @@ Decisions that are not yet made, and the phases they block. An undecided item th
 | D-16 | `INTEREST` and `FEE` direction | — | Decided: ADR-012, explicit ledger-side types |
 | D-17 | Transaction splits | — | Decided: ADR-013, schema now, UI later |
 | D-18 | Refund treatment | — | Decided: reduces expenses |
+| D-19 | Google OAuth ("Sign in with Google") as an additional login method, alongside email/password | Auth (Phase 1 area) | Deferred - user explicitly wants this built, but later, not now |
 
 ## Gating Decisions
 
