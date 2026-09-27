@@ -9,6 +9,7 @@ import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpFilter;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -40,9 +41,11 @@ public class CsrfTokenFilter extends HttpFilter {
 
     private final SecureRandom secureRandom = new SecureRandom();
     private final ObjectMapper objectMapper;
+    private final boolean secureCookie;
 
-    public CsrfTokenFilter(ObjectMapper objectMapper) {
+    public CsrfTokenFilter(ObjectMapper objectMapper, @Value("${security.cookie-secure:true}") boolean secureCookie) {
         this.objectMapper = objectMapper;
+        this.secureCookie = secureCookie;
     }
 
     @Override
@@ -86,7 +89,7 @@ public class CsrfTokenFilter extends HttpFilter {
         // Not httpOnly: the frontend must be able to read this to echo it back as a header.
         return ResponseCookie.from(COOKIE_NAME, token)
                 .httpOnly(false)
-                .secure(true)
+                .secure(secureCookie)
                 .sameSite("Lax")
                 .path("/")
                 .build();

@@ -16,17 +16,20 @@ import java.time.Instant;
 public class SessionCookieFactory {
 
     private final String cookieName;
+    private final boolean secure;
 
-    public SessionCookieFactory(@Value("${session.cookie-name}") String cookieName) {
+    public SessionCookieFactory(
+            @Value("${session.cookie-name}") String cookieName, @Value("${security.cookie-secure:true}") boolean secure) {
         this.cookieName = cookieName;
+        this.secure = secure;
     }
 
-    /** httpOnly, Secure, SameSite=Lax, Path=/ per ADR-009 and authentication-api.md. */
+    /** httpOnly, Secure (except in plain-http local dev), SameSite=Lax, Path=/ per ADR-009 and authentication-api.md. */
     public ResponseCookie create(String rawToken, Instant expiresAt) {
         Duration maxAge = Duration.between(Instant.now(), expiresAt);
         return ResponseCookie.from(cookieName, rawToken)
                 .httpOnly(true)
-                .secure(true)
+                .secure(secure)
                 .sameSite("Lax")
                 .path("/")
                 .maxAge(maxAge.isNegative() ? Duration.ZERO : maxAge)
@@ -36,7 +39,7 @@ public class SessionCookieFactory {
     public ResponseCookie clear() {
         return ResponseCookie.from(cookieName, "")
                 .httpOnly(true)
-                .secure(true)
+                .secure(secure)
                 .sameSite("Lax")
                 .path("/")
                 .maxAge(Duration.ZERO)
