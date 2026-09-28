@@ -27,10 +27,15 @@ import java.util.UUID;
 
 /**
  * Double-submit cookie CSRF defense, alongside SameSite (ADR-009; Lax by default, see
- * security.cookie-samesite for split-origin deployments). Every response ensures a
- * non-httpOnly CSRF cookie exists so the frontend can read and echo it back; every
- * state-changing request must send it back as a header matching the cookie, or is
- * rejected. Runs after SessionAuthenticationFilter.
+ * security.cookie-samesite for split-origin deployments). Every response carries the
+ * current token both as a non-httpOnly cookie AND as a plain X-CSRF-Token response
+ * header - the header is what the frontend actually reads to learn the value (see
+ * CorsConfig's exposedHeaders), since document.cookie can never read a cookie set by a
+ * different origin no matter how SameSite/Secure are configured; a split-origin
+ * deployment (frontend and backend on different domains) would otherwise never be able
+ * to learn the token at all. Every state-changing request must send the token back as
+ * a header matching the cookie, or is rejected - that comparison, the actual CSRF
+ * defense, is unchanged by any of this. Runs after SessionAuthenticationFilter.
  */
 @Component
 @Order(20)
@@ -69,10 +74,14 @@ public class CsrfTokenFilter extends HttpFilter {
             }
         }
 
-        if (existingToken == null) {
-            String newToken = generateToken();
-            response.addHeader(org.springframework.http.HttpHeaders.SET_COOKIE, buildCookie(newToken).toString());
+        String currentToken = existingToken;
+        if (currentToken == null) {
+            currentToken = generateToken();
+            response.addHeader(org.springframework.http.HttpHeaders.SET_COOKIE, buildCookie(currentToken).toString());
         }
+        // Always echoed, not just when newly minted: this is the value a split-origin
+        // frontend actually reads (document.cookie can't see a cross-origin cookie).
+        response.setHeader(HEADER_NAME, currentToken);
 
         chain.doFilter(request, response);
     }

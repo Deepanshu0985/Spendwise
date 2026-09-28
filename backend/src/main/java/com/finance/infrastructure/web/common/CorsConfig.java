@@ -32,6 +32,9 @@ public class CorsConfig implements WebMvcConfigurer {
                 .allowedOrigins(allowedOrigin)
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                 .allowedHeaders("Content-Type", "X-CSRF-Token")
+                // Response headers are opaque to cross-origin JS unless explicitly exposed -
+                // the frontend reads this one to learn the CSRF token (see CsrfTokenFilter).
+                .exposedHeaders("X-CSRF-Token")
                 .allowCredentials(true);
     }
 }

@@ -43,19 +43,19 @@ interface ApiEnvelope<T> {
 // the backend's absolute URL at build time via VITE_API_BASE_URL.
 const BASE_PATH = import.meta.env.VITE_API_BASE_URL ?? '/api/v1'
 
-// Double-submit CSRF (ADR-009): the backend mints a non-httpOnly csrf_token
-// cookie on the first GET and rejects any mutating request whose
-// X-CSRF-Token header doesn't match it. Every GET the app makes (starting
-// with the auth bootstrap check on load) primes this cookie before the user
-// can ever submit a form, so no separate "prime" call is needed here.
-function readCookie(name: string): string | null {
-  const match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'))
-  return match ? decodeURIComponent(match[1]) : null
-}
+// Double-submit CSRF (ADR-009): the backend mints a non-httpOnly csrf_token cookie on
+// the first GET and rejects any mutating request whose X-CSRF-Token header doesn't
+// match it. The token's value is read from the X-CSRF-Token *response* header (see
+// CsrfTokenFilter/CorsConfig on the backend), not from document.cookie - a same-origin
+// deployment could read the cookie directly, but a split-origin one (frontend and
+// backend on different domains) never can, since cookie access via JS is scoped to the
+// cookie's own domain regardless of SameSite/Secure. Reading the response header instead
+// works identically in both topologies. Every GET the app makes (starting with the auth
+// bootstrap check on load) primes this before the user can ever submit a form.
+let cachedCsrfToken: string | null = null
 
 function csrfHeaders(): Record<string, string> {
-  const token = readCookie('csrf_token')
-  return token ? { 'X-CSRF-Token': token } : {}
+  return cachedCsrfToken ? { 'X-CSRF-Token': cachedCsrfToken } : {}
 }
 
 async function request<T>(path: string, init: RequestInit): Promise<ApiEnvelope<T>> {
@@ -69,6 +69,11 @@ async function request<T>(path: string, init: RequestInit): Promise<ApiEnvelope<
     // Cookie sessions (ADR-009): the session cookie must ride along on every request.
     credentials: 'include',
   })
+
+  const freshToken = response.headers.get('X-CSRF-Token')
+  if (freshToken) {
+    cachedCsrfToken = freshToken
+  }
 
   if (response.status === 204) {
     return { data: undefined as T, meta: null }
