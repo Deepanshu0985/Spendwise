@@ -17,20 +17,24 @@ public class SessionCookieFactory {
 
     private final String cookieName;
     private final boolean secure;
+    private final String sameSite;
 
     public SessionCookieFactory(
-            @Value("${session.cookie-name}") String cookieName, @Value("${security.cookie-secure:true}") boolean secure) {
+            @Value("${session.cookie-name}") String cookieName,
+            @Value("${security.cookie-secure:true}") boolean secure,
+            @Value("${security.cookie-samesite:Lax}") String sameSite) {
         this.cookieName = cookieName;
         this.secure = secure;
+        this.sameSite = sameSite;
     }
 
-    /** httpOnly, Secure (except in plain-http local dev), SameSite=Lax, Path=/ per ADR-009 and authentication-api.md. */
+    /** httpOnly, Secure (except in plain-http local dev), SameSite per config, Path=/ per ADR-009 and authentication-api.md. */
     public ResponseCookie create(String rawToken, Instant expiresAt) {
         Duration maxAge = Duration.between(Instant.now(), expiresAt);
         return ResponseCookie.from(cookieName, rawToken)
                 .httpOnly(true)
                 .secure(secure)
-                .sameSite("Lax")
+                .sameSite(sameSite)
                 .path("/")
                 .maxAge(maxAge.isNegative() ? Duration.ZERO : maxAge)
                 .build();
@@ -40,7 +44,7 @@ public class SessionCookieFactory {
         return ResponseCookie.from(cookieName, "")
                 .httpOnly(true)
                 .secure(secure)
-                .sameSite("Lax")
+                .sameSite(sameSite)
                 .path("/")
                 .maxAge(Duration.ZERO)
                 .build();

@@ -37,7 +37,11 @@ interface ApiEnvelope<T> {
   meta: unknown
 }
 
-const BASE_PATH = '/api/v1'
+// Relative '/api/v1' works whenever the frontend and backend share one origin (the
+// Vite dev proxy locally, or a single edge reverse proxy in production). A split-origin
+// deployment (frontend and backend on different domains, e.g. Vercel + Render) bakes in
+// the backend's absolute URL at build time via VITE_API_BASE_URL.
+const BASE_PATH = import.meta.env.VITE_API_BASE_URL ?? '/api/v1'
 
 // Double-submit CSRF (ADR-009): the backend mints a non-httpOnly csrf_token
 // cookie on the first GET and rejects any mutating request whose

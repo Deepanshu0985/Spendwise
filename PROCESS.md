@@ -30,7 +30,19 @@ Live status tracker, updated as work happens. For the full plan with durations a
 - [ ] First live deploy to production, completing the Phase 0 exit gate ("a push to main reaches production automatically")
 - [ ] Nightly backup cron/systemd timer actually scheduled on the droplet (script is ready, not yet installed anywhere)
 
-**Decision (interim, pre-beta): Railway instead of Vercel/DigitalOcean, for now.** The user wants a real, internet-reachable deployment before beta-readiness, covering both frontend and backend. Vercel (already connected as an MCP connector in this session) doesn't support a JVM runtime, so the backend can't run there; Railway builds from the project's existing `Dockerfile`s directly and can host both. DigitalOcean remains the actual V1 production target once beta-ready — see `DECISIONS.md` and ADR-017's update note. The Railway MCP connector was not yet connected as of this entry; connecting it and standing up the actual deployment is the next actionable step, tracked separately from the items above.
+**Decision (interim, pre-beta), superseded same day: Railway → Render + Vercel.** Railway was connected and ready, but project creation failed with "Your trial has expired" (a billing block only the user can clear). The interim plan changed to **Render for the backend, Vercel for the frontend** — deploy itself deferred to the next day, but the code changes it needs were built and verified today:
+- [x] `server.port=${PORT:8080}` so the backend binds to Render's assigned port
+- [x] `security.cookie-samesite` (default `Lax`, unchanged) — both `SessionCookieFactory` and `CsrfTokenFilter` now read it; a split-origin deploy overrides it to `None` via `SECURITY_COOKIE_SAMESITE`
+- [x] `app.cors.allowed-origin` + new `CorsConfig` (`infrastructure.web.common`) — empty/off by default, set to the Vercel frontend's exact origin for a split-origin deploy
+- [x] `VITE_API_BASE_URL` build-time env var in `frontend/src/api/client.ts` — falls back to the existing relative `/api/v1` (dev proxy) unless set, in which case a split-origin build bakes in the backend's absolute Render URL
+- [x] Verified: `mvn verify` (13 unit + 23 IT, unchanged and green), `npm run build`/`npm run lint` clean, and manually confirmed against the local dev server that defaults are unchanged (`SameSite=Lax`, no `Secure`, register still succeeds) and that a `SECURITY_COOKIE_SAMESITE=None` override correctly changes the cookie — see `DECISIONS.md` for the full writeup including the accepted CSRF-defense-layer tradeoff of `SameSite=None`
+
+**Left — the actual deploy, planned for tomorrow:**
+- [ ] Create the Render backend service (from `backend/Dockerfile`) and the Vercel frontend project (from `frontend/`), pointed at the existing Neon dev branch (`DATABASE_URL`/`DATABASE_USER`/`DATABASE_PASSWORD`/`FLYWAY_DATABASE_USER`/`FLYWAY_DATABASE_PASSWORD`, same values already used locally — no new migration work)
+- [ ] Once both real URLs are known: set `APP_CORS_ALLOWED_ORIGIN` on Render to the Vercel URL, and `VITE_API_BASE_URL` on Vercel to the Render URL + `/api/v1`, then redeploy both
+- [ ] End-to-end verification against the live split-origin deployment (register/login/CSRF specifically, since that's the part this topology changes)
+
+DigitalOcean remains the actual V1 production target once beta-ready — see `DECISIONS.md` and ADR-017's update note.
 
 ## Phase 1 — Authentication and Isolation
 

@@ -26,10 +26,11 @@ import java.util.Set;
 import java.util.UUID;
 
 /**
- * Double-submit cookie CSRF defense, alongside SameSite=Lax (ADR-009). Every
- * response ensures a non-httpOnly CSRF cookie exists so the frontend can read
- * and echo it back; every state-changing request must send it back as a header
- * matching the cookie, or is rejected. Runs after SessionAuthenticationFilter.
+ * Double-submit cookie CSRF defense, alongside SameSite (ADR-009; Lax by default, see
+ * security.cookie-samesite for split-origin deployments). Every response ensures a
+ * non-httpOnly CSRF cookie exists so the frontend can read and echo it back; every
+ * state-changing request must send it back as a header matching the cookie, or is
+ * rejected. Runs after SessionAuthenticationFilter.
  */
 @Component
 @Order(20)
@@ -42,10 +43,15 @@ public class CsrfTokenFilter extends HttpFilter {
     private final SecureRandom secureRandom = new SecureRandom();
     private final ObjectMapper objectMapper;
     private final boolean secureCookie;
+    private final String sameSite;
 
-    public CsrfTokenFilter(ObjectMapper objectMapper, @Value("${security.cookie-secure:true}") boolean secureCookie) {
+    public CsrfTokenFilter(
+            ObjectMapper objectMapper,
+            @Value("${security.cookie-secure:true}") boolean secureCookie,
+            @Value("${security.cookie-samesite:Lax}") String sameSite) {
         this.objectMapper = objectMapper;
         this.secureCookie = secureCookie;
+        this.sameSite = sameSite;
     }
 
     @Override
@@ -90,7 +96,7 @@ public class CsrfTokenFilter extends HttpFilter {
         return ResponseCookie.from(COOKIE_NAME, token)
                 .httpOnly(false)
                 .secure(secureCookie)
-                .sameSite("Lax")
+                .sameSite(sameSite)
                 .path("/")
                 .build();
     }
