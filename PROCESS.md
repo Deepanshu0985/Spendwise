@@ -162,6 +162,9 @@ DigitalOcean remains the actual V1 production target once beta-ready — see `DE
 - [x] Found and fixed a real cross-browser bug surfaced by the user's own Safari testing: `SessionCookieFactory`/`CsrfTokenFilter` hardcoded `Secure` on their cookies, which Safari (unlike Chromium, which special-cases `localhost`) silently refuses to store over the Vite dev server's plain `http://localhost`, breaking login/CSRF entirely in that browser. Fixed via a new `security.cookie-secure` property (default `true`, overridden to `false` only in `application-dev.properties`) - see `DECISIONS.md`. Verified via curl (both cookies now lack `Secure` in dev, full register→login succeeds) and `mvn verify` (13 unit + 23 IT tests, unchanged and green, including `AuthFlowIT`'s `Secure`-cookie assertion for non-dev profiles)
 
 ## Phase 6 — Statement Import
+
+**Standing workflow from here on (see `DECISIONS.md`):** built on a `staging` branch, not `main` — `main` is now a live deployment (Render + Vercel) the user actually uses, and only advances by merging `staging` in once a feature is verified complete. `staging` branched from `main` at `ea204db`.
+
 Not started.
 
 ## Phase 7 — Normalization and Duplicates
