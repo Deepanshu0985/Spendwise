@@ -101,6 +101,35 @@ class ResourceIsolationIT {
     }
 
     @Test
+    void secondUserNeverSeesOrCanModifyTheFirstUsersStatements() {
+        TestHttpClient userA = registerAndLogin("isolation-stmt-a");
+        TestHttpClient userB = registerAndLogin("isolation-stmt-b");
+
+        String accountId = userA.post("/accounts", Map.of("name", "A's Account", "accountType", "BANK", "currency", "INR"))
+                .data().get("id").asText();
+
+        byte[] pdf = com.finance.support.PdfFixtures.statementPdf(
+                "HDFC BANK Statement of Account",
+                java.util.List.of("15/09/26 COFFEE SHOP REF001 15/09/26 200.00 0.00 4800.00"));
+        ApiResult upload = userA.postMultipart("/statements/upload", Map.of("accountId", accountId), "file", "statement.pdf", pdf);
+        assertThat(upload.status()).isEqualTo(200);
+        String statementId = upload.data().get("id").asText();
+        String stagingId = userA.get("/statements/" + statementId + "/transactions").data().get(0).get("id").asText();
+
+        assertThat(userB.get("/statements").data()).isEmpty();
+
+        // Same 404-not-403 contract as every other resource (error-contract.md): B cannot
+        // learn the statement exists at all, cross-tenant.
+        assertThat(userB.get("/statements/" + statementId).status()).isEqualTo(404);
+        assertThat(userB.get("/statements/" + statementId + "/transactions").status()).isEqualTo(404);
+        assertThat(userB.put(
+                "/statements/" + statementId + "/transactions/" + stagingId,
+                Map.of("transactionDate", "2026-09-15", "amount", 999, "transactionType", "EXPENSE")).status()).isEqualTo(404);
+        assertThat(userB.post("/statements/" + statementId + "/confirm", Map.of()).status()).isEqualTo(404);
+        assertThat(userB.post("/statements/" + statementId + "/retry", Map.of()).status()).isEqualTo(404);
+    }
+
+    @Test
     void secondUserNeverSeesTheFirstUsersAnalyticsFigures() {
         TestHttpClient userA = registerAndLogin("isolation-an-a");
         TestHttpClient userB = registerAndLogin("isolation-an-b");

@@ -1,6 +1,8 @@
 # Backend
 backend/target/
 backend/data/
+# Phase 6: local filesystem storage stand-in for object storage (dev profile, application-dev.properties)
+backend/.local-storage/
 # Stray H2 data dir if `mvn spring-boot:run` is ever invoked from the repo root
 # instead of backend/ (the JVM's working directory follows the shell, not -f).
 /data/

@@ -4,15 +4,19 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.NullNode;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -77,6 +81,39 @@ public final class TestHttpClient {
         return send(withCsrf(HttpRequest.newBuilder(uri(path)))
                 .header(headerName, headerValue)
                 .POST(bodyPublisher(body)));
+    }
+
+    /**
+     * multipart/form-data POST, e.g. POST /statements/upload. Java's HttpClient has
+     * no built-in multipart support, so the body is hand-assembled with a random
+     * boundary - the same manual-construction approach curl/browsers use under the hood.
+     */
+    public ApiResult postMultipart(String path, Map<String, String> formFields, String fileFieldName, String fileName, byte[] fileContent) {
+        String boundary = "----TestBoundary" + UUID.randomUUID();
+        HttpRequest.Builder builder = withCsrf(HttpRequest.newBuilder(uri(path)));
+        builder.setHeader("Content-Type", "multipart/form-data; boundary=" + boundary);
+        return send(builder.POST(multipartBodyPublisher(boundary, formFields, fileFieldName, fileName, fileContent)));
+    }
+
+    private HttpRequest.BodyPublisher multipartBodyPublisher(
+            String boundary, Map<String, String> formFields, String fileFieldName, String fileName, byte[] fileContent) {
+        try {
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            for (Map.Entry<String, String> field : formFields.entrySet()) {
+                out.write(("--" + boundary + "\r\n").getBytes(StandardCharsets.UTF_8));
+                out.write(("Content-Disposition: form-data; name=\"" + field.getKey() + "\"\r\n\r\n").getBytes(StandardCharsets.UTF_8));
+                out.write((field.getValue() + "\r\n").getBytes(StandardCharsets.UTF_8));
+            }
+            out.write(("--" + boundary + "\r\n").getBytes(StandardCharsets.UTF_8));
+            out.write(("Content-Disposition: form-data; name=\"" + fileFieldName + "\"; filename=\"" + fileName + "\"\r\n")
+                    .getBytes(StandardCharsets.UTF_8));
+            out.write("Content-Type: application/pdf\r\n\r\n".getBytes(StandardCharsets.UTF_8));
+            out.write(fileContent);
+            out.write(("\r\n--" + boundary + "--\r\n").getBytes(StandardCharsets.UTF_8));
+            return HttpRequest.BodyPublishers.ofByteArray(out.toByteArray());
+        } catch (IOException e) {
+            throw new UncheckedIOException("Could not build multipart test request body", e);
+        }
     }
 
     private HttpRequest.Builder withCsrf(HttpRequest.Builder builder) {
