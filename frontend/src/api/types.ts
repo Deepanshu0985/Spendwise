@@ -117,3 +117,43 @@ export interface AnalyticsMeta {
   excludedCurrencies: string[]
   excludedTransactionCount: number
 }
+
+export type StatementStatus = 'UPLOADED' | 'PROCESSING' | 'READY_FOR_REVIEW' | 'IMPORTED' | 'FAILED'
+
+export interface Statement {
+  id: string
+  accountId: string
+  fileName: string
+  fileType: string
+  periodStart: string | null
+  periodEnd: string | null
+  status: StatementStatus
+  errorMessage: string | null
+  createdAt: string
+  processedAt: string | null
+}
+
+export type DuplicateStatus = 'UNKNOWN' | 'NOT_DUPLICATE' | 'DUPLICATE'
+export type ReviewStatus = 'PENDING' | 'ACCEPTED' | 'EDITED' | 'REJECTED'
+
+export interface StatementTransaction {
+  id: string
+  statementId: string
+  transactionDate: string
+  amount: number
+  currency: string
+  rawDescription: string
+  normalizedDescription: string | null
+  suggestedMerchantId: string | null
+  suggestedCategoryId: string | null
+  suggestedTransactionType: TransactionType
+  confidenceScore: number
+  duplicateStatus: DuplicateStatus
+  reviewStatus: ReviewStatus
+  canonicalTransactionId: string | null
+}
+
+export interface ConfirmStatementResult {
+  statement: Statement
+  importedTransactionIds: string[]
+}

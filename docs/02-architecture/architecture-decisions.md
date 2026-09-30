@@ -60,11 +60,13 @@ The core product must continue functioning when the AI provider is unavailable.
 **Consequences.** `transactions.category_id` remains for V1 and represents the single-category case. Analytics never read it directly. Enabling splits later is frontend work plus removing the view's fallback branch, with no analytics rewrite. The invariant that splits sum to the transaction amount is enforced in the service layer with a test rather than a database trigger.
 
 ## ADR-014 MVP Statement Formats
-**Decision.** V1 statement import supports HDFC Bank, State Bank of India (SBI) and Axis Bank PDF statement formats only.
+**Decision.** V1 statement import supports HDFC Bank, State Bank of India (SBI), Axis Bank, Bank of Baroda, Ujjivan Small Finance Bank, and Paytm Wallet PDF/statement formats.
 
 **Context.** Phase 8 of the roadmap dogfoods the parser against real personal statements; scoping to the banks the builder actually holds accounts with is what makes that phase meaningful rather than speculative. Every additional bank format adds real parsing effort for a layout that cannot be tested against real data until it is added.
 
-**Consequences.** The parser registry (`StatementParser` implementations, see `lld.md`) ships three format handlers for V1. Additional banks are added post-MVP as format detection (`05-statement-processing/pdf-processing.md`) proves out. An unsupported format fails with an actionable `UNSUPPORTED_FILE` error rather than a silent misparse.
+**Consequences.** The parser registry (`StatementParser` implementations, see `lld.md`) ships one format handler per supported bank/wallet. Additional banks are added post-MVP as format detection (`05-statement-processing/pdf-processing.md`) proves out. An unsupported format fails with an actionable `UNSUPPORTED_FILE` error rather than a silent misparse.
+
+**Update (Phase 6 implementation).** The original three (HDFC Bank, SBI, Axis Bank) were a speculative guess at "the banks the builder actually holds accounts with" made before Phase 2's real seeded accounts existed - once Phase 6 was actually being built, the real accounts turned out to be Paytm Wallet, Bank of Baroda, Ujjivan Small Finance Bank, and Axis Bank. Only Axis was correct. HDFC and SBI parsers were kept (no harm in the extra coverage, and they're now fully built and tested) rather than removed, and BOB/Ujjivan/Paytm Wallet were added to actually match this ADR's own stated context. See `DECISIONS.md` for the implementation-level writeup.
 
 ## ADR-015 Default Category Taxonomy
 **Decision.** V1 ships a flat, non-hierarchical set of system categories: Food & Dining, Groceries, Transportation, Shopping, Bills & Utilities, Rent/Housing, Entertainment, Health & Fitness, Travel, Education, Personal Care, Subscriptions, Insurance, Fees & Charges, Salary, Interest, Refunds, Other Income, and a reserved Uncategorized bucket.

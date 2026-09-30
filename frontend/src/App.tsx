@@ -9,6 +9,7 @@ import { ForgotPasswordPage } from './pages/ForgotPasswordPage'
 import { LoginPage } from './pages/LoginPage'
 import { RegisterPage } from './pages/RegisterPage'
 import { ResetPasswordPage } from './pages/ResetPasswordPage'
+import { StatementsPage } from './pages/StatementsPage'
 import { TransactionsPage } from './pages/TransactionsPage'
 
 function App() {
@@ -53,7 +54,7 @@ function App() {
             <Route index element={<DashboardPage />} />
             <Route path="transactions" element={<TransactionsPage />} />
             <Route path="accounts" element={<AccountsPage />} />
-            <Route path="statements" element={<ComingSoonPage title="Statements" phase="Phase 6" />} />
+            <Route path="statements" element={<StatementsPage />} />
             <Route path="budgets" element={<ComingSoonPage title="Budgets" phase="Phase 10" />} />
             <Route path="goals" element={<ComingSoonPage title="Goals" phase="Phase 10" />} />
             <Route path="recurring" element={<ComingSoonPage title="Recurring" phase="Phase 9" />} />

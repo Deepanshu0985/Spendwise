@@ -7,26 +7,27 @@ import java.time.format.DateTimeFormatter;
 import java.util.regex.Pattern;
 
 /**
- * Axis Bank's statement layout: Tran Date | Chq No | Particulars | Debit |
- * Credit | Balance.
+ * Ujjivan Small Finance Bank's statement layout: Date | Ref No | Description |
+ * Debit | Credit | Balance - the same six-column shape as Axis Bank, BOB and
+ * Paytm Wallet (see StatementParsingSupport.parseSixColumnRows).
  */
 @Component
-public class AxisBankStatementParser implements StatementParser {
+public class UjjivanStatementParser implements StatementParser {
 
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd-MM-yyyy");
 
-    // tranDate  chqNo  particulars (non-greedy)  debit  credit  balance
+    // date  refNo  description (non-greedy)  debit  credit  balance
     private static final Pattern ROW_PATTERN = Pattern.compile(
             "^(\\d{2}-\\d{2}-\\d{4})\\s+(\\S+)\\s+(.+?)\\s+([\\d,]*\\.\\d{2})\\s+([\\d,]*\\.\\d{2})\\s+([\\d,]*\\.\\d{2})\\s*$");
 
     @Override
     public String bankName() {
-        return "AXIS_BANK";
+        return "UJJIVAN";
     }
 
     @Override
     public boolean matches(String extractedText) {
-        return extractedText.toUpperCase().contains("AXIS BANK");
+        return extractedText.toUpperCase().contains("UJJIVAN");
     }
 
     @Override

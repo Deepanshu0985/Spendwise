@@ -7,9 +7,8 @@ import java.util.List;
 
 /**
  * Picks the StatementParser whose bank the extracted text looks like it belongs
- * to. Spring injects every StatementParser @Component here as a List - adding a
- * fourth bank later (post-MVP, per ADR-014) means adding one new parser class,
- * not touching this detector.
+ * to. Spring injects every StatementParser @Component here as a List - adding
+ * another bank means adding one new parser class, not touching this detector.
  */
 @Component
 public class StatementFormatDetector {
@@ -25,6 +24,7 @@ public class StatementFormatDetector {
                 .filter(parser -> parser.matches(extractedText))
                 .findFirst()
                 .orElseThrow(() -> new UnsupportedFileException(
-                        "This statement's format isn't recognized. Supported banks: HDFC Bank, SBI, Axis Bank."));
+                        "This statement's format isn't recognized. Supported: HDFC Bank, SBI, Axis Bank, "
+                                + "Bank of Baroda, Ujjivan Small Finance Bank, Paytm Wallet."));
     }
 }

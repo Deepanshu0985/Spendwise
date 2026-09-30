@@ -59,10 +59,13 @@ function csrfHeaders(): Record<string, string> {
 }
 
 async function request<T>(path: string, init: RequestInit): Promise<ApiEnvelope<T>> {
+  // FormData (multipart uploads) must never get an explicit Content-Type - the browser
+  // sets one itself with the correct random boundary; overriding it breaks the upload.
+  const isFormData = init.body instanceof FormData
   const response = await fetch(`${BASE_PATH}${path}`, {
     ...init,
     headers: {
-      'Content-Type': 'application/json',
+      ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
       ...csrfHeaders(),
       ...init.headers,
     },
@@ -107,6 +110,7 @@ export const apiClient = {
       body: body === undefined ? undefined : JSON.stringify(body),
       headers: extraHeaders,
     }).then((e) => e.data),
+  postForm: <T>(path: string, form: FormData) => request<T>(path, { method: 'POST', body: form }).then((e) => e.data),
   put: <T>(path: string, body?: unknown) =>
     request<T>(path, { method: 'PUT', body: body === undefined ? undefined : JSON.stringify(body) }).then(
       (e) => e.data,
