@@ -49,6 +49,19 @@ final class StatementParsingSupport {
     }
 
     /**
+     * Whether at least one line actually has the six-column row shape, not just
+     * whether the bank's name is mentioned somewhere in the text. A bare name
+     * check alone is too weak once a statement can legitimately reference other
+     * banks by name without being one - e.g. Paytm's own passbook labels a row's
+     * linked account as "Bank Of Baroda" or "Ujjivan Small Finance Bank", which
+     * would otherwise win the format-detection race before Paytm's own parser is
+     * ever tried (found by testing against a real Paytm statement, not a fixture).
+     */
+    static boolean hasMatchingRow(String extractedText, Pattern rowPattern) {
+        return extractedText.lines().anyMatch(line -> rowPattern.matcher(line.trim()).matches());
+    }
+
+    /**
      * Parses every line matching rowPattern as (date, ref, description, debit,
      * credit, balance) - the shape Axis Bank, BOB, Ujjivan and Paytm Wallet all
      * happen to share. A parser with a genuinely different column order (HDFC,

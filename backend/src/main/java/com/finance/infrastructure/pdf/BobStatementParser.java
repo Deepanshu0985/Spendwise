@@ -30,8 +30,11 @@ public class BobStatementParser implements StatementParser {
         String upper = extractedText.toUpperCase();
         // Full name only, not a bare "BOB" substring - avoids false-matching narration
         // text like "NEFT TO BOB A/C" inside another bank's statement (same reasoning
-        // as SbiStatementParser avoiding the bare "SBI" substring).
-        return upper.contains("BANK OF BARODA");
+        // as SbiStatementParser avoiding the bare "SBI" substring). The name alone is
+        // still not enough, though: Paytm's own passbook statement labels a row's
+        // linked account "Bank Of Baroda" without being a BOB statement itself, so an
+        // actual six-column row must be present too (found against a real Paytm file).
+        return upper.contains("BANK OF BARODA") && StatementParsingSupport.hasMatchingRow(extractedText, ROW_PATTERN);
     }
 
     @Override

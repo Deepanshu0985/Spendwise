@@ -14,14 +14,39 @@ class BobStatementParserTest {
     private final BobStatementParser parser = new BobStatementParser();
 
     @Test
-    void matchesTextContainingBankOfBarodaHeader() {
-        assertThat(parser.matches("Bank of Baroda\nStatement of Account")).isTrue();
+    void matchesTextContainingBankOfBarodaHeaderAndAnActualRow() {
+        assertThat(parser.matches(
+                "Bank of Baroda Statement of Account\n15-09-2026 REF001 ATM WDL CASH 5000.00 0.00 45000.00"))
+                .isTrue();
         assertThat(parser.matches("HDFC BANK\nStatement")).isFalse();
     }
 
     @Test
     void doesNotFalseMatchOnBareBobSubstringInOtherBanksNarration() {
         assertThat(parser.matches("AXIS BANK\n15-09-2026 REF001 NEFT TO BOB ACCOUNT 500.00 0.00 4500.00")).isFalse();
+    }
+
+    @Test
+    void doesNotFalseMatchWhenBankOfBarodaIsOnlyMentionedAsALinkedAccountName() {
+        // The exact real-world collision found against a real Paytm statement: Paytm's
+        // own passbook labels a transaction's linked account "Bank Of Baroda" without
+        // any six-column row ever appearing, since Paytm's format is multi-line blocks,
+        // not tabular rows - matches() must not be fooled by the name alone.
+        String paytmStyleText = """
+                Paytm Statement for
+                Passbook Payments History
+                29 Sep
+                10:05 PM
+                Paid to Test Merchant
+                UPI Ref No: 615023242614
+                 Tag:
+                # Groceries
+                Bank Of
+                Baroda - 21
+                - Rs.110
+                """;
+
+        assertThat(parser.matches(paytmStyleText)).isFalse();
     }
 
     @Test

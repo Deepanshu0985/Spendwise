@@ -14,9 +14,36 @@ class UjjivanStatementParserTest {
     private final UjjivanStatementParser parser = new UjjivanStatementParser();
 
     @Test
-    void matchesTextContainingUjjivanHeader() {
-        assertThat(parser.matches("Ujjivan Small Finance Bank\nStatement of Account")).isTrue();
+    void matchesTextContainingUjjivanHeaderAndAnActualRow() {
+        assertThat(parser.matches(
+                "Ujjivan Small Finance Bank Statement of Account\n15-09-2026 REF001 AMAZON PURCHASE 1200.00 0.00 8800.00"))
+                .isTrue();
         assertThat(parser.matches("HDFC BANK\nStatement")).isFalse();
+    }
+
+    @Test
+    void doesNotFalseMatchWhenUjjivanIsOnlyMentionedAsALinkedAccountName() {
+        // The exact real-world collision found against a real Paytm statement: Paytm's
+        // own passbook labels a transaction's linked account "Ujjivan Small Finance
+        // Bank" without any six-column row ever appearing, since Paytm's format is
+        // multi-line blocks, not tabular rows - matches() must not be fooled by the
+        // name alone.
+        String paytmStyleText = """
+                Paytm Statement for
+                Passbook Payments History
+                29 Sep
+                10:05 PM
+                Paid to Test Merchant
+                UPI Ref No: 615023242614
+                 Tag:
+                # Groceries
+                Ujjivan Small
+                Finance
+                Bank - 82
+                - Rs.110
+                """;
+
+        assertThat(parser.matches(paytmStyleText)).isFalse();
     }
 
     @Test

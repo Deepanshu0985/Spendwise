@@ -27,7 +27,12 @@ public class UjjivanStatementParser implements StatementParser {
 
     @Override
     public boolean matches(String extractedText) {
-        return extractedText.toUpperCase().contains("UJJIVAN");
+        // The name alone isn't enough: Paytm's own passbook statement labels a row's
+        // linked account "Ujjivan Small Finance Bank" without being a Ujjivan statement
+        // itself, so an actual six-column row must be present too (found against a real
+        // Paytm file - see StatementParsingSupport.hasMatchingRow).
+        return extractedText.toUpperCase().contains("UJJIVAN")
+                && StatementParsingSupport.hasMatchingRow(extractedText, ROW_PATTERN);
     }
 
     @Override
