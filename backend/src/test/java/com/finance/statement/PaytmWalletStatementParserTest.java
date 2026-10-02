@@ -14,9 +14,28 @@ class PaytmWalletStatementParserTest {
     private final PaytmWalletStatementParser parser = new PaytmWalletStatementParser();
 
     @Test
-    void matchesTextContainingPaytmHeader() {
-        assertThat(parser.matches("Paytm Wallet Statement")).isTrue();
+    void matchesTextContainingThePassbookPaymentsHistoryHeader() {
+        assertThat(parser.matches("Paytm Statement for\nPassbook Payments History")).isTrue();
         assertThat(parser.matches("HDFC BANK\nStatement")).isFalse();
+    }
+
+    @Test
+    void doesNotFalseMatchWhenPaytmIsOnlyMentionedAsAUpiHandleInAnotherBanksNarration() {
+        // The exact real-world collision found against a real Bank of Baroda statement:
+        // BOB's own UPI narrations routinely reference Paytm-linked merchant handles
+        // ("UPI/.../paytm.d11487.../...", "paytmqr...") without the statement being a
+        // Paytm export at all - a bare "PAYTM" substring check used to false-match this
+        // and win the format-detection race before BobStatementParser was ever tried.
+        String bobStyleText = """
+                Statement of transactions in Savings Account 12345678901 in INR
+                https://www.bankofbaroda.bank.in Customer Care
+                10-07-2026
+                UPI/310153745613/22:30:08/UPI/paytm.d11487
+                868129@
+                4000.00 21983.43 Cr
+                """;
+
+        assertThat(parser.matches(bobStyleText)).isFalse();
     }
 
     /**

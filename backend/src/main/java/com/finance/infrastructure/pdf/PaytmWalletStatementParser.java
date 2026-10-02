@@ -66,7 +66,14 @@ public class PaytmWalletStatementParser implements StatementParser {
 
     @Override
     public boolean matches(String extractedText) {
-        return extractedText.toUpperCase().contains("PAYTM");
+        // A bare "PAYTM" substring isn't specific enough: a real Bank of Baroda
+        // statement's own UPI narrations routinely mention Paytm-linked merchant
+        // handles ("UPI/.../paytm.d11487.../...", "paytmqr...") without the statement
+        // being a Paytm export at all - found against a real BOB file, where this
+        // false-matched and won the format-detection race before BobStatementParser
+        // was ever tried. "Passbook Payments History" is Paytm's own literal section
+        // title and reliably specific to its actual export.
+        return extractedText.toUpperCase().contains("PASSBOOK PAYMENTS HISTORY");
     }
 
     @Override

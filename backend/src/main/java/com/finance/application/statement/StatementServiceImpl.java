@@ -24,6 +24,7 @@ import com.finance.infrastructure.pdf.PdfTextExtractor;
 import com.finance.infrastructure.pdf.PdfValidator;
 import com.finance.infrastructure.pdf.StatementFormatDetector;
 import com.finance.infrastructure.pdf.StatementParser;
+import com.finance.infrastructure.pdf.DescriptionCleanerRegistry;
 import com.finance.infrastructure.pdf.TransactionNormalizer;
 import com.finance.infrastructure.storage.StorageService;
 import org.springframework.data.domain.Page;
@@ -51,6 +52,7 @@ public class StatementServiceImpl implements StatementService {
     private final PdfTextExtractor pdfTextExtractor;
     private final StatementFormatDetector statementFormatDetector;
     private final TransactionNormalizer transactionNormalizer;
+    private final DescriptionCleanerRegistry descriptionCleanerRegistry;
     private final StorageService storageService;
 
     public StatementServiceImpl(
@@ -62,6 +64,7 @@ public class StatementServiceImpl implements StatementService {
             PdfTextExtractor pdfTextExtractor,
             StatementFormatDetector statementFormatDetector,
             TransactionNormalizer transactionNormalizer,
+            DescriptionCleanerRegistry descriptionCleanerRegistry,
             StorageService storageService) {
         this.statementRepository = statementRepository;
         this.statementTransactionRepository = statementTransactionRepository;
@@ -71,6 +74,7 @@ public class StatementServiceImpl implements StatementService {
         this.pdfTextExtractor = pdfTextExtractor;
         this.statementFormatDetector = statementFormatDetector;
         this.transactionNormalizer = transactionNormalizer;
+        this.descriptionCleanerRegistry = descriptionCleanerRegistry;
         this.storageService = storageService;
     }
 
@@ -196,7 +200,7 @@ public class StatementServiceImpl implements StatementService {
             }
             UUID statementId = statement.getId();
             List<StatementTransaction> staged = parsed.rows().stream()
-                    .map(row -> toStagedRow(userId, statementId, account.getCurrency(), row))
+                    .map(row -> toStagedRow(userId, statementId, account.getCurrency(), parsed.detectedBank(), row))
                     .toList();
             statementTransactionRepository.saveAll(staged);
             statement.markReadyForReview(parsed.periodStart(), parsed.periodEnd());
@@ -213,11 +217,13 @@ public class StatementServiceImpl implements StatementService {
                 .orElseThrow(() -> new StatementProcessingFailedException("Statement disappeared during processing."));
     }
 
-    private StatementTransaction toStagedRow(UUID userId, UUID statementId, String currency, ParsedTransactionRow row) {
+    private StatementTransaction toStagedRow(
+            UUID userId, UUID statementId, String currency, String bankName, ParsedTransactionRow row) {
         NormalizedTransactionRow normalized = transactionNormalizer.normalize(row);
+        String description = descriptionCleanerRegistry.clean(bankName, row.rawDescription(), normalized.normalizedDescription());
         return new StatementTransaction(
                 userId, statementId, row.transactionDate(), row.amount(), currency, row.rawDescription(),
-                normalized.normalizedDescription(), null, null, normalized.transactionType(), normalized.confidenceScore(),
+                description, null, null, normalized.transactionType(), normalized.confidenceScore(),
                 row.sourceRowReference());
     }
 
