@@ -54,6 +54,7 @@ public class StatementServiceImpl implements StatementService {
     private final TransactionNormalizer transactionNormalizer;
     private final DescriptionCleanerRegistry descriptionCleanerRegistry;
     private final DuplicateDetectionService duplicateDetectionService;
+    private final PayeeRuleService payeeRuleService;
     private final StorageService storageService;
 
     public StatementServiceImpl(
@@ -67,6 +68,7 @@ public class StatementServiceImpl implements StatementService {
             TransactionNormalizer transactionNormalizer,
             DescriptionCleanerRegistry descriptionCleanerRegistry,
             DuplicateDetectionService duplicateDetectionService,
+            PayeeRuleService payeeRuleService,
             StorageService storageService) {
         this.statementRepository = statementRepository;
         this.statementTransactionRepository = statementTransactionRepository;
@@ -78,6 +80,7 @@ public class StatementServiceImpl implements StatementService {
         this.transactionNormalizer = transactionNormalizer;
         this.descriptionCleanerRegistry = descriptionCleanerRegistry;
         this.duplicateDetectionService = duplicateDetectionService;
+        this.payeeRuleService = payeeRuleService;
         this.storageService = storageService;
     }
 
@@ -134,7 +137,16 @@ public class StatementServiceImpl implements StatementService {
         StatementTransaction row = requireOwnedStagedRow(userId, statementId, stagingId);
         row.applyReview(
                 command.transactionDate(), command.amount(), command.merchantId(), command.categoryId(), command.transactionType());
-        return statementTransactionRepository.save(row);
+        StatementTransaction saved = statementTransactionRepository.save(row);
+
+        // Remember the choice, and apply it straight away to the other untouched rows of this statement
+        // for the same payee, so the user sets "Rana Hyperstore" once rather than on every row.
+        payeeRuleService.remember(userId, saved);
+        List<StatementTransaction> siblings = statementTransactionRepository.findByStatementIdAndUserId(statementId, userId).stream()
+                .filter(other -> !other.getId().equals(saved.getId()))
+                .toList();
+        statementTransactionRepository.saveAll(payeeRuleService.applyTo(userId, siblings));
+        return saved;
     }
 
     @Override
@@ -236,6 +248,7 @@ public class StatementServiceImpl implements StatementService {
             List<StatementTransaction> staged = parsed.rows().stream()
                     .map(row -> toStagedRow(userId, statementId, account.getCurrency(), parsed.detectedBank(), row))
                     .toList();
+            payeeRuleService.applyTo(userId, staged);
             duplicateDetectionService.score(userId, account.getId(), staged);
             statementTransactionRepository.saveAll(staged);
             statement.markReadyForReview(parsed.periodStart(), parsed.periodEnd());

@@ -223,9 +223,9 @@ class StatementFlowIT {
         client.post("/statements/" + first + "/confirm", Map.of());
 
         String second = upload("second.pdf", SWIGGY, AMAZON);
-        assertThat(duplicateStatusOf(second, 0)).isEqualTo("DUPLICATE");
+        assertThat(rowFor(second, "500").get("duplicateStatus").asText()).isEqualTo("DUPLICATE");
 
-        String stagingId = client.get("/statements/" + second + "/transactions").data().get(0).get("id").asText();
+        String stagingId = rowFor(second, "500").get("id").asText();
         ApiResult keep = client.post("/statements/" + second + "/transactions/" + stagingId + "/keep-duplicate", Map.of());
         assertThat(keep.status()).isEqualTo(200);
         assertThat(keep.data().get("duplicateStatus").asText()).isEqualTo("NOT_DUPLICATE");
@@ -234,5 +234,43 @@ class StatementFlowIT {
         ApiResult confirm = client.post("/statements/" + second + "/confirm", Map.of());
         assertThat(confirm.data().get("importedTransactionIds")).hasSize(2);
         assertThat(confirm.data().get("skippedDuplicateCount").asInt()).isZero();
+    }
+
+    private com.fasterxml.jackson.databind.JsonNode rowFor(String statementId, String amount) {
+        for (var row : client.get("/statements/" + statementId + "/transactions").data()) {
+            if (row.get("amount").asDouble() == Double.parseDouble(amount)) {
+                return row;
+            }
+        }
+        throw new AssertionError("no staged row with amount " + amount);
+    }
+
+    @Test
+    void aCategoryChosenOnceIsRememberedForTheSamePayeeAcrossRowsAndStatements() {
+        String category = client.get("/categories").data().get(0).get("id").asText();
+        String first = upload(
+                "first.pdf",
+                "15/09/26 SWIGGY BANGALORE UPI111111 15/09/26 500.00 0.00 4500.00",
+                "16/09/26 SWIGGY BANGALORE UPI222222 16/09/26 300.00 0.00 4200.00",
+                "17/09/26 AMAZON PAY INDIA UPI333333 17/09/26 250.00 0.00 3950.00");
+        assertThat(rowFor(first, "300").get("suggestedCategoryId").isNull()).isTrue();
+
+        client.put(
+                "/statements/" + first + "/transactions/" + rowFor(first, "500").get("id").asText(),
+                Map.of("transactionDate", "2026-09-15", "amount", 500, "categoryId", category, "transactionType", "EXPENSE"));
+
+        // Editing a row must not move it: the list stays newest-first in statement order.
+        var order = client.get("/statements/" + first + "/transactions").data();
+        assertThat(order.get(0).get("amount").asDouble()).isEqualTo(250.0);
+        assertThat(order.get(1).get("amount").asDouble()).isEqualTo(300.0);
+        assertThat(order.get(2).get("amount").asDouble()).isEqualTo(500.0);
+
+        // The second Swiggy row of the same statement picks it up straight away; Amazon is untouched.
+        assertThat(rowFor(first, "300").get("suggestedCategoryId").asText()).isEqualTo(category);
+        assertThat(rowFor(first, "250").get("suggestedCategoryId").isNull()).isTrue();
+
+        // And the next statement for the same payee is pre-filled when it is staged.
+        String second = upload("second.pdf", "20/09/26 SWIGGY BANGALORE UPI444444 20/09/26 410.00 0.00 3540.00");
+        assertThat(rowFor(second, "410").get("suggestedCategoryId").asText()).isEqualTo(category);
     }
 }

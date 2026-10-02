@@ -114,6 +114,23 @@ public class StatementTransaction {
         this.reviewStatus = ReviewStatus.EDITED;
     }
 
+    /** Fills merchant/category from a remembered rule, but only where the row has none and the user hasn't reviewed it. */
+    public boolean applySuggestion(UUID merchantId, UUID categoryId) {
+        if (reviewStatus != ReviewStatus.PENDING) {
+            return false;
+        }
+        boolean changed = false;
+        if (suggestedMerchantId == null && merchantId != null) {
+            this.suggestedMerchantId = merchantId;
+            changed = true;
+        }
+        if (suggestedCategoryId == null && categoryId != null) {
+            this.suggestedCategoryId = categoryId;
+            changed = true;
+        }
+        return changed;
+    }
+
     /** Records the outcome of duplicate scoring; never touches a row whose duplicate flag the user already overrode. */
     public void applyDuplicateScore(DuplicateMatch match) {
         if (duplicateOverriddenAt != null) {

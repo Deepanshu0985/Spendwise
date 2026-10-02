@@ -4,6 +4,7 @@ import com.finance.domain.statement.StatementTransaction;
 import com.finance.domain.statement.StatementTransactionRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -38,6 +39,22 @@ public class StatementTransactionRepositoryImpl implements StatementTransactionR
 
     @Override
     public List<StatementTransaction> findByStatementIdAndUserId(UUID statementId, UUID userId) {
-        return jpaRepository.findByStatementIdAndUserId(statementId, userId).stream().map(StatementTransactionMapper::toDomain).toList();
+        // Without an explicit order Postgres returns rows in physical order, and an UPDATE moves a row -
+        // so an edited row would jump position on the review screen. Newest first, then statement order.
+        return jpaRepository.findByStatementIdAndUserId(statementId, userId).stream()
+                .map(StatementTransactionMapper::toDomain)
+                .sorted(Comparator.comparing(StatementTransaction::getTransactionDate).reversed()
+                        .thenComparingInt(row -> rowNumber(row.getSourceRowReference())))
+                .toList();
+    }
+
+    /** "p1r12" -> 12; the parsers emit this as the row's position in the statement. */
+    private static int rowNumber(String sourceRowReference) {
+        int r = sourceRowReference.lastIndexOf('r');
+        try {
+            return Integer.parseInt(sourceRowReference.substring(r + 1));
+        } catch (NumberFormatException | IndexOutOfBoundsException e) {
+            return Integer.MAX_VALUE;
+        }
     }
 }
