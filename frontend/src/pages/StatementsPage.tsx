@@ -20,6 +20,12 @@ const STATUS_LABELS: Record<StatementStatus, string> = {
   FAILED: 'Failed',
 }
 
+const DUPLICATE_REASON_LABELS: Record<string, string> = {
+  EXACT_REFERENCE: 'Same payment reference as an already-imported transaction',
+  DATE_AMOUNT_DESCRIPTION: 'Same date, amount and description as an already-imported transaction',
+  NEARBY_SIMILAR: 'Similar amount, description and a nearby date to an already-imported transaction',
+}
+
 function statusBadgeClass(status: StatementStatus): string {
   if (status === 'IMPORTED') return 'badge positive'
   if (status === 'FAILED') return 'badge negative'
@@ -210,11 +216,16 @@ function StatementReview({ statementId, onBack }: { statementId: string; onBack:
   const [confirming, setConfirming] = useState(false)
   const [retrying, setRetrying] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
+  const [confirmNote, setConfirmNote] = useState<string | null>(null)
 
   async function reload() {
     setLoading(true)
     try {
-      const [s, r] = await Promise.all([statementsApi.get(statementId), statementsApi.getTransactions(statementId)])
+      const s = await statementsApi.get(statementId)
+      // Re-scored on open: another statement may have been confirmed since these rows were staged.
+      const r = s.status === 'READY_FOR_REVIEW'
+        ? await statementsApi.recheckDuplicates(statementId)
+        : await statementsApi.getTransactions(statementId)
       setStatement(s)
       setRows(r)
     } finally {
@@ -231,12 +242,27 @@ function StatementReview({ statementId, onBack }: { statementId: string; onBack:
     setActionError(null)
     setConfirming(true)
     try {
-      await statementsApi.confirm(statementId)
+      const result = await statementsApi.confirm(statementId)
+      setConfirmNote(
+        result.skippedDuplicateCount > 0
+          ? `Imported ${result.importedTransactionIds.length} transactions. Skipped ${result.skippedDuplicateCount} duplicates of transactions you already imported.`
+          : null,
+      )
       await reload()
     } catch (err) {
       setActionError(err instanceof ApiRequestError ? err.message : 'Something went wrong. Please try again.')
     } finally {
       setConfirming(false)
+    }
+  }
+
+  async function handleKeepDuplicate(row: StatementTransaction) {
+    setActionError(null)
+    try {
+      const updated = await statementsApi.keepDuplicate(statementId, row.id)
+      setRows((current) => current.map((r) => (r.id === updated.id ? updated : r)))
+    } catch (err) {
+      setActionError(err instanceof ApiRequestError ? err.message : 'Something went wrong. Please try again.')
     }
   }
 
@@ -287,6 +313,7 @@ function StatementReview({ statementId, onBack }: { statementId: string; onBack:
       </div>
 
       {actionError && <div className="form-error-banner" style={{ marginBottom: 16 }}>{actionError}</div>}
+      {confirmNote && <div className="badge" style={{ marginBottom: 16, padding: '8px 12px' }}>{confirmNote}</div>}
       {statement?.status === 'FAILED' && statement.errorMessage && (
         <div className="form-error-banner" style={{ marginBottom: 16 }}>{statement.errorMessage}</div>
       )}
@@ -334,6 +361,37 @@ function StatementReview({ statementId, onBack }: { statementId: string; onBack:
                       <td>
                         {row.normalizedDescription ?? row.rawDescription}
                         {editable && <EditIcon size={13} />}
+                        {row.duplicateStatus === 'DUPLICATE' && (
+                          <div style={{ marginTop: 4, display: 'flex', gap: 8, alignItems: 'center' }}>
+                            <span className="badge negative" title={DUPLICATE_REASON_LABELS[row.duplicateReason ?? ''] ?? 'Duplicate'}>
+                              Duplicate - skipped on import
+                            </span>
+                            {editable && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  void handleKeepDuplicate(row)
+                                }}
+                                style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--accent)', fontSize: 12 }}
+                              >
+                                Import anyway
+                              </button>
+                            )}
+                          </div>
+                        )}
+                        {row.duplicateStatus === 'POSSIBLE_DUPLICATE' && (
+                          <div style={{ marginTop: 4 }}>
+                            <span className="badge" title={DUPLICATE_REASON_LABELS[row.duplicateReason ?? ''] ?? 'Possible duplicate'}>
+                              Possible duplicate
+                            </span>
+                          </div>
+                        )}
+                        {row.duplicateOverridden && (
+                          <div style={{ marginTop: 4 }}>
+                            <span className="badge">Kept despite duplicate flag</span>
+                          </div>
+                        )}
                       </td>
                       <td>
                         {row.suggestedCategoryId ? <span className="badge">{categoryName(row.suggestedCategoryId)}</span> : '—'}

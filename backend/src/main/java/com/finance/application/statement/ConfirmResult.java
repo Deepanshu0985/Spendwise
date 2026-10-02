@@ -5,5 +5,6 @@ import com.finance.domain.transaction.Transaction;
 
 import java.util.List;
 
-public record ConfirmResult(Statement statement, List<Transaction> importedTransactions) {
+/** skippedDuplicates: rows left out because they match an already-imported transaction and the user didn't keep them. */
+public record ConfirmResult(Statement statement, List<Transaction> importedTransactions, int skippedDuplicates) {
 }

@@ -1,11 +1,11 @@
 package com.finance.domain.statement;
 
-/**
- * Real scoring (duplicate-detection.md's signals/tiers) is Phase 7 - this phase only
- * needs a place to record the outcome, defaulting every staged row to UNKNOWN.
- */
+/** Outcome of duplicate-detection.md's scoring for a staged row. */
 public enum DuplicateStatus {
     UNKNOWN,
     NOT_DUPLICATE,
+    /** Medium evidence: shown for review, still imported unless the user rejects it. */
+    POSSIBLE_DUPLICATE,
+    /** Strong evidence: skipped on confirm unless the user explicitly keeps it. */
     DUPLICATE
 }

@@ -47,6 +47,9 @@ public class BobStatementParser implements StatementParser {
     private static final Pattern BALANCE_LINE = Pattern.compile(
             "^([\\d,]+\\.\\d{2})\\s+([\\d,]+\\.\\d{2})\\s+(?:Cr|Dr)\\s*$");
 
+    // The UPI RRN is globally unique, so it also matches the same payment in another account's statement (e.g. Paytm's "UPI Ref No").
+    private static final Pattern UPI_REFERENCE = Pattern.compile("^UPI/(\\d{9,})/");
+
     private enum State { IDLE, COLLECT_NARRATION }
 
     @Override
@@ -140,6 +143,8 @@ public class BobStatementParser implements StatementParser {
             LocalDate date, String description, BigDecimal amount, BigDecimal balance, BigDecimal previousBalance, int rowIndex) {
         boolean isCredit = previousBalance != null && balance.compareTo(previousBalance) > 0;
         var debitCredit = isCredit ? ParsedTransactionRow.DebitCredit.CREDIT : ParsedTransactionRow.DebitCredit.DEBIT;
-        return new ParsedTransactionRow(date, amount, debitCredit, description, null, balance, "p1r" + rowIndex);
+        Matcher reference = UPI_REFERENCE.matcher(description);
+        return new ParsedTransactionRow(
+                date, amount, debitCredit, description, reference.find() ? reference.group(1) : null, balance, "p1r" + rowIndex);
     }
 }

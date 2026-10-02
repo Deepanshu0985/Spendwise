@@ -52,6 +52,16 @@ public class Transaction {
                 null, transactionType, null, source, null, null, null, null, status, null, null);
     }
 
+    /** Statement-imported transactions keep the raw narration and the bank/UPI reference so later uploads can be checked for duplicates. */
+    public Transaction(
+            UUID userId, UUID accountId, UUID merchantId, UUID categoryId, LocalDate transactionDate, BigDecimal amount,
+            String currency, String description, String rawDescription, TransactionType transactionType, TransactionSource source,
+            String externalTransactionId, TransactionStatus status) {
+        this(
+                UUID.randomUUID(), userId, accountId, merchantId, categoryId, transactionDate, amount, currency, description,
+                rawDescription, transactionType, null, source, null, externalTransactionId, null, null, status, null, null);
+    }
+
     /** Reconstitution constructor - used by the persistence mapper to rebuild a domain object from a stored row. */
     public Transaction(
             UUID id,

@@ -1,5 +1,6 @@
 package com.finance.infrastructure.persistence.statement;
 
+import com.finance.domain.statement.DuplicateReason;
 import com.finance.domain.statement.DuplicateStatus;
 import com.finance.domain.statement.ReviewStatus;
 import com.finance.domain.transaction.TransactionType;
@@ -68,6 +69,19 @@ public class StatementTransactionJpaEntity {
     @Column(name = "canonical_transaction_id")
     private UUID canonicalTransactionId;
 
+    @Column(name = "external_reference")
+    private String externalReference;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "duplicate_reason")
+    private DuplicateReason duplicateReason;
+
+    @Column(name = "duplicate_of_transaction_id")
+    private UUID duplicateOfTransactionId;
+
+    @Column(name = "duplicate_overridden_at")
+    private Instant duplicateOverriddenAt;
+
     @Column(name = "source_row_reference", nullable = false)
     private String sourceRowReference;
 
@@ -95,7 +109,11 @@ public class StatementTransactionJpaEntity {
             DuplicateStatus duplicateStatus,
             ReviewStatus reviewStatus,
             UUID canonicalTransactionId,
-            String sourceRowReference) {
+            String sourceRowReference,
+            String externalReference,
+            DuplicateReason duplicateReason,
+            UUID duplicateOfTransactionId,
+            Instant duplicateOverriddenAt) {
         this.id = id;
         this.userId = userId;
         this.statementId = statementId;
@@ -112,6 +130,38 @@ public class StatementTransactionJpaEntity {
         this.reviewStatus = reviewStatus;
         this.canonicalTransactionId = canonicalTransactionId;
         this.sourceRowReference = sourceRowReference;
+        this.externalReference = externalReference;
+        this.duplicateReason = duplicateReason;
+        this.duplicateOfTransactionId = duplicateOfTransactionId;
+        this.duplicateOverriddenAt = duplicateOverriddenAt;
+    }
+
+    String getExternalReference() {
+        return externalReference;
+    }
+
+    DuplicateReason getDuplicateReason() {
+        return duplicateReason;
+    }
+
+    void setDuplicateReason(DuplicateReason duplicateReason) {
+        this.duplicateReason = duplicateReason;
+    }
+
+    UUID getDuplicateOfTransactionId() {
+        return duplicateOfTransactionId;
+    }
+
+    void setDuplicateOfTransactionId(UUID duplicateOfTransactionId) {
+        this.duplicateOfTransactionId = duplicateOfTransactionId;
+    }
+
+    Instant getDuplicateOverriddenAt() {
+        return duplicateOverriddenAt;
+    }
+
+    void setDuplicateOverriddenAt(Instant duplicateOverriddenAt) {
+        this.duplicateOverriddenAt = duplicateOverriddenAt;
     }
 
     UUID getId() {
@@ -180,6 +230,10 @@ public class StatementTransactionJpaEntity {
 
     BigDecimal getConfidenceScore() {
         return confidenceScore;
+    }
+
+    void setDuplicateStatus(DuplicateStatus duplicateStatus) {
+        this.duplicateStatus = duplicateStatus;
     }
 
     DuplicateStatus getDuplicateStatus() {

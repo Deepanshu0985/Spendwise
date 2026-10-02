@@ -31,6 +31,10 @@ public class StatementTransaction {
     private UUID canonicalTransactionId;
     private final String sourceRowReference;
     private final Instant createdAt;
+    private final String externalReference;
+    private DuplicateReason duplicateReason;
+    private UUID duplicateOfTransactionId;
+    private Instant duplicateOverriddenAt;
 
     public StatementTransaction(
             UUID userId,
@@ -44,11 +48,12 @@ public class StatementTransaction {
             UUID suggestedCategoryId,
             TransactionType suggestedTransactionType,
             BigDecimal confidenceScore,
-            String sourceRowReference) {
+            String sourceRowReference,
+            String externalReference) {
         this(
                 UUID.randomUUID(), userId, statementId, transactionDate, amount, currency, rawDescription, normalizedDescription,
                 suggestedMerchantId, suggestedCategoryId, suggestedTransactionType, confidenceScore, DuplicateStatus.UNKNOWN,
-                ReviewStatus.PENDING, null, sourceRowReference, null);
+                ReviewStatus.PENDING, null, sourceRowReference, null, externalReference, null, null, null);
     }
 
     /** Reconstitution constructor - used by the persistence mapper to rebuild a domain object from a stored row. */
@@ -69,7 +74,11 @@ public class StatementTransaction {
             ReviewStatus reviewStatus,
             UUID canonicalTransactionId,
             String sourceRowReference,
-            Instant createdAt) {
+            Instant createdAt,
+            String externalReference,
+            DuplicateReason duplicateReason,
+            UUID duplicateOfTransactionId,
+            Instant duplicateOverriddenAt) {
         this.id = id;
         this.userId = userId;
         this.statementId = statementId;
@@ -87,6 +96,10 @@ public class StatementTransaction {
         this.canonicalTransactionId = canonicalTransactionId;
         this.sourceRowReference = sourceRowReference;
         this.createdAt = createdAt;
+        this.externalReference = externalReference;
+        this.duplicateReason = duplicateReason;
+        this.duplicateOfTransactionId = duplicateOfTransactionId;
+        this.duplicateOverriddenAt = duplicateOverriddenAt;
     }
 
     /** The user correcting a staged row before confirming - moves review status to EDITED. */
@@ -99,6 +112,32 @@ public class StatementTransaction {
         this.suggestedCategoryId = suggestedCategoryId;
         this.suggestedTransactionType = suggestedTransactionType;
         this.reviewStatus = ReviewStatus.EDITED;
+    }
+
+    /** Records the outcome of duplicate scoring; never touches a row whose duplicate flag the user already overrode. */
+    public void applyDuplicateScore(DuplicateMatch match) {
+        if (duplicateOverriddenAt != null) {
+            return;
+        }
+        if (match == null) {
+            this.duplicateStatus = DuplicateStatus.NOT_DUPLICATE;
+            this.duplicateReason = null;
+            this.duplicateOfTransactionId = null;
+            return;
+        }
+        this.duplicateStatus = match.status();
+        this.duplicateReason = match.reason();
+        this.duplicateOfTransactionId = match.matchedTransactionId();
+    }
+
+    /** The user choosing to import a flagged row anyway - kept as audit metadata so later rescoring can't undo it. */
+    public void overrideDuplicate(Instant at) {
+        this.duplicateStatus = DuplicateStatus.NOT_DUPLICATE;
+        this.duplicateOverriddenAt = at;
+    }
+
+    public boolean isUnresolvedDuplicate() {
+        return duplicateStatus == DuplicateStatus.DUPLICATE && duplicateOverriddenAt == null;
     }
 
     public void markPromoted(UUID canonicalTransactionId) {
@@ -172,5 +211,21 @@ public class StatementTransaction {
 
     public Instant getCreatedAt() {
         return createdAt;
+    }
+
+    public String getExternalReference() {
+        return externalReference;
+    }
+
+    public DuplicateReason getDuplicateReason() {
+        return duplicateReason;
+    }
+
+    public UUID getDuplicateOfTransactionId() {
+        return duplicateOfTransactionId;
+    }
+
+    public Instant getDuplicateOverriddenAt() {
+        return duplicateOverriddenAt;
     }
 }

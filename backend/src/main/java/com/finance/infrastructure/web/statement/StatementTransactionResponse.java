@@ -1,5 +1,6 @@
 package com.finance.infrastructure.web.statement;
 
+import com.finance.domain.statement.DuplicateReason;
 import com.finance.domain.statement.DuplicateStatus;
 import com.finance.domain.statement.ReviewStatus;
 import com.finance.domain.statement.StatementTransaction;
@@ -23,7 +24,10 @@ public record StatementTransactionResponse(
         BigDecimal confidenceScore,
         DuplicateStatus duplicateStatus,
         ReviewStatus reviewStatus,
-        UUID canonicalTransactionId) {
+        UUID canonicalTransactionId,
+        DuplicateReason duplicateReason,
+        UUID duplicateOfTransactionId,
+        boolean duplicateOverridden) {
 
     public static StatementTransactionResponse from(StatementTransaction row) {
         return new StatementTransactionResponse(
@@ -40,6 +44,9 @@ public record StatementTransactionResponse(
                 row.getConfidenceScore(),
                 row.getDuplicateStatus(),
                 row.getReviewStatus(),
-                row.getCanonicalTransactionId());
+                row.getCanonicalTransactionId(),
+                row.getDuplicateReason(),
+                row.getDuplicateOfTransactionId(),
+                row.getDuplicateOverriddenAt() != null);
     }
 }

@@ -22,5 +22,13 @@ public interface TransactionRepository {
 
     List<Transaction> findByTransferGroupIdAndUserId(UUID transferGroupId, UUID userId);
 
+    /**
+     * Confirmed transactions that could be the same real-world event as a staged row: dated inside the window
+     * or sharing one of the given external references (checked across all accounts). Fetched once per
+     * statement, not per row - each query is a network round trip.
+     */
+    List<Transaction> findDuplicateCandidates(
+            UUID userId, java.time.LocalDate from, java.time.LocalDate to, java.util.Collection<String> externalReferences);
+
     Page<Transaction> search(UUID userId, TransactionFilter filter, Pageable pageable);
 }

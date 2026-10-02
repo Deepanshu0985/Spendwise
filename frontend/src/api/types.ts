@@ -133,7 +133,8 @@ export interface Statement {
   processedAt: string | null
 }
 
-export type DuplicateStatus = 'UNKNOWN' | 'NOT_DUPLICATE' | 'DUPLICATE'
+export type DuplicateStatus = 'UNKNOWN' | 'NOT_DUPLICATE' | 'POSSIBLE_DUPLICATE' | 'DUPLICATE'
+export type DuplicateReason = 'EXACT_REFERENCE' | 'DATE_AMOUNT_DESCRIPTION' | 'NEARBY_SIMILAR'
 export type ReviewStatus = 'PENDING' | 'ACCEPTED' | 'EDITED' | 'REJECTED'
 
 export interface StatementTransaction {
@@ -151,9 +152,13 @@ export interface StatementTransaction {
   duplicateStatus: DuplicateStatus
   reviewStatus: ReviewStatus
   canonicalTransactionId: string | null
+  duplicateReason: DuplicateReason | null
+  duplicateOfTransactionId: string | null
+  duplicateOverridden: boolean
 }
 
 export interface ConfirmStatementResult {
   statement: Statement
   importedTransactionIds: string[]
+  skippedDuplicateCount: number
 }

@@ -21,6 +21,15 @@ public interface StatementService {
     StatementTransaction updateStagedTransaction(
             UUID userId, UUID statementId, UUID stagingId, UpdateStagedTransactionCommand command);
 
+    /**
+     * Re-scores a READY_FOR_REVIEW statement's rows against everything imported since they were staged
+     * (e.g. another statement confirmed in the meantime). Rows whose duplicate flag the user overrode keep it.
+     */
+    List<StatementTransaction> recheckDuplicates(UUID userId, UUID statementId);
+
+    /** The user choosing to import a flagged duplicate anyway; recorded as audit metadata on the row. */
+    StatementTransaction keepDuplicate(UUID userId, UUID statementId, UUID stagingId);
+
     /** Idempotent: a repeat call against an already-IMPORTED statement returns the original result, never imports twice. */
     ConfirmResult confirm(UUID userId, UUID statementId);
 

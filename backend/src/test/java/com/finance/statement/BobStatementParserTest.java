@@ -121,4 +121,12 @@ class BobStatementParserTest {
         assertThat(parser.parse(text).rows().get(0).rawDescription())
                 .isEqualTo("NEFT-HDFCH01106802922-PANGLOSS REIMBURSEMENT MGMT");
     }
+
+    @Test
+    void extractsTheUpiReferenceSoItCanMatchTheSamePaymentInAnotherStatement() {
+        ParsedStatement result = parser.parse(STATEMENT_TEXT);
+
+        assertThat(result.rows().get(0).reference()).isEqualTo("209737101589");
+        assertThat(result.rows().get(2).reference()).isNull();
+    }
 }

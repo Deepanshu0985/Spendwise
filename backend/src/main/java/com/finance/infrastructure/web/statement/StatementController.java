@@ -90,6 +90,18 @@ public class StatementController {
         return ApiResponse.of(StatementTransactionResponse.from(row));
     }
 
+    @PostMapping("/{id}/duplicates/recheck")
+    public ApiResponse<List<StatementTransactionResponse>> recheckDuplicates(@PathVariable UUID id) {
+        List<StatementTransaction> rows = statementService.recheckDuplicates(CurrentUserGuard.require(tenantContext), id);
+        return ApiResponse.of(rows.stream().map(StatementTransactionResponse::from).toList());
+    }
+
+    @PostMapping("/{id}/transactions/{stagingId}/keep-duplicate")
+    public ApiResponse<StatementTransactionResponse> keepDuplicate(@PathVariable UUID id, @PathVariable UUID stagingId) {
+        StatementTransaction row = statementService.keepDuplicate(CurrentUserGuard.require(tenantContext), id, stagingId);
+        return ApiResponse.of(StatementTransactionResponse.from(row));
+    }
+
     @PostMapping("/{id}/confirm")
     public ResponseEntity<?> confirm(
             @PathVariable UUID id, @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey) {

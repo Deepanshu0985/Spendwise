@@ -39,6 +39,14 @@ public class TransactionRepositoryImpl implements TransactionRepository {
     }
 
     @Override
+    public List<Transaction> findDuplicateCandidates(
+            UUID userId, java.time.LocalDate from, java.time.LocalDate to, java.util.Collection<String> externalReferences) {
+        // An empty IN () list is rejected by some providers; a sentinel that never matches keeps the query valid.
+        java.util.Collection<String> references = externalReferences.isEmpty() ? List.of("\u0000") : externalReferences;
+        return jpaRepository.findDuplicateCandidates(userId, from, to, references).stream().map(TransactionMapper::toDomain).toList();
+    }
+
+    @Override
     public Page<Transaction> search(UUID userId, TransactionFilter filter, Pageable pageable) {
         return jpaRepository.findAll(TransactionSpecifications.forUserAndFilter(userId, filter), pageable).map(TransactionMapper::toDomain);
     }

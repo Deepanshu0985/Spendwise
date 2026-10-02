@@ -26,7 +26,11 @@ final class StatementTransactionMapper {
                 entity.getReviewStatus(),
                 entity.getCanonicalTransactionId(),
                 entity.getSourceRowReference(),
-                entity.getCreatedAt());
+                entity.getCreatedAt(),
+                entity.getExternalReference(),
+                entity.getDuplicateReason(),
+                entity.getDuplicateOfTransactionId(),
+                entity.getDuplicateOverriddenAt());
     }
 
     static StatementTransactionJpaEntity toNewEntity(StatementTransaction row) {
@@ -46,7 +50,11 @@ final class StatementTransactionMapper {
                 row.getDuplicateStatus(),
                 row.getReviewStatus(),
                 row.getCanonicalTransactionId(),
-                row.getSourceRowReference());
+                row.getSourceRowReference(),
+                row.getExternalReference(),
+                row.getDuplicateReason(),
+                row.getDuplicateOfTransactionId(),
+                row.getDuplicateOverriddenAt());
     }
 
     /** Mutates an existing managed entity in place so Hibernate's dirty checking fires correctly. */
@@ -58,6 +66,10 @@ final class StatementTransactionMapper {
         entity.setSuggestedTransactionType(row.getSuggestedTransactionType());
         entity.setReviewStatus(row.getReviewStatus());
         entity.setCanonicalTransactionId(row.getCanonicalTransactionId());
+        entity.setDuplicateStatus(row.getDuplicateStatus());
+        entity.setDuplicateReason(row.getDuplicateReason());
+        entity.setDuplicateOfTransactionId(row.getDuplicateOfTransactionId());
+        entity.setDuplicateOverriddenAt(row.getDuplicateOverriddenAt());
         return entity;
     }
 }

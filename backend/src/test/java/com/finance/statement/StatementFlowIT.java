@@ -174,4 +174,65 @@ class StatementFlowIT {
         assertThat(upload.status()).isEqualTo(415);
         assertThat(upload.errorCode()).isEqualTo("UNSUPPORTED_FILE");
     }
+
+    private static final String SWIGGY = "15/09/26 SWIGGY BANGALORE UPI123456 15/09/26 500.00 0.00 4500.00";
+    private static final String SALARY = "18/09/26 SALARY CREDIT ACME CORP NEFT999 18/09/26 0.00 50000.00 54500.00";
+    private static final String AMAZON = "20/09/26 AMAZON PAY INDIA UPI777777 20/09/26 250.00 0.00 54250.00";
+
+    private String upload(String fileName, String... rows) {
+        ApiResult upload = client.postMultipart(
+                "/statements/upload", Map.of("accountId", accountId), "file", fileName,
+                PdfFixtures.statementPdf("HDFC BANK Statement of Account", List.of(rows)));
+        assertThat(upload.data().get("status").asText()).isEqualTo("READY_FOR_REVIEW");
+        return upload.data().get("id").asText();
+    }
+
+    private String duplicateStatusOf(String statementId, int index) {
+        return client.get("/statements/" + statementId + "/transactions").data().get(index).get("duplicateStatus").asText();
+    }
+
+    @Test
+    void anOverlappingStatementsRepeatedRowsAreFlaggedAndSkippedOnConfirm() {
+        String first = upload("first.pdf", SWIGGY, SALARY);
+        // Staged while the first is still unconfirmed, so nothing can be flagged yet.
+        String overlapping = upload("overlapping.pdf", SWIGGY, SALARY, AMAZON);
+        assertThat(duplicateStatusOf(overlapping, 0)).isEqualTo("NOT_DUPLICATE");
+
+        client.post("/statements/" + first + "/confirm", Map.of());
+
+        ApiResult recheck = client.post("/statements/" + overlapping + "/duplicates/recheck", Map.of());
+        assertThat(recheck.status()).isEqualTo(200);
+        long duplicates = 0;
+        for (var row : recheck.data()) {
+            if (row.get("duplicateStatus").asText().equals("DUPLICATE")) {
+                duplicates++;
+                assertThat(row.get("duplicateReason").asText()).isEqualTo("EXACT_REFERENCE");
+            }
+        }
+        assertThat(duplicates).isEqualTo(2);
+
+        ApiResult confirm = client.post("/statements/" + overlapping + "/confirm", Map.of());
+        assertThat(confirm.data().get("importedTransactionIds")).hasSize(1);
+        assertThat(confirm.data().get("skippedDuplicateCount").asInt()).isEqualTo(2);
+        assertThat(client.get("/transactions").data()).hasSize(3);
+    }
+
+    @Test
+    void aFlaggedDuplicateCanBeKeptAnywayAndThenImports() {
+        String first = upload("first.pdf", SWIGGY);
+        client.post("/statements/" + first + "/confirm", Map.of());
+
+        String second = upload("second.pdf", SWIGGY, AMAZON);
+        assertThat(duplicateStatusOf(second, 0)).isEqualTo("DUPLICATE");
+
+        String stagingId = client.get("/statements/" + second + "/transactions").data().get(0).get("id").asText();
+        ApiResult keep = client.post("/statements/" + second + "/transactions/" + stagingId + "/keep-duplicate", Map.of());
+        assertThat(keep.status()).isEqualTo(200);
+        assertThat(keep.data().get("duplicateStatus").asText()).isEqualTo("NOT_DUPLICATE");
+        assertThat(keep.data().get("duplicateOverridden").asBoolean()).isTrue();
+
+        ApiResult confirm = client.post("/statements/" + second + "/confirm", Map.of());
+        assertThat(confirm.data().get("importedTransactionIds")).hasSize(2);
+        assertThat(confirm.data().get("skippedDuplicateCount").asInt()).isZero();
+    }
 }

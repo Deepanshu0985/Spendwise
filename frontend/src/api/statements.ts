@@ -23,5 +23,8 @@ export const statementsApi = {
     apiClient.put<StatementTransaction>(`/statements/${statementId}/transactions/${stagingId}`, body),
   confirm: (id: string, idempotencyKey?: string) =>
     apiClient.post<ConfirmStatementResult>(`/statements/${id}/confirm`, undefined, idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined),
+  recheckDuplicates: (id: string) => apiClient.post<StatementTransaction[]>(`/statements/${id}/duplicates/recheck`),
+  keepDuplicate: (statementId: string, stagingId: string) =>
+    apiClient.post<StatementTransaction>(`/statements/${statementId}/transactions/${stagingId}/keep-duplicate`),
   retry: (id: string) => apiClient.post<Statement>(`/statements/${id}/retry`),
 }

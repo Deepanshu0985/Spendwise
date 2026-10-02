@@ -191,7 +191,21 @@ DigitalOcean remains the actual V1 production target once beta-ready — see `DE
 - [ ] Not yet merged to `main` — stays on `staging` until the user reviews and confirms it's ready
 
 ## Phase 7 — Normalization and Duplicates
-Not started.
+
+**Done:**
+- [x] Duplicate scoring (`DuplicateScorer` + `DuplicateDetectionService`): exact reference across all accounts, same-day amount+description, nearby-date similarity; one-to-one matching against imported transactions
+- [x] `V14` migration; staged rows keep their payment reference; confirm stores raw narration + reference on the imported transaction
+- [x] Duplicates skipped on confirm unless the user chooses "Import anyway" (audit timestamp stored); `POSSIBLE_DUPLICATE` flagged but imported; confirm reports how many were skipped
+- [x] Re-scoring when the review screen opens (`/duplicates/recheck`) and again at confirm, so statements staged before an overlapping one was confirmed are still caught
+- [x] Frontend: duplicate / possible-duplicate badges, "Import anyway", kept-anyway label, skipped-count message
+- [x] BOB parser extracts the UPI reference; verified on real data (24/97 Paytm rows matched against the real BOB statement, equal to Paytm's own count)
+- [x] Tests: 71 unit + 32 integration green
+
+**Left:**
+- [ ] Merchant normalization rules and the "remember my edits" step (corrections saved per user and applied on the next statement)
+- [ ] Transfer pairing / one-sided transfer review (still Phase 6 "Left")
+- [ ] Not merged to `main` - staying on `staging` until the whole statement module is ready (user's instruction)
+
 
 ## Phase 8 — Dogfood Statements
 Not started.

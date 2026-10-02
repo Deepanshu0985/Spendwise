@@ -53,6 +53,7 @@ public class StatementServiceImpl implements StatementService {
     private final StatementFormatDetector statementFormatDetector;
     private final TransactionNormalizer transactionNormalizer;
     private final DescriptionCleanerRegistry descriptionCleanerRegistry;
+    private final DuplicateDetectionService duplicateDetectionService;
     private final StorageService storageService;
 
     public StatementServiceImpl(
@@ -65,6 +66,7 @@ public class StatementServiceImpl implements StatementService {
             StatementFormatDetector statementFormatDetector,
             TransactionNormalizer transactionNormalizer,
             DescriptionCleanerRegistry descriptionCleanerRegistry,
+            DuplicateDetectionService duplicateDetectionService,
             StorageService storageService) {
         this.statementRepository = statementRepository;
         this.statementTransactionRepository = statementTransactionRepository;
@@ -75,6 +77,7 @@ public class StatementServiceImpl implements StatementService {
         this.statementFormatDetector = statementFormatDetector;
         this.transactionNormalizer = transactionNormalizer;
         this.descriptionCleanerRegistry = descriptionCleanerRegistry;
+        this.duplicateDetectionService = duplicateDetectionService;
         this.storageService = storageService;
     }
 
@@ -136,6 +139,27 @@ public class StatementServiceImpl implements StatementService {
 
     @Override
     @Transactional
+    public List<StatementTransaction> recheckDuplicates(UUID userId, UUID statementId) {
+        Statement statement = requireOwnedStatement(userId, statementId);
+        List<StatementTransaction> rows = statementTransactionRepository.findByStatementIdAndUserId(statementId, userId);
+        if (statement.getStatus() != StatementStatus.READY_FOR_REVIEW) {
+            return rows;
+        }
+        duplicateDetectionService.score(userId, statement.getAccountId(), rows);
+        return statementTransactionRepository.saveAll(rows);
+    }
+
+    @Override
+    @Transactional
+    public StatementTransaction keepDuplicate(UUID userId, UUID statementId, UUID stagingId) {
+        requireOwnedStatement(userId, statementId);
+        StatementTransaction row = requireOwnedStagedRow(userId, statementId, stagingId);
+        row.overrideDuplicate(Instant.now());
+        return statementTransactionRepository.save(row);
+    }
+
+    @Override
+    @Transactional
     public ConfirmResult confirm(UUID userId, UUID statementId) {
         Statement statement = requireOwnedStatement(userId, statementId);
 
@@ -147,7 +171,7 @@ public class StatementServiceImpl implements StatementService {
                     .map(row -> transactionRepository.findByIdAndUserId(row.getCanonicalTransactionId(), userId)
                             .orElseThrow(() -> new StatementProcessingFailedException("A previously imported transaction is missing.")))
                     .toList();
-            return new ConfirmResult(statement, alreadyImported);
+            return new ConfirmResult(statement, alreadyImported, 0);
         }
 
         if (statement.getStatus() != StatementStatus.READY_FOR_REVIEW) {
@@ -156,15 +180,25 @@ public class StatementServiceImpl implements StatementService {
         }
 
         List<StatementTransaction> rows = statementTransactionRepository.findByStatementIdAndUserId(statementId, userId);
+        // Re-scored here too, not just at staging: a statement staged before an overlapping one was
+        // confirmed would otherwise carry no flags and double-count the shared transactions.
+        duplicateDetectionService.score(userId, statement.getAccountId(), rows);
         List<Transaction> imported = new ArrayList<>();
+        int skippedDuplicates = 0;
         for (StatementTransaction row : rows) {
             if (row.getReviewStatus() == ReviewStatus.REJECTED) {
+                continue;
+            }
+            if (row.isUnresolvedDuplicate()) {
+                statementTransactionRepository.save(row);
+                skippedDuplicates++;
                 continue;
             }
             Transaction transaction = new Transaction(
                     userId, statement.getAccountId(), row.getSuggestedMerchantId(), row.getSuggestedCategoryId(),
                     row.getTransactionDate(), row.getAmount(), row.getCurrency(), row.getNormalizedDescription(),
-                    row.getSuggestedTransactionType(), TransactionSource.STATEMENT, TransactionStatus.CONFIRMED);
+                    row.getRawDescription(), row.getSuggestedTransactionType(), TransactionSource.STATEMENT,
+                    row.getExternalReference(), TransactionStatus.CONFIRMED);
             transaction = transactionRepository.save(transaction);
             row.markPromoted(transaction.getId());
             statementTransactionRepository.save(row);
@@ -173,7 +207,7 @@ public class StatementServiceImpl implements StatementService {
 
         statement.markImported(Instant.now());
         statement = statementRepository.save(statement);
-        return new ConfirmResult(statement, imported);
+        return new ConfirmResult(statement, imported, skippedDuplicates);
     }
 
     @Override
@@ -202,6 +236,7 @@ public class StatementServiceImpl implements StatementService {
             List<StatementTransaction> staged = parsed.rows().stream()
                     .map(row -> toStagedRow(userId, statementId, account.getCurrency(), parsed.detectedBank(), row))
                     .toList();
+            duplicateDetectionService.score(userId, account.getId(), staged);
             statementTransactionRepository.saveAll(staged);
             statement.markReadyForReview(parsed.periodStart(), parsed.periodEnd());
         } catch (ApiException e) {
@@ -224,7 +259,7 @@ public class StatementServiceImpl implements StatementService {
         return new StatementTransaction(
                 userId, statementId, row.transactionDate(), row.amount(), currency, row.rawDescription(),
                 description, null, null, normalized.transactionType(), normalized.confidenceScore(),
-                row.sourceRowReference());
+                row.sourceRowReference(), row.reference());
     }
 
     private Account requireOwnedAccount(UUID userId, UUID accountId) {
