@@ -1,3 +1,11 @@
+## Free merchant naming via a `MerchantNameResolver` interface (no paid AI for now)
+
+**Decision.** After `BobDescriptionCleaner` strips a UPI narration to its handle, a `MerchantNameResolver` (interface; `KeywordMerchantNameResolver` is the implementation) names it when the handle contains a distinctive known brand (`zomatoltd32.rzp` becomes `UPI: Zomato`). People's handles, phone numbers and generic QR merchants stay as the handle. Verified end to end: the real BOB statement was re-uploaded through the running app and the review screen now shows "UPI: Zomato", "UPI: 7302904765" instead of raw narration.
+
+**Why.** The user wants this done without spending money. A small offline dictionary covers the recognisable brands at zero cost and zero privacy exposure; the interface means a learned (user edits remembered) or free-tier AI resolver can be added later without touching any bank cleaner. Free API options identified for later: Gemini, Groq and OpenRouter free tiers (see memory `no-paid-services-for-dev`).
+
+**Operational note.** Rows already staged keep the description they were staged with; a statement must be re-uploaded (or retried after being failed) to pick up cleaner/parser changes. The first screenshot of this feature showed old data for exactly that reason.
+
 ## Description cleanup is a per-bank interface layer (`DescriptionCleaner`), separate from parsing and classification
 
 **Decision.** Bank narrations are noisy (a BOB UPI row is `UPI/609609496741/18:05:55/UPI/zomatoltd32.rzp@hdf`), so cleaning them for display is its own layer: a `DescriptionCleaner` interface (one implementation per bank, `bankName()` + `Optional<String> clean(raw)`), selected by `DescriptionCleanerRegistry` the same way `StatementFormatDetector` selects a parser. `BobDescriptionCleaner` is the first implementation (strips ref, time, bank suffix and truncated note, leaving `UPI: zomatoltd32.rzp`); a bank with no cleaner, or a narration its cleaner has no opinion on (EMI debits, NEFT, IMPS, bank charges), keeps the existing `TransactionNormalizer` description. It is applied in `StatementServiceImpl.toStagedRow`; classification still runs against the raw text and `rawDescription` is always stored untouched.

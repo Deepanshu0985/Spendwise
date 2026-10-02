@@ -3,6 +3,7 @@ package com.finance.statement;
 import com.finance.infrastructure.pdf.BobDescriptionCleaner;
 import com.finance.infrastructure.pdf.DescriptionCleaner;
 import com.finance.infrastructure.pdf.DescriptionCleanerRegistry;
+import com.finance.infrastructure.pdf.KeywordMerchantNameResolver;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -11,12 +12,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class BobDescriptionCleanerTest {
 
-    private final BobDescriptionCleaner cleaner = new BobDescriptionCleaner();
+    private final BobDescriptionCleaner cleaner = new BobDescriptionCleaner(new KeywordMerchantNameResolver());
 
     @Test
     void stripsRefTimeAndBankSuffixDownToTheHandle() {
         assertThat(cleaner.clean("UPI/609609496741/18:05:55/UPI/zomatoltd32.rzp@hdf/Sent"))
-                .contains("UPI: zomatoltd32.rzp");
+                .contains("UPI: Zomato");
+    }
+
+    @Test
+    void keepsUnknownHandlesAsTheyAre() {
+        assertThat(cleaner.clean("UPI/310117840584/14:56:09/UPI/ibkpos.ep225326@ici")).contains("UPI: ibkpos.ep225326");
     }
 
     @Test
@@ -38,7 +44,7 @@ class BobDescriptionCleanerTest {
     void registryUsesTheBanksCleanerAndFallsBackOtherwise() {
         DescriptionCleanerRegistry registry = new DescriptionCleanerRegistry(List.<DescriptionCleaner>of(cleaner));
 
-        assertThat(registry.clean("BOB", "UPI/1/10:00:00/UPI/swiggy@ybl/x", "fallback")).isEqualTo("UPI: swiggy");
+        assertThat(registry.clean("BOB", "UPI/1/10:00:00/UPI/swiggy@ybl/x", "fallback")).isEqualTo("UPI: Swiggy");
         assertThat(registry.clean("BOB", "ACHDR/EMIDUE/1/2", "fallback")).isEqualTo("fallback");
         assertThat(registry.clean("PAYTM_WALLET", "UPI/1/10:00:00/UPI/swiggy@ybl/x", "fallback")).isEqualTo("fallback");
     }
