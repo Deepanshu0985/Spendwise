@@ -22,3 +22,6 @@ frontend/dist/
 
 # Claude Code runtime state (not project config)
 .claude/scheduled_tasks.lock
+
+# Staging deploy env files (contain secrets)
+deploy-staging/
