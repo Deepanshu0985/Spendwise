@@ -79,7 +79,7 @@ All analytics endpoints accept `currency`, defaulting to the user's default curr
 `GET/POST /goals`, `PUT/DELETE /goals/{id}`
 
 ## Recurring
-`GET /recurring-expenses`, `PUT /recurring-expenses/{id}`, `POST /recurring-expenses/{id}/dismiss`
+`GET /recurring-expenses?activeOnly=`, `POST /recurring-expenses/detect` (re-runs detection, returns the refreshed list), `PUT /recurring-expenses/{id}` (name, categoryId, confirmed - all optional), `POST /recurring-expenses/{id}/dismiss` (idempotent, 204)
 
 ## AI
 `POST /ai/chat`, `POST /ai/categorize`, `POST /ai/insights/monthly`

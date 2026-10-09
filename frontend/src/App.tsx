@@ -7,6 +7,7 @@ import { ComingSoonPage } from './pages/ComingSoonPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage'
 import { LoginPage } from './pages/LoginPage'
+import { RecurringPage } from './pages/RecurringPage'
 import { RegisterPage } from './pages/RegisterPage'
 import { ResetPasswordPage } from './pages/ResetPasswordPage'
 import { StatementsPage } from './pages/StatementsPage'
@@ -57,7 +58,7 @@ function App() {
             <Route path="statements" element={<StatementsPage />} />
             <Route path="budgets" element={<ComingSoonPage title="Budgets" phase="Phase 10" />} />
             <Route path="goals" element={<ComingSoonPage title="Goals" phase="Phase 10" />} />
-            <Route path="recurring" element={<ComingSoonPage title="Recurring" phase="Phase 9" />} />
+            <Route path="recurring" element={<RecurringPage />} />
             <Route path="assistant" element={<ComingSoonPage title="AI Assistant" phase="Phase 12" />} />
             <Route path="settings" element={<ComingSoonPage title="Settings" phase="Phase 14" />} />
           </Route>

@@ -39,4 +39,16 @@ public interface TransactionJpaRepository extends JpaRepository<TransactionJpaEn
             @org.springframework.data.repository.query.Param("userId") UUID userId,
             @org.springframework.data.repository.query.Param("from") java.time.LocalDate from,
             @org.springframework.data.repository.query.Param("to") java.time.LocalDate to);
+
+    @org.springframework.data.jpa.repository.Query("""
+            select t from TransactionJpaEntity t
+            where t.userId = :userId
+              and t.status = com.finance.domain.transaction.TransactionStatus.CONFIRMED
+              and t.transactionType = com.finance.domain.transaction.TransactionType.EXPENSE
+              and t.transactionDate >= :since
+            order by t.transactionDate
+            """)
+    List<TransactionJpaEntity> findConfirmedExpensesSince(
+            @org.springframework.data.repository.query.Param("userId") UUID userId,
+            @org.springframework.data.repository.query.Param("since") java.time.LocalDate since);
 }
