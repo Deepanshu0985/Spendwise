@@ -112,7 +112,7 @@ DigitalOcean remains the actual V1 production target once beta-ready — see `DE
 - [x] Verified in a real browser (golden path, partial failure plus retry, phone-width layout); frontend build clean
 
 **Left:**
-- [ ] Not merged to `main` yet - waiting for the user's go-ahead
+- [x] Merged to `main` and live (with a follow-up CORS fix for the `Idempotency-Key` header)
 
 ## Cross-cutting — Backend layering retrofit (domain/application/infrastructure)
 
@@ -215,7 +215,7 @@ DigitalOcean remains the actual V1 production target once beta-ready — see `DE
 **Left:**
 - [ ] Wider merchant-normalization rules (the free keyword dictionary covers well-known brands only)
 - [ ] Transfer pairing / one-sided transfer review (still Phase 6 "Left")
-- [ ] Not merged to `main` - staying on `staging` until the whole statement module is ready (user's instruction)
+- [x] Merged to `main` (live) together with the rest of the statement module, at the user's request
 
 
 ## Phase 8 — Dogfood Statements

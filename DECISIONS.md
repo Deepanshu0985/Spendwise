@@ -1,3 +1,11 @@
+## Statement module released: `staging` merged into `main`
+
+**Decision.** At the user's request `staging` was fast-forwarded into `main` (`456ef51`), putting the whole statement module (import pipeline, Paytm and BOB parsers, description cleanup, duplicate detection, payee rules, loading-screen fix) and "Add several transactions" on the live site. `main` was already contained in `staging` after the earlier merge, so there was nothing to reconcile.
+
+**Safeguards and result.** The merged commit had just passed the full suite (74 unit + 35 integration tests) and had built and started on the staging backend before the push. Render keeps the previous instance serving if a new one fails to boot, which is the safety net for the one irreversible step: the live database applying migrations V12-V15 (all additive: new tables and columns, no changes to existing data). The live deploy went `live` in about four minutes, health is `UP`, `GET /statements` answers 401 (route present, login required) and the live frontend serves the statement screens.
+
+**Known limits live, unchanged:** the free-tier backend sleeps when idle (first request about a minute, now explained on the loading screen); uploaded statement files live on Render's ephemeral disk, so Retry on an old statement fails after a redeploy; staging hostnames are routed to the staging backend by a stop-gap rule in `client.ts`.
+
 ## Fix: "Add several" failed on the live site because the backend's cross-site rules didn't allow `Idempotency-Key`
 
 **What happened.** Right after the feature was merged, every row failed on the live site with a generic "could not save" - the request never reached the server. The feature sends an `Idempotency-Key` header on each create call (that is what makes retries safe), but `CorsConfig` only allowed `Content-Type` and `X-CSRF-Token`. The browser's preflight check on the split-origin deployment (Vercel frontend, Render backend) therefore blocked the call. Confirmed directly: a preflight asking for `idempotency-key` got back `Access-Control-Allow-Headers: content-type, x-csrf-token`.

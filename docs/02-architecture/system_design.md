@@ -99,7 +99,7 @@ React 19 + TypeScript + Vite, plain CSS design tokens, no UI framework. Pages: D
 | Interim live | Render web service (deploys `main`) | Neon | Vercel (production alias follows `main`) |
 | V1 production target | Docker Compose behind Caddy on a DigitalOcean droplet (ADR-017) | Postgres | Caddy-served static build |
 
-Branching: all feature work happens on `staging`; `main` is the live deployment and only advances by merging a verified, complete feature. The statement module is not merged yet.
+Branching: all feature work happens on `staging`; `main` is the live deployment and only advances by merging a verified, complete feature.
 
 ## 8. Testing strategy
 - Unit tests for every parser, cleaner, normalizer and the duplicate scorer, using synthetic fixtures only (PDFs generated in-memory with PDFBox). Real statements are never committed.
