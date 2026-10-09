@@ -28,6 +28,15 @@ public final class PdfFixtures {
 
     /** One line of text per row, matching the exact column layout HdfcBankStatementParser/SbiStatementParser/AxisBankStatementParser expect. */
     public static byte[] statementPdf(String headerLine, List<String> rowLines) {
+        return buildStatementPdf(headerLine, rowLines, null);
+    }
+
+    /** Same as statementPdf, but opening it requires userPassword - a made-up test value, never a real one. */
+    public static byte[] encryptedStatementPdf(String headerLine, List<String> rowLines, String userPassword) {
+        return buildStatementPdf(headerLine, rowLines, userPassword);
+    }
+
+    private static byte[] buildStatementPdf(String headerLine, List<String> rowLines, String userPassword) {
         try (PDDocument document = new PDDocument()) {
             PDPage page = new PDPage(PDRectangle.A4);
             document.addPage(page);
@@ -47,6 +56,11 @@ public final class PdfFixtures {
                     stream.endText();
                     y -= 15;
                 }
+            }
+            if (userPassword != null) {
+                StandardProtectionPolicy policy = new StandardProtectionPolicy("owner-" + userPassword, userPassword, new AccessPermission());
+                policy.setEncryptionKeyLength(128);
+                document.protect(policy);
             }
             ByteArrayOutputStream out = new ByteArrayOutputStream();
             document.save(out);

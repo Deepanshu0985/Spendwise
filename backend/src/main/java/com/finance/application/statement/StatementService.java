@@ -12,6 +12,9 @@ public interface StatementService {
 
     Statement upload(UUID userId, UploadStatementCommand command);
 
+    /** Names of the banks whose statements can currently be imported, for showing in the upload dialog. */
+    List<String> supportedBanks();
+
     Page<Statement> list(UUID userId, Pageable pageable);
 
     Statement getOwned(UUID userId, UUID statementId);
@@ -39,6 +42,6 @@ public interface StatementService {
     /** Idempotent: a repeat call against an already-IMPORTED statement returns the original result, never imports twice. */
     ConfirmResult confirm(UUID userId, UUID statementId);
 
-    /** Re-runs extraction/parsing after a FAILED statement. */
-    Statement retry(UUID userId, UUID statementId);
+    /** Re-runs extraction/parsing after a FAILED statement; password (nullable) opens an encrypted PDF in memory only and is never stored. */
+    Statement retry(UUID userId, UUID statementId, String password);
 }

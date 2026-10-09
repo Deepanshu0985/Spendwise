@@ -346,4 +346,54 @@ class StatementFlowIT {
         assertThat(list.get(0).get("fileName").asText()).isEqualTo("newer.pdf");
         assertThat(list.get(1).get("fileName").asText()).isEqualTo("older.pdf");
     }
+
+    @Test
+    void aPasswordProtectedStatementAsksForThePasswordThenImportsOnceItIsGiven() {
+        byte[] protectedPdf = PdfFixtures.encryptedStatementPdf("HDFC BANK Statement of Account", List.of(SWIGGY, AMAZON), "pw-for-test-only");
+
+        ApiResult first = client.postMultipart("/statements/upload", Map.of("accountId", accountId), "file", "protected.pdf", protectedPdf);
+        assertThat(first.data().get("status").asText()).isEqualTo("FAILED");
+        assertThat(first.data().get("errorMessage").asText()).contains("password-protected");
+        String id = first.data().get("id").asText();
+
+        ApiResult wrong = client.post("/statements/" + id + "/retry", Map.of("password", "wrong-password"));
+        assertThat(wrong.data().get("status").asText()).isEqualTo("FAILED");
+        assertThat(wrong.data().get("errorMessage").asText()).contains("incorrect").doesNotContain("wrong-password");
+
+        ApiResult right = client.post("/statements/" + id + "/retry", Map.of("password", "pw-for-test-only"));
+        assertThat(right.data().get("status").asText()).isEqualTo("READY_FOR_REVIEW");
+        assertThat(client.get("/statements/" + id + "/transactions").data()).hasSize(2);
+        assertThat(right.data().toString()).doesNotContain("pw-for-test-only");
+    }
+
+    @Test
+    void aPasswordGivenAtUploadTimeImportsAProtectedStatementInOneStep() {
+        byte[] protectedPdf = PdfFixtures.encryptedStatementPdf("HDFC BANK Statement of Account", List.of(SWIGGY), "pw-for-test-only");
+
+        ApiResult upload = client.postMultipart(
+                "/statements/upload", Map.of("accountId", accountId, "password", "pw-for-test-only"), "file", "protected.pdf", protectedPdf);
+
+        assertThat(upload.data().get("status").asText()).isEqualTo("READY_FOR_REVIEW");
+    }
+
+    @Test
+    void uploadingAFailedProtectedStatementAgainWithThePasswordReprocessesIt() {
+        byte[] protectedPdf = PdfFixtures.encryptedStatementPdf("HDFC BANK Statement of Account", List.of(SWIGGY), "pw-for-test-only");
+        String id = client.postMultipart("/statements/upload", Map.of("accountId", accountId), "file", "p.pdf", protectedPdf)
+                .data().get("id").asText();
+
+        ApiResult again = client.postMultipart(
+                "/statements/upload", Map.of("accountId", accountId, "password", "pw-for-test-only"), "file", "p.pdf", protectedPdf);
+
+        assertThat(again.data().get("id").asText()).isEqualTo(id);
+        assertThat(again.data().get("status").asText()).isEqualTo("READY_FOR_REVIEW");
+    }
+
+    @Test
+    void theSupportedBanksListComesFromTheRegisteredParsers() {
+        ApiResult banks = client.get("/statements/supported-banks");
+
+        assertThat(banks.status()).isEqualTo(200);
+        assertThat(banks.data().toString()).contains("Bank of Baroda", "Paytm Wallet", "HDFC Bank");
+    }
 }

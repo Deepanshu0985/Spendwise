@@ -102,7 +102,7 @@ public class StatementServiceImpl implements StatementService {
                 // stored copy may be gone (Render's disk is wiped on every redeploy), so the file is stored
                 // again before it is reprocessed.
                 storageService.store(previous.getStorageKey(), command.content());
-                return process(userId, requireOwnedAccount(userId, previous.getAccountId()), previous);
+                return process(userId, requireOwnedAccount(userId, previous.getAccountId()), previous, command.password());
             }
             return previous;
         }
@@ -116,7 +116,12 @@ public class StatementServiceImpl implements StatementService {
                 null, null, StatementStatus.UPLOADED, null, Instant.now(), null);
         statement = statementRepository.save(statement);
 
-        return process(userId, account, statement);
+        return process(userId, account, statement, command.password());
+    }
+
+    @Override
+    public List<String> supportedBanks() {
+        return statementFormatDetector.supportedBankNames();
     }
 
     @Override
@@ -259,16 +264,16 @@ public class StatementServiceImpl implements StatementService {
 
     @Override
     @Transactional
-    public Statement retry(UUID userId, UUID statementId) {
+    public Statement retry(UUID userId, UUID statementId, String password) {
         Statement statement = requireOwnedStatement(userId, statementId);
         if (statement.getStatus() != StatementStatus.FAILED) {
             throw new DomainValidationException("Only a FAILED statement can be retried (current status: " + statement.getStatus() + ").", List.of());
         }
         Account account = requireOwnedAccount(userId, statement.getAccountId());
-        return process(userId, account, statement);
+        return process(userId, account, statement, password);
     }
 
-    private Statement process(UUID userId, Account account, Statement statement) {
+    private Statement process(UUID userId, Account account, Statement statement, String password) {
         statement.markProcessing();
         statement = statementRepository.save(statement);
         try {
@@ -278,7 +283,7 @@ public class StatementServiceImpl implements StatementService {
             } catch (UncheckedIOException e) {
                 throw new StatementProcessingFailedException("The uploaded file is no longer stored - please upload it again.");
             }
-            ExtractionResult extraction = pdfTextExtractor.extract(content);
+            ExtractionResult extraction = pdfTextExtractor.extract(content, password);
             StatementParser parser = statementFormatDetector.detect(extraction.text());
             ParsedStatement parsed = parser.parse(extraction.text());
             if (parsed.rows().isEmpty()) {

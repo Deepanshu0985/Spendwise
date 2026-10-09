@@ -2,5 +2,6 @@ package com.finance.application.statement;
 
 import java.util.UUID;
 
-public record UploadStatementCommand(UUID accountId, String fileName, String contentType, byte[] content) {
+/** password (nullable) only opens an encrypted PDF in memory while it is read; it is never stored, logged or returned. */
+public record UploadStatementCommand(UUID accountId, String fileName, String contentType, byte[] content, String password) {
 }

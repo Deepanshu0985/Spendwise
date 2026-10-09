@@ -1,3 +1,15 @@
+## Password-protected statements: the password is used in memory only; supported banks come from the backend
+
+**Why.** Banks often send statements as password-protected PDFs, and the earlier answer was a dead end ("remove the password and upload again"). The user's own `3455...244.pdf` failed this way. Rebuilt on the current code (the first attempt was parked in a stash on an older base and is superseded).
+
+**How.** An optional password travels with the upload (a multipart field) or a retry (a JSON body) into `PdfTextExtractor.extract(content, password)` and is used only to open the PDF during that call. It is never stored, never put in an error message or a response, and the request DTO's `toString()` hides it. Verified that it appears nowhere in the server log. A protected file uploaded without one fails with "Enter its password to continue"; a wrong one with "That password is incorrect"; the stored copy is the original encrypted bytes. The review screen shows a password field and "Unlock and import" on exactly that failure, the upload dialog has an optional password field, and uploading the same failed file again with the password also reprocesses it.
+
+**A bug found on the way.** The extractor rejected every PDF that PDFBox flags as encrypted, even after the right password opened it, and it would also have rejected the common bank PDFs that only restrict printing or copying but open with no password. It now checks whether the text may actually be extracted (`canExtractContent`) instead.
+
+**Supported banks list.** The upload dialog still carried a hardcoded sentence naming six banks. It now reads `GET /statements/supported-banks`, built from the registered parsers (the same source as the detector's error message), so adding a bank updates every list automatically.
+
+**Verified.** 87 unit + 43 integration tests green; in a browser on a throwaway database with a synthetic protected PDF (made-up password): upload without a password fails with the prompt, a wrong password gives the clear message and keeps the field, the right one imports two rows and the field disappears.
+
 ## Bank support is pluggable by contract: one interface, one sample, automatic cross-bank checks; card bills are plain expenses
 
 **Direction from the user.** Spendwise is a product for everyone and must eventually cover every bank in India, so adding a bank should mean implementing one interface and nothing else, and credit card bill payments are plain expenses (users record the bill from their bank account, not individual card purchases). Both are recorded as a standing rule in memory.

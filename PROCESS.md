@@ -224,10 +224,11 @@ DigitalOcean remains the actual V1 production target once beta-ready — see `DE
 - [x] Real Paytm statements (two) and a real Bank of Baroda statement imported and working live; they exposed and fixed about six real bugs (Paytm layout and amount lines, BOB layout, bank-name detection collisions in both directions, wrapped narration, a stuck failed upload)
 - [x] Bank support made pluggable by contract: displayName/identityPosition on the interface, order-independent detector that refuses true ties, `StatementParserContractTest` over every parser with per-bank synthetic samples, and `docs/05-statement-processing/adding-a-bank.md`
 - [x] Credit card bill payments are plain expenses (user's rule)
+- [x] Password-protected PDFs: optional in-memory password on upload and retry, prompt on the failed statement, verified in a browser; also stopped rejecting PDFs that merely restrict printing/copying
+- [x] The supported-banks list shown in the upload dialog now comes from the backend
 
 **Left:**
-- [ ] Real statements for Ujjivan and Axis (and HDFC/SBI if they are ever needed): until each is verified on a real file, its parser is synthetic-only (tracked in `adding-a-bank.md`)
-- [ ] Password-protected PDFs: started and parked in a git stash ("phase-8 password-protected PDF support"); banks often send protected statements
+- [ ] Real statements for Ujjivan and Axis (and HDFC/SBI if they are ever needed): deferred by the user until such statements exist; until verified on a real file, each parser is synthetic-only (tracked in `adding-a-bank.md`)
 - [ ] Paytm rows are staged against the Paytm wallet account even when the payment left a linked bank account; reading the per-row account label would assign the right one
 
 

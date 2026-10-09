@@ -10,10 +10,11 @@ export interface UpdateStagedTransactionRequest {
 }
 
 export const statementsApi = {
-  upload: (accountId: string, file: File) => {
+  upload: (accountId: string, file: File, password?: string) => {
     const form = new FormData()
     form.append('accountId', accountId)
     form.append('file', file)
+    if (password) form.append('password', password)
     return apiClient.postForm<Statement>('/statements/upload', form)
   },
   list: (page = 0) => apiClient.getWithMeta<Statement[], PageMeta>('/statements', { page }),
@@ -30,5 +31,7 @@ export const statementsApi = {
     apiClient.post<StatementTransaction>(`/statements/${statementId}/transactions/${stagingId}/skip`),
   restoreRow: (statementId: string, stagingId: string) =>
     apiClient.post<StatementTransaction>(`/statements/${statementId}/transactions/${stagingId}/restore`),
-  retry: (id: string) => apiClient.post<Statement>(`/statements/${id}/retry`),
+  retry: (id: string, password?: string) =>
+    apiClient.post<Statement>(`/statements/${id}/retry`, password ? { password } : undefined),
+  supportedBanks: () => apiClient.get<string[]>('/statements/supported-banks'),
 }

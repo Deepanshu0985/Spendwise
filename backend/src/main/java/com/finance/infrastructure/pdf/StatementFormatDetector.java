@@ -53,7 +53,12 @@ public class StatementFormatDetector {
         return byPosition.get(0);
     }
 
+    /** Display names of every supported bank, sorted - the single source for any list of supported banks shown to users. */
+    public List<String> supportedBankNames() {
+        return parsers.stream().map(StatementParser::displayName).sorted().toList();
+    }
+
     private String supportedBanks() {
-        return parsers.stream().map(StatementParser::displayName).sorted().collect(Collectors.joining(", "));
+        return String.join(", ", supportedBankNames());
     }
 }
