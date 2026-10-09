@@ -302,7 +302,7 @@ export function TransactionsPage() {
                   return (
                     <tr key={tx.id}>
                       <td style={{ paddingLeft: 22 }}>{formatDate(tx.transactionDate)}</td>
-                      <td>{tx.description || TRANSACTION_TYPE_LABELS[tx.transactionType]}</td>
+                      <td>{tx.description || <span style={{ color: 'var(--ink-faint)' }}>No description</span>}</td>
                       <td>{tx.merchantId ? (merchantById.get(tx.merchantId)?.canonicalName ?? '—') : '—'}</td>
                       <td>
                         {tx.categoryId ? (

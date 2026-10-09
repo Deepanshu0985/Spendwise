@@ -1,3 +1,9 @@
+## Blank descriptions show "No description" instead of the transaction type
+
+**What the user saw.** Transactions added through "Add several" (and the single form) with no description appeared with "Expense" in the Description column, which looked like text they had typed. Nothing wrong was stored: the Transactions and Dashboard lists fell back to the transaction type's label whenever the description was empty (a fallback from the original pages, not from the new modal).
+
+**Fix.** Both lists now show a muted "No description"; the type is already clear from the amount's sign and colour. Verified in a browser with one blank and one described transaction. Frontend only; the Dashboard's now-unused label import was removed.
+
 ## Statement rows matching hand-typed entries are flagged, skippable, and the statements list is newest-first
 
 **What the user reported.** A Paytm statement (3-5 Oct) showed rows for payments the user had already typed in by hand (snacks 320, dinner 1,890, credit card 10,343), but nothing was flagged as a duplicate, so confirming would have double-counted them. Also asked that the latest imported statement sit at the top of the list.
