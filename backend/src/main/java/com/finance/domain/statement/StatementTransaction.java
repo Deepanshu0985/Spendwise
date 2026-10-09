@@ -153,6 +153,16 @@ public class StatementTransaction {
         this.duplicateOverriddenAt = at;
     }
 
+    /** The user choosing not to import this row at all (kept in the review list, skipped on confirm). */
+    public void skip() {
+        this.reviewStatus = ReviewStatus.REJECTED;
+    }
+
+    /** Undoes skip(): the row goes back to being imported on confirm. */
+    public void restore() {
+        this.reviewStatus = ReviewStatus.PENDING;
+    }
+
     public boolean isUnresolvedDuplicate() {
         return duplicateStatus == DuplicateStatus.DUPLICATE && duplicateOverriddenAt == null;
     }

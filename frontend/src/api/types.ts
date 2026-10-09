@@ -134,7 +134,7 @@ export interface Statement {
 }
 
 export type DuplicateStatus = 'UNKNOWN' | 'NOT_DUPLICATE' | 'POSSIBLE_DUPLICATE' | 'DUPLICATE'
-export type DuplicateReason = 'EXACT_REFERENCE' | 'DATE_AMOUNT_DESCRIPTION' | 'NEARBY_SIMILAR'
+export type DuplicateReason = 'EXACT_REFERENCE' | 'DATE_AMOUNT_DESCRIPTION' | 'NEARBY_SIMILAR' | 'MANUAL_ENTRY_MATCH'
 export type ReviewStatus = 'PENDING' | 'ACCEPTED' | 'EDITED' | 'REJECTED'
 
 export interface StatementTransaction {

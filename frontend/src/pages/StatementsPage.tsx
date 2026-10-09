@@ -24,6 +24,7 @@ const DUPLICATE_REASON_LABELS: Record<string, string> = {
   EXACT_REFERENCE: 'Same payment reference as an already-imported transaction',
   DATE_AMOUNT_DESCRIPTION: 'Same date, amount and description as an already-imported transaction',
   NEARBY_SIMILAR: 'Similar amount, description and a nearby date to an already-imported transaction',
+  MANUAL_ENTRY_MATCH: 'Same amount, on or next to the date of a transaction you entered by hand'
 }
 
 function statusBadgeClass(status: StatementStatus): string {
@@ -266,6 +267,16 @@ function StatementReview({ statementId, onBack }: { statementId: string; onBack:
     }
   }
 
+  async function handleSkip(row: StatementTransaction, skip: boolean) {
+    setActionError(null)
+    try {
+      const updated = skip ? await statementsApi.skipRow(statementId, row.id) : await statementsApi.restoreRow(statementId, row.id)
+      setRows((current) => current.map((r) => (r.id === updated.id ? updated : r)))
+    } catch (err) {
+      setActionError(err instanceof ApiRequestError ? err.message : 'Something went wrong. Please try again.')
+    }
+  }
+
   async function handleRetry() {
     setActionError(null)
     setRetrying(true)
@@ -355,14 +366,14 @@ function StatementReview({ statementId, onBack }: { statementId: string; onBack:
                     <tr
                       key={row.id}
                       onClick={() => editable && setEditingRow(row)}
-                      style={editable ? { cursor: 'pointer' } : undefined}
+                      style={{ ...(editable ? { cursor: 'pointer' } : {}), ...(row.reviewStatus === 'REJECTED' ? { opacity: 0.5 } : {}) }}
                     >
                       <td style={{ paddingLeft: 22 }}>{formatDate(row.transactionDate)}</td>
                       <td>
                         {row.normalizedDescription ?? row.rawDescription}
                         {editable && <EditIcon size={13} />}
                         {row.duplicateStatus === 'DUPLICATE' && (
-                          <div style={{ marginTop: 4, display: 'flex', gap: 8, alignItems: 'center' }}>
+                          <div style={{ marginTop: 4, display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
                             <span className="badge negative" title={DUPLICATE_REASON_LABELS[row.duplicateReason ?? ''] ?? 'Duplicate'}>
                               Duplicate - skipped on import
                             </span>
@@ -373,18 +384,47 @@ function StatementReview({ statementId, onBack }: { statementId: string; onBack:
                                   e.stopPropagation()
                                   void handleKeepDuplicate(row)
                                 }}
-                                style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--accent)', fontSize: 12 }}
+                                style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--accent)', fontSize: 12, whiteSpace: 'nowrap' }}
                               >
                                 Import anyway
                               </button>
                             )}
                           </div>
                         )}
-                        {row.duplicateStatus === 'POSSIBLE_DUPLICATE' && (
-                          <div style={{ marginTop: 4 }}>
+                        {row.duplicateStatus === 'POSSIBLE_DUPLICATE' && row.reviewStatus !== 'REJECTED' && (
+                          <div style={{ marginTop: 4, display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
                             <span className="badge" title={DUPLICATE_REASON_LABELS[row.duplicateReason ?? ''] ?? 'Possible duplicate'}>
                               Possible duplicate
                             </span>
+                            {editable && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  void handleSkip(row, true)
+                                }}
+                                style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--accent)', fontSize: 12, whiteSpace: 'nowrap' }}
+                              >
+                                Skip this row
+                              </button>
+                            )}
+                          </div>
+                        )}
+                        {row.reviewStatus === 'REJECTED' && (
+                          <div style={{ marginTop: 4, display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+                            <span className="badge">Skipped - not imported</span>
+                            {editable && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  void handleSkip(row, false)
+                                }}
+                                style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--accent)', fontSize: 12, whiteSpace: 'nowrap' }}
+                              >
+                                Undo
+                              </button>
+                            )}
                           </div>
                         )}
                         {row.duplicateOverridden && (

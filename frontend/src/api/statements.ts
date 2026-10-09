@@ -26,5 +26,9 @@ export const statementsApi = {
   recheckDuplicates: (id: string) => apiClient.post<StatementTransaction[]>(`/statements/${id}/duplicates/recheck`),
   keepDuplicate: (statementId: string, stagingId: string) =>
     apiClient.post<StatementTransaction>(`/statements/${statementId}/transactions/${stagingId}/keep-duplicate`),
+  skipRow: (statementId: string, stagingId: string) =>
+    apiClient.post<StatementTransaction>(`/statements/${statementId}/transactions/${stagingId}/skip`),
+  restoreRow: (statementId: string, stagingId: string) =>
+    apiClient.post<StatementTransaction>(`/statements/${statementId}/transactions/${stagingId}/restore`),
   retry: (id: string) => apiClient.post<Statement>(`/statements/${id}/retry`),
 }

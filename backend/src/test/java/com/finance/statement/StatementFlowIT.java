@@ -298,4 +298,52 @@ class StatementFlowIT {
         assertThat(again.data().get("errorMessage").asText()).doesNotContain("upload it again").contains("isn't recognized");
         assertThat(client.get("/statements").data()).hasSize(1);
     }
+
+    @Test
+    void aStatementRowMatchingAHandTypedEntryIsFlaggedAndCanBeSkippedOrRestored() {
+        client.post("/transactions", Map.of(
+                "accountId", accountId, "transactionDate", "2026-09-15", "amount", 500, "currency", "INR",
+                "description", "lunch", "transactionType", "EXPENSE"));
+        String statement = upload("manual-match.pdf", SWIGGY, AMAZON);
+
+        var flagged = rowFor(statement, "500");
+        assertThat(flagged.get("duplicateStatus").asText()).isEqualTo("POSSIBLE_DUPLICATE");
+        assertThat(flagged.get("duplicateReason").asText()).isEqualTo("MANUAL_ENTRY_MATCH");
+        assertThat(rowFor(statement, "250").get("duplicateStatus").asText()).isEqualTo("NOT_DUPLICATE");
+
+        String stagingId = flagged.get("id").asText();
+        ApiResult skipped = client.post("/statements/" + statement + "/transactions/" + stagingId + "/skip", Map.of());
+        assertThat(skipped.data().get("reviewStatus").asText()).isEqualTo("REJECTED");
+
+        ApiResult restored = client.post("/statements/" + statement + "/transactions/" + stagingId + "/restore", Map.of());
+        assertThat(restored.data().get("reviewStatus").asText()).isEqualTo("PENDING");
+
+        client.post("/statements/" + statement + "/transactions/" + stagingId + "/skip", Map.of());
+        ApiResult confirm = client.post("/statements/" + statement + "/confirm", Map.of());
+        assertThat(confirm.data().get("importedTransactionIds")).hasSize(1);
+        // the typed lunch plus the one imported row; the skipped duplicate was left out
+        assertThat(client.get("/transactions").data()).hasSize(2);
+    }
+
+    @Test
+    void rowsCanNoLongerBeSkippedOnceTheStatementIsImported() {
+        String statement = upload("done.pdf", SWIGGY);
+        String stagingId = rowFor(statement, "500").get("id").asText();
+        client.post("/statements/" + statement + "/confirm", Map.of());
+
+        ApiResult skip = client.post("/statements/" + statement + "/transactions/" + stagingId + "/skip", Map.of());
+
+        assertThat(skip.status()).isEqualTo(400);
+    }
+
+    @Test
+    void theStatementsListShowsTheNewestUploadFirst() {
+        upload("older.pdf", SWIGGY);
+        upload("newer.pdf", SWIGGY, SALARY);
+
+        var list = client.get("/statements").data();
+
+        assertThat(list.get(0).get("fileName").asText()).isEqualTo("newer.pdf");
+        assertThat(list.get(1).get("fileName").asText()).isEqualTo("older.pdf");
+    }
 }

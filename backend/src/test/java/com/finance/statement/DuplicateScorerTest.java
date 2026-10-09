@@ -124,4 +124,71 @@ class DuplicateScorerTest {
         assertThat(row.getDuplicateStatus()).isEqualTo(DuplicateStatus.NOT_DUPLICATE);
         assertThat(row.getDuplicateOverriddenAt()).isNotNull();
     }
+
+    private Transaction manual(UUID account, String date, String amount, String description, TransactionType type) {
+        return new Transaction(
+                userId, account, null, null, LocalDate.parse(date), new BigDecimal(amount), "INR", description, type,
+                TransactionSource.MANUAL, TransactionStatus.CONFIRMED);
+    }
+
+    private StatementTransaction stagedAs(String date, String amount, String raw, TransactionType type) {
+        return new StatementTransaction(
+                userId, UUID.randomUUID(), LocalDate.parse(date), new BigDecimal(amount), "INR", raw, raw, null, null,
+                type, new BigDecimal("0.60"), "p1r1", "999999999999");
+    }
+
+    @Test
+    void handTypedEntriesAreFlaggedForReviewEvenInAnotherAccountWithUnrelatedWordsOrRoundedAmounts() {
+        // The shape of a real case: entries typed by hand in the bank accounts, then the Paytm statement
+        // (imported against the wallet account) lists the same payments under the payee's name.
+        UUID wallet = this.wallet;
+        List<Transaction> typedByHand = List.of(
+                manual(bank, "2026-10-04", "320.00", "snacks", TransactionType.EXPENSE),
+                manual(bank, "2026-10-04", "1890.00", "dinner at dawaat", TransactionType.EXPENSE),
+                manual(bank, "2026-10-03", "10343.00", "credit card", TransactionType.EXPENSE));
+
+        DuplicateMatch sameDayOtherAccount = DuplicateScorer.score(
+                stagedAs("2026-10-04", "320", "Paid to Yash Kanojiya", TransactionType.EXPENSE), wallet, typedByHand, new HashSet<>()).orElseThrow();
+        DuplicateMatch oneDayApart = DuplicateScorer.score(
+                stagedAs("2026-10-05", "1890", "Paid to Shree G Enterprises", TransactionType.EXPENSE), wallet, typedByHand, new HashSet<>()).orElseThrow();
+        DuplicateMatch roundedByHand = DuplicateScorer.score(
+                stagedAs("2026-10-03", "10343.13", "Paid to Axis Bank Limited", TransactionType.EXPENSE), wallet, typedByHand, new HashSet<>()).orElseThrow();
+
+        for (DuplicateMatch match : List.of(sameDayOtherAccount, oneDayApart, roundedByHand)) {
+            assertThat(match.status()).isEqualTo(DuplicateStatus.POSSIBLE_DUPLICATE);
+            assertThat(match.reason()).isEqualTo(DuplicateReason.MANUAL_ENTRY_MATCH);
+        }
+    }
+
+    @Test
+    void unrelatedRowsAreLeftAloneByTheHandTypedRule() {
+        List<Transaction> typedByHand = List.of(manual(bank, "2026-10-04", "320.00", "snacks", TransactionType.EXPENSE));
+
+        // too far apart in time, a different amount, a tiny amount only roughly equal, the opposite side of the ledger
+        assertThat(DuplicateScorer.score(stagedAs("2026-10-06", "320", "Paid to X", TransactionType.EXPENSE), wallet, typedByHand, new HashSet<>())).isEmpty();
+        assertThat(DuplicateScorer.score(stagedAs("2026-10-04", "80", "Paid to X", TransactionType.EXPENSE), wallet, typedByHand, new HashSet<>())).isEmpty();
+        assertThat(DuplicateScorer.score(stagedAs("2026-10-04", "320", "Received from X", TransactionType.INCOME), wallet, typedByHand, new HashSet<>())).isEmpty();
+        List<Transaction> small = List.of(manual(bank, "2026-10-05", "1.50", "chocolate", TransactionType.EXPENSE));
+        assertThat(DuplicateScorer.score(stagedAs("2026-10-05", "1", "Paid to Snapmint", TransactionType.EXPENSE), wallet, small, new HashSet<>())).isEmpty();
+    }
+
+    @Test
+    void importedStatementRowsAreNotMatchedByTheHandTypedRule() {
+        // Only hand-typed entries get the loose rule; a statement-imported transaction with another payee and
+        // no shared reference is a different payment even if the amount and day agree.
+        Transaction fromStatement = imported(bank, "2026-10-04", "320.00", "UPI: someone", null);
+
+        assertThat(DuplicateScorer.score(
+                stagedAs("2026-10-04", "320", "Paid to Yash Kanojiya", TransactionType.EXPENSE), wallet, List.of(fromStatement), new HashSet<>())).isEmpty();
+    }
+
+    @Test
+    void aHandTypedEntryIsMatchedByOnlyOneStatementRow() {
+        List<Transaction> typedByHand = List.of(manual(bank, "2026-10-04", "50.00", "tea", TransactionType.EXPENSE));
+        HashSet<UUID> matched = new HashSet<>();
+        DuplicateMatch first = DuplicateScorer.score(stagedAs("2026-10-04", "50", "Paid to A", TransactionType.EXPENSE), wallet, typedByHand, matched).orElseThrow();
+        matched.add(first.matchedTransactionId());
+
+        assertThat(DuplicateScorer.score(stagedAs("2026-10-04", "50", "Paid to B", TransactionType.EXPENSE), wallet, typedByHand, matched)).isEmpty();
+    }
 }

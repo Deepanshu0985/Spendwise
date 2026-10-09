@@ -1,3 +1,19 @@
+## Statement rows matching hand-typed entries are flagged, skippable, and the statements list is newest-first
+
+**What the user reported.** A Paytm statement (3-5 Oct) showed rows for payments the user had already typed in by hand (snacks 320, dinner 1,890, credit card 10,343), but nothing was flagged as a duplicate, so confirming would have double-counted them. Also asked that the latest imported statement sit at the top of the list.
+
+**Why nothing was flagged.** The scorer only matched on (a) a shared payment reference, (b) the same account with similar words. A hand-typed entry has no reference; it was in BOB/Ujjivan while the Paytm statement is staged against the wallet account (Paytm lists payments from several linked accounts); the words differ ("snacks" vs "Paid to Yash Kanojiya"); one date was a day off (4 vs 5 Oct); and the card payment was typed as 10,343 against 10,343.13 on the statement. Every signal missed.
+
+**Fix.** A new rule `MANUAL_ENTRY_MATCH`, deliberately loose but only a review flag, never a skip: a transaction the user entered by hand (source `MANUAL`), in any account, within a day either side, with an amount within a rupee and within 1%, on the same side of the ledger (a new `TransactionType.isDebitSide()`), and each hand-typed entry can explain only one statement row. Migration `V16` allows the new reason. Scenario test uses the exact shapes from the screenshots: the three payments are flagged, the Rs.80 and Rs.1 rows are not, and loose cases (two days apart, opposite side, tiny amounts, statement-imported transactions) stay unflagged.
+
+**A flag alone could not prevent the double count,** because a possible duplicate still imports and the review screen had no way to leave a row out. Added `POST .../transactions/{id}/skip` and `/restore` (only while the statement awaits review; skipped rows stay visible, greyed, and are left out on confirm), with "Skip this row" / "Undo" in the review table.
+
+**Statements list order.** The list had no ordering, so Postgres returned physical order, which an UPDATE reshuffles; it now defaults to newest upload first (same class of bug as the staged-row order fixed earlier).
+
+**Verified.** Suite: 80 unit + 39 integration tests green. Then end to end in a browser on a throwaway local user and database with the real statement: the 320, 1,890 and 10,343.13 rows flagged "Possible duplicate", the 80 and 1 rows clean, skip greyed a row and showed Undo.
+
+**Not done (noted for later).** Paytm rows are still staged against the Paytm wallet even when the payment came from BOB/Ujjivan, so the loose any-account rule is what bridges this; reading the per-row account label to assign the right account is the proper fix. "Paid to Axis Bank Limited" is really a card-bill payment and is suggested as a plain expense; classifying it as a card payment (and pairing it with the Axis card account) is a separate piece of work.
+
 ## Found live: a Paytm statement mentioning "Axis Bank" was claimed by the Axis parser; failed statements are now re-uploadable
 
 **What happened.** A second real Paytm statement (3-5 Oct) uploaded to the live site failed with "No transactions could be parsed". Run directly, the Paytm parser read the same file fine (5 rows). The file contains "Paid to Axis Bank Limited", and `AxisBankStatementParser.matches()` was still the bare phrase "AXIS BANK"; it was registered ahead of the Paytm parser on the live instance (Spring's registration order comes from classpath scanning, so it differs between a laptop and a jar), claimed the file, found no six-column rows, and returned nothing. This is the same collision already fixed for BOB and Ujjivan, which I had deliberately left undone for Axis, HDFC and SBI "without evidence". The real evidence arrived within days.

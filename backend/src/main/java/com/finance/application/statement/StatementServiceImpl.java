@@ -181,6 +181,32 @@ public class StatementServiceImpl implements StatementService {
 
     @Override
     @Transactional
+    public StatementTransaction skipRow(UUID userId, UUID statementId, UUID stagingId) {
+        StatementTransaction row = requireRowOfStatementAwaitingReview(userId, statementId, stagingId);
+        row.skip();
+        return statementTransactionRepository.save(row);
+    }
+
+    @Override
+    @Transactional
+    public StatementTransaction restoreRow(UUID userId, UUID statementId, UUID stagingId) {
+        StatementTransaction row = requireRowOfStatementAwaitingReview(userId, statementId, stagingId);
+        row.restore();
+        return statementTransactionRepository.save(row);
+    }
+
+    private StatementTransaction requireRowOfStatementAwaitingReview(UUID userId, UUID statementId, UUID stagingId) {
+        Statement statement = requireOwnedStatement(userId, statementId);
+        if (statement.getStatus() != StatementStatus.READY_FOR_REVIEW) {
+            throw new DomainValidationException(
+                    "Rows can only be skipped or restored while the statement is awaiting review (current status: " + statement.getStatus() + ").",
+                    List.of());
+        }
+        return requireOwnedStagedRow(userId, statementId, stagingId);
+    }
+
+    @Override
+    @Transactional
     public ConfirmResult confirm(UUID userId, UUID statementId) {
         Statement statement = requireOwnedStatement(userId, statementId);
 

@@ -30,6 +30,12 @@ public interface StatementService {
     /** The user choosing to import a flagged duplicate anyway; recorded as audit metadata on the row. */
     StatementTransaction keepDuplicate(UUID userId, UUID statementId, UUID stagingId);
 
+    /** Leaves one staged row out of the import (it stays visible, marked skipped). Only while the statement awaits review. */
+    StatementTransaction skipRow(UUID userId, UUID statementId, UUID stagingId);
+
+    /** Undoes skipRow: the row is imported on confirm again. */
+    StatementTransaction restoreRow(UUID userId, UUID statementId, UUID stagingId);
+
     /** Idempotent: a repeat call against an already-IMPORTED statement returns the original result, never imports twice. */
     ConfirmResult confirm(UUID userId, UUID statementId);
 

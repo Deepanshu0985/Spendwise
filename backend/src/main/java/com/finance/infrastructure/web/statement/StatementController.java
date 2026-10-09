@@ -102,6 +102,18 @@ public class StatementController {
         return ApiResponse.of(StatementTransactionResponse.from(row));
     }
 
+    @PostMapping("/{id}/transactions/{stagingId}/skip")
+    public ApiResponse<StatementTransactionResponse> skipRow(@PathVariable UUID id, @PathVariable UUID stagingId) {
+        return ApiResponse.of(StatementTransactionResponse.from(
+                statementService.skipRow(CurrentUserGuard.require(tenantContext), id, stagingId)));
+    }
+
+    @PostMapping("/{id}/transactions/{stagingId}/restore")
+    public ApiResponse<StatementTransactionResponse> restoreRow(@PathVariable UUID id, @PathVariable UUID stagingId) {
+        return ApiResponse.of(StatementTransactionResponse.from(
+                statementService.restoreRow(CurrentUserGuard.require(tenantContext), id, stagingId)));
+    }
+
     @PostMapping("/{id}/confirm")
     public ResponseEntity<?> confirm(
             @PathVariable UUID id, @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey) {

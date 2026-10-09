@@ -1,7 +1,10 @@
 package com.finance.domain.statement;
 
 import com.finance.domain.transaction.Transaction;
+import com.finance.domain.transaction.TransactionSource;
+import com.finance.domain.transaction.TransactionType;
 
+import java.math.BigDecimal;
 import java.time.temporal.ChronoUnit;
 import java.util.HashSet;
 import java.util.List;
@@ -20,6 +23,8 @@ import java.util.regex.Pattern;
 public final class DuplicateScorer {
 
     public static final int NEARBY_DAYS = 2;
+    static final int MANUAL_ENTRY_DAYS = 1;
+    private static final BigDecimal ROUNDING_TOLERANCE = BigDecimal.ONE;
     static final double HIGH_SIMILARITY = 0.8;
     static final double MEDIUM_SIMILARITY = 0.5;
 
@@ -30,14 +35,15 @@ public final class DuplicateScorer {
     }
 
     /**
-     * @param accountId the account the staged row belongs to; reference matches ignore it (a UPI RRN
-     *                  is unique across accounts), description/date matches require the same account.
+     * @param accountId the account the staged row belongs to; reference matches and the manual-entry rule ignore
+     *                  it (a UPI RRN is unique across accounts, and a hand-typed entry may sit in a different
+     *                  account than the statement it later shows up in), description/date matches require it.
      */
     public static Optional<DuplicateMatch> score(
             StatementTransaction row, UUID accountId, List<Transaction> candidates, Set<UUID> alreadyMatched) {
         DuplicateMatch best = null;
         for (Transaction candidate : candidates) {
-            if (alreadyMatched.contains(candidate.getId()) || candidate.getAmount().compareTo(row.getAmount()) != 0) {
+            if (alreadyMatched.contains(candidate.getId())) {
                 continue;
             }
             DuplicateMatch match = matchOne(row, accountId, candidate);
@@ -49,26 +55,46 @@ public final class DuplicateScorer {
     }
 
     private static DuplicateMatch matchOne(StatementTransaction row, UUID accountId, Transaction candidate) {
-        String reference = row.getExternalReference();
-        if (reference != null && !reference.isBlank() && reference.equals(candidate.getExternalTransactionId())) {
-            return new DuplicateMatch(DuplicateStatus.DUPLICATE, DuplicateReason.EXACT_REFERENCE, candidate.getId());
-        }
-        if (!accountId.equals(candidate.getAccountId())) {
-            return null;
-        }
         long dayGap = Math.abs(ChronoUnit.DAYS.between(row.getTransactionDate(), candidate.getTransactionDate()));
-        if (dayGap > NEARBY_DAYS) {
-            return null;
+
+        if (candidate.getAmount().compareTo(row.getAmount()) == 0) {
+            String reference = row.getExternalReference();
+            if (reference != null && !reference.isBlank() && reference.equals(candidate.getExternalTransactionId())) {
+                return new DuplicateMatch(DuplicateStatus.DUPLICATE, DuplicateReason.EXACT_REFERENCE, candidate.getId());
+            }
+            if (accountId.equals(candidate.getAccountId()) && dayGap <= NEARBY_DAYS) {
+                double similarity = similarity(row.getRawDescription(), candidate.getRawDescription() != null
+                        ? candidate.getRawDescription() : candidate.getDescription());
+                if (dayGap == 0 && similarity >= HIGH_SIMILARITY) {
+                    return new DuplicateMatch(DuplicateStatus.DUPLICATE, DuplicateReason.DATE_AMOUNT_DESCRIPTION, candidate.getId());
+                }
+                if (similarity >= MEDIUM_SIMILARITY) {
+                    return new DuplicateMatch(DuplicateStatus.POSSIBLE_DUPLICATE, DuplicateReason.NEARBY_SIMILAR, candidate.getId());
+                }
+            }
         }
-        double similarity = similarity(row.getRawDescription(), candidate.getRawDescription() != null
-                ? candidate.getRawDescription() : candidate.getDescription());
-        if (dayGap == 0 && similarity >= HIGH_SIMILARITY) {
-            return new DuplicateMatch(DuplicateStatus.DUPLICATE, DuplicateReason.DATE_AMOUNT_DESCRIPTION, candidate.getId());
-        }
-        if (similarity >= MEDIUM_SIMILARITY) {
-            return new DuplicateMatch(DuplicateStatus.POSSIBLE_DUPLICATE, DuplicateReason.NEARBY_SIMILAR, candidate.getId());
+
+        // A hand-typed entry has no payment reference, free-text words that rarely resemble the payee's name
+        // ("snacks" vs "Paid to Yash Kanojiya"), is often rounded, and may sit in a different account than the
+        // statement it later appears in. Only a review flag - never a skip - since the evidence is circumstantial.
+        if (candidate.getSource() == TransactionSource.MANUAL && dayGap <= MANUAL_ENTRY_DAYS
+                && amountsClose(row.getAmount(), candidate.getAmount()) && sameSide(row, candidate)) {
+            return new DuplicateMatch(DuplicateStatus.POSSIBLE_DUPLICATE, DuplicateReason.MANUAL_ENTRY_MATCH, candidate.getId());
         }
         return null;
+    }
+
+    /** Within a rupee and within 1%: tolerates a hand-rounded entry without pairing unrelated small amounts. */
+    private static boolean amountsClose(BigDecimal a, BigDecimal b) {
+        BigDecimal difference = a.subtract(b).abs();
+        return difference.compareTo(ROUNDING_TOLERANCE) <= 0
+                && difference.compareTo(a.multiply(new BigDecimal("0.01"))) <= 0;
+    }
+
+    private static boolean sameSide(StatementTransaction row, Transaction candidate) {
+        TransactionType left = row.getSuggestedTransactionType();
+        TransactionType right = candidate.getTransactionType();
+        return left.isUnknown() || right.isUnknown() || left.isDebitSide() == right.isDebitSide();
     }
 
     private static int rank(DuplicateStatus status) {

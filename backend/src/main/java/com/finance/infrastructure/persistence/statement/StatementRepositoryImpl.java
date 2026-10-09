@@ -3,7 +3,9 @@ package com.finance.infrastructure.persistence.statement;
 import com.finance.domain.statement.Statement;
 import com.finance.domain.statement.StatementRepository;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
@@ -38,6 +40,11 @@ public class StatementRepositoryImpl implements StatementRepository {
 
     @Override
     public Page<Statement> findByUserId(UUID userId, Pageable pageable) {
-        return jpaRepository.findByUserId(userId, pageable).map(StatementMapper::toDomain);
+        // Without an explicit order Postgres returns rows in physical order, which an UPDATE reshuffles - newest
+        // upload first is what the list should always show unless a caller asked for something else.
+        Pageable ordered = pageable.getSort().isSorted()
+                ? pageable
+                : PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), Sort.by(Sort.Direction.DESC, "createdAt"));
+        return jpaRepository.findByUserId(userId, ordered).map(StatementMapper::toDomain);
     }
 }
