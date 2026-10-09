@@ -15,7 +15,8 @@ class SbiStatementParserTest {
 
     @Test
     void matchesTextContainingStateBankOfIndiaHeader() {
-        assertThat(parser.matches("State Bank of India\nStatement of Account")).isTrue();
+        assertThat(parser.matches("State Bank of India\nStatement of Account\n15-09-2026 15-09-2026 ATM WDL CASH REF001 5000.00 0.00 45000.00")).isTrue();
+        assertThat(parser.matches("Paytm Statement\nPaid to State Bank of India")).isFalse();
         assertThat(parser.matches("HDFC BANK\nStatement")).isFalse();
     }
 

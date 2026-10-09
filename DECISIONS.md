@@ -1,3 +1,13 @@
+## Found live: a Paytm statement mentioning "Axis Bank" was claimed by the Axis parser; failed statements are now re-uploadable
+
+**What happened.** A second real Paytm statement (3-5 Oct) uploaded to the live site failed with "No transactions could be parsed". Run directly, the Paytm parser read the same file fine (5 rows). The file contains "Paid to Axis Bank Limited", and `AxisBankStatementParser.matches()` was still the bare phrase "AXIS BANK"; it was registered ahead of the Paytm parser on the live instance (Spring's registration order comes from classpath scanning, so it differs between a laptop and a jar), claimed the file, found no six-column rows, and returned nothing. This is the same collision already fixed for BOB and Ujjivan, which I had deliberately left undone for Axis, HDFC and SBI "without evidence". The real evidence arrived within days.
+
+**Fix.** Axis, HDFC and SBI now also require an actual row in their own layout (`hasMatchingRow`), so every parser claims a document only when its structure is present, not merely its name. A new `StatementFormatDetectorTest` exercises the real selection across all six parsers in both registration orders for a Paytm text full of other banks' names and for a BOB text that mentions them (red with the old Axis rule, green now). The earlier lesson applies again: testing one parser in isolation, or calling it directly, cannot see detection collisions; they have to be tested through the detector.
+
+**Recovery path.** The failed statement was stuck: re-uploading the identical file returned the old FAILED row (upload is idempotent by file hash), and Retry failed because Render wipes the stored copy on every redeploy, surfacing as a 500. Uploading a file whose earlier attempt FAILED now stores it again and reprocesses it, and a missing stored file now fails with "please upload it again" instead of an unexpected error. Covered by a new integration test. Suite: 76 unit + 36 integration.
+
+**Not reproduced.** The same screenshot showed a 500 on `GET /statements?page=0`. No 5xx request or error log exists on the live backend since 17:30 UTC (the only errors were Render's own health check hitting `/`), so it was most likely a transient response while Render switched instances during the 18:07-18:11 deploy. Left open until it recurs.
+
 ## Statement module released: `staging` merged into `main`
 
 **Decision.** At the user's request `staging` was fast-forwarded into `main` (`456ef51`), putting the whole statement module (import pipeline, Paytm and BOB parsers, description cleanup, duplicate detection, payee rules, loading-screen fix) and "Add several transactions" on the live site. `main` was already contained in `staging` after the earlier merge, so there was nothing to reconcile.

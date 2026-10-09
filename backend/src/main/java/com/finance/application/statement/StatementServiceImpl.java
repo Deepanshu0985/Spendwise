@@ -34,6 +34,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.io.UncheckedIOException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HexFormat;
@@ -94,8 +95,16 @@ public class StatementServiceImpl implements StatementService {
         Optional<Statement> existing = statementRepository.findByUserIdAndFileHash(userId, fileHash);
         if (existing.isPresent()) {
             // file_hash gives upload-level idempotency (database-design.md) - re-uploading the
-            // identical file returns the existing statement rather than reprocessing it.
-            return existing.get();
+            // identical file returns the existing statement rather than reprocessing it...
+            Statement previous = existing.get();
+            if (previous.getStatus() == StatementStatus.FAILED) {
+                // ...except a FAILED one: re-uploading is the natural way to try again after a fix, and the
+                // stored copy may be gone (Render's disk is wiped on every redeploy), so the file is stored
+                // again before it is reprocessed.
+                storageService.store(previous.getStorageKey(), command.content());
+                return process(userId, requireOwnedAccount(userId, previous.getAccountId()), previous);
+            }
+            return previous;
         }
 
         UUID statementId = UUID.randomUUID();
@@ -237,7 +246,12 @@ public class StatementServiceImpl implements StatementService {
         statement.markProcessing();
         statement = statementRepository.save(statement);
         try {
-            byte[] content = storageService.retrieve(statement.getStorageKey());
+            byte[] content;
+            try {
+                content = storageService.retrieve(statement.getStorageKey());
+            } catch (UncheckedIOException e) {
+                throw new StatementProcessingFailedException("The uploaded file is no longer stored - please upload it again.");
+            }
             ExtractionResult extraction = pdfTextExtractor.extract(content);
             StatementParser parser = statementFormatDetector.detect(extraction.text());
             ParsedStatement parsed = parser.parse(extraction.text());

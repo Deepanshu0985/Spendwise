@@ -36,7 +36,10 @@ public class SbiStatementParser implements StatementParser {
         // "STATE BANK OF INDIA" only, not the bare "SBI" substring - real statements say the full
         // name prominently in the header, and the abbreviation alone risks false-matching other banks'
         // narration text (e.g. "NEFT to SBI a/c" appearing inside an HDFC or Axis statement).
-        return extractedText.toUpperCase().contains("STATE BANK OF INDIA");
+        // A real row in SBI's layout must be present too: the name alone also appears inside other
+        // statements (e.g. Paytm labelling a payment or linked account), found on a real Paytm file.
+        return extractedText.toUpperCase().contains("STATE BANK OF INDIA")
+                && StatementParsingSupport.hasMatchingRow(extractedText, ROW_PATTERN);
     }
 
     @Override

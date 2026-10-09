@@ -15,7 +15,8 @@ class AxisBankStatementParserTest {
 
     @Test
     void matchesTextContainingAxisBankHeader() {
-        assertThat(parser.matches("AXIS BANK\nStatement of Account")).isTrue();
+        assertThat(parser.matches("AXIS BANK\nStatement of Account\n15-09-2026 REF001 ATM WDL CASH 5000.00 0.00 45000.00")).isTrue();
+        assertThat(parser.matches("Paytm Statement\nPaid to Axis Bank Limited")).isFalse();
         assertThat(parser.matches("HDFC BANK\nStatement")).isFalse();
     }
 

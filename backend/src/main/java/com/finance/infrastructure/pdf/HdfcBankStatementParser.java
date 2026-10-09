@@ -35,7 +35,11 @@ public class HdfcBankStatementParser implements StatementParser {
 
     @Override
     public boolean matches(String extractedText) {
-        return extractedText.toUpperCase().contains("HDFC BANK");
+        // The name alone is not enough: other statements mention this bank in passing (e.g. Paytm's
+        // "Paid to Axis Bank Limited" or a linked-account label) and would be claimed by the wrong
+        // parser, so an actual row in this bank's layout must be present too (found on a real Paytm file).
+        return extractedText.toUpperCase().contains("HDFC BANK")
+                && StatementParsingSupport.hasMatchingRow(extractedText, ROW_PATTERN);
     }
 
     @Override

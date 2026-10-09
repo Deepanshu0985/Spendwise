@@ -273,4 +273,29 @@ class StatementFlowIT {
         String second = upload("second.pdf", "20/09/26 SWIGGY BANGALORE UPI444444 20/09/26 410.00 0.00 3540.00");
         assertThat(rowFor(second, "410").get("suggestedCategoryId").asText()).isEqualTo(category);
     }
+
+    @Test
+    void aFailedStatementWhoseStoredFileVanishedCanBeRetriedByUploadingItAgain() throws Exception {
+        byte[] unsupported = PdfFixtures.statementPdf("Totally Unknown Bank", List.of("matches no known bank at all"));
+        String id = client.postMultipart("/statements/upload", Map.of("accountId", accountId), "file", "unknown.pdf", unsupported)
+                .data().get("id").asText();
+
+        // Simulate a redeploy wiping the ephemeral disk.
+        java.nio.file.Path storage = java.nio.file.Path.of(System.getProperty("java.io.tmpdir"), "spendwise-it-storage");
+        try (var files = java.nio.file.Files.walk(storage)) {
+            files.filter(java.nio.file.Files::isRegularFile).forEach(f -> f.toFile().delete());
+        }
+
+        // Retry now fails cleanly with an explanation instead of an unexpected server error.
+        ApiResult retry = client.post("/statements/" + id + "/retry", Map.of());
+        assertThat(retry.status()).isEqualTo(200);
+        assertThat(retry.data().get("status").asText()).isEqualTo("FAILED");
+        assertThat(retry.data().get("errorMessage").asText()).contains("upload it again");
+
+        // Uploading the same file again stores it afresh and reprocesses the same statement.
+        ApiResult again = client.postMultipart("/statements/upload", Map.of("accountId", accountId), "file", "unknown.pdf", unsupported);
+        assertThat(again.data().get("id").asText()).isEqualTo(id);
+        assertThat(again.data().get("errorMessage").asText()).doesNotContain("upload it again").contains("isn't recognized");
+        assertThat(client.get("/statements").data()).hasSize(1);
+    }
 }

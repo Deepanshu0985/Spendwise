@@ -16,7 +16,8 @@ class HdfcBankStatementParserTest {
 
     @Test
     void matchesTextContainingHdfcBankHeader() {
-        assertThat(parser.matches("HDFC BANK\nStatement of Account")).isTrue();
+        assertThat(parser.matches("HDFC BANK\nStatement of Account\n15/09/26 SWIGGY BANGALORE UPI123456 15/09/26 500.00 0.00 4500.00")).isTrue();
+        assertThat(parser.matches("Paytm Statement\nPaid to HDFC Bank Limited")).isFalse();
         assertThat(parser.matches("State Bank of India\nStatement")).isFalse();
     }
 
