@@ -1,3 +1,13 @@
+## Blank/endless "Loading..." on first visit: Render free-tier cold start, not stale browser data
+
+**What the user saw.** Opening the site after a pause showed a beige "Loading..." (or a fully blank page on /login) that never seemed to finish; clearing site data and refreshing then "worked" and showed the login page.
+
+**Cause.** On load the app calls `GET /users/me` to find out whether a session exists, and waits for the answer. The live backend runs on Render's free plan, which sleeps after idle time; waking a Spring Boot instance (plus the Neon database compute behind it) took 60-90 seconds in a direct measurement (versus 0.5-0.9 s once awake). The browser's Network tab showed that request and its CORS preflight both still `(pending)`. Clearing site data only appeared to fix it because the backend finished waking in the meantime; a stale cookie is not involved (a garbage session cookie gets a normal 401). The `/login` route rendered nothing at all while waiting (`RedirectIfAuthenticated` returned `null`), which is the "blank" page.
+
+**Fix.** A shared `ServerLoading` screen is shown by both route guards; after 4 seconds it adds "The server is waking up after being idle. This can take up to a minute". No client-side timeout was added on purpose: aborting at 20 s would wrongly treat the user as logged out and send them to login against a still-sleeping server.
+
+**Not done, and why.** A keep-alive ping would remove the wait but is not free in practice: Render's free tier has a shared monthly instance-hour allowance, and the workspace already has several free services plus the new staging service, so one always-on service plus the rest would exhaust it. Removing the delay for real means a paid always-on instance (against the no-spend preference) or moving hosting; deferred until the production deployment decision.
+
 ## Staging deployment (Render + Vercel), and how the staging frontend finds the staging backend
 
 **Decision.** `staging` is deployed alongside the live app: a second Render web service `spendwise-backend-staging` (free plan, Docker, branch `staging`, same repo and Dockerfile as live) backed by the Neon *dev* branch, and Vercel's automatic preview of the `staging` branch at the stable address `spendwise-frontend-git-staging-deepanshuy098-9260s-projects.vercel.app`. Live (`spendwise-backend` on `main`, live Neon data) is untouched. The staging backend allows exactly the staging frontend's origin (`APP_CORS_ALLOWED_ORIGIN`) and uses `SameSite=None` cookies. Verified on the real deployment: health `UP`, migrations V1-V15 applied to the dev database, CORS preflight allowed for the staging origin and refused (403) for any other, CSRF header exposed.

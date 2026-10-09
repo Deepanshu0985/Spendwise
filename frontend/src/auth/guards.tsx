@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
+import { ServerLoading } from '../components/ui/ServerLoading'
 import { useAuth } from './AuthContext'
 
 export function RequireAuth() {
@@ -7,11 +8,7 @@ export function RequireAuth() {
   const location = useLocation()
 
   if (status === 'checking') {
-    return (
-      <div className="loading-state">
-        <span className="spinner" /> Loading&hellip;
-      </div>
-    )
+    return <ServerLoading />
   }
 
   if (status === 'anonymous') {
@@ -25,7 +22,7 @@ export function RedirectIfAuthenticated({ children }: { children: ReactNode }) {
   const { status } = useAuth()
 
   if (status === 'checking') {
-    return null
+    return <ServerLoading />
   }
 
   if (status === 'authenticated') {
