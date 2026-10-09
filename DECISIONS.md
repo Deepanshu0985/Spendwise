@@ -1,3 +1,11 @@
+## Fix: "Add several" failed on the live site because the backend's cross-site rules didn't allow `Idempotency-Key`
+
+**What happened.** Right after the feature was merged, every row failed on the live site with a generic "could not save" - the request never reached the server. The feature sends an `Idempotency-Key` header on each create call (that is what makes retries safe), but `CorsConfig` only allowed `Content-Type` and `X-CSRF-Token`. The browser's preflight check on the split-origin deployment (Vercel frontend, Render backend) therefore blocked the call. Confirmed directly: a preflight asking for `idempotency-key` got back `Access-Control-Allow-Headers: content-type, x-csrf-token`.
+
+**Why testing missed it.** The feature was verified in a real browser, but against the local Vite dev proxy, where the page and API share one origin and no cross-site check ever runs. The existing single "Add transaction" never sent that header, so nothing live had exercised it. The lesson is the same one as the earlier CSRF-cookie bug: a flow that works same-origin proves nothing about the split-origin deployment, and any new request header has to be added to the allow-list.
+
+**Fix.** `Idempotency-Key` added to `CorsConfig`'s allowed headers (only the new modal uses it; nothing else on the live site was affected). New `CorsIT` pins this: a preflight from the configured frontend origin must allow every header the frontend sends, and any other origin must be refused. Verified red without the fix and green with it; the full suite passes (13 unit + 25 integration). The modal also now says "Could not reach the server" for a network-level failure instead of the misleading generic message.
+
 ## "Add several transactions" for one date: frontend-only, retry-safe, built on its own branch from `main`
 
 **Decision.** The Transactions page gets an "Add several" button opening a modal: one date and account chosen once, then any number of rows (type, amount, description, category). Blank rows are ignored. It is built on `feature/multi-transaction-entry`, branched from `main` rather than `staging`, so it carries none of the unfinished statement-import work and can ship to the live app on its own. It is frontend-only: each row is posted through the existing `POST /transactions`, with no new endpoint or migration.

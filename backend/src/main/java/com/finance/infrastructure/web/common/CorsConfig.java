@@ -31,7 +31,7 @@ public class CorsConfig implements WebMvcConfigurer {
         registry.addMapping("/api/**")
                 .allowedOrigins(allowedOrigin)
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
-                .allowedHeaders("Content-Type", "X-CSRF-Token")
+                .allowedHeaders("Content-Type", "X-CSRF-Token", "Idempotency-Key")
                 // Response headers are opaque to cross-origin JS unless explicitly exposed -
                 // the frontend reads this one to learn the CSRF token (see CsrfTokenFilter).
                 .exposedHeaders("X-CSRF-Token")

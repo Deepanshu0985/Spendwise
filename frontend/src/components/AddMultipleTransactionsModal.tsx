@@ -87,7 +87,9 @@ export function AddMultipleTransactionsModal({ onClose, onDone }: { onClose: () 
         await transactionsApi.create(body, row.key)
         outcomes.set(index, { saved: true, error: null })
       } catch (err) {
-        outcomes.set(index, { error: err instanceof ApiRequestError ? err.message : 'Could not save this row.' })
+        outcomes.set(index, {
+          error: err instanceof ApiRequestError ? err.message : 'Could not reach the server - check your connection and try again.',
+        })
       }
     }
     // Rows are merged by position at the end of the loop, not with a stale snapshot per row.
