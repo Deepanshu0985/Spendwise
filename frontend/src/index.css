@@ -705,6 +705,7 @@ tbody tr:last-child td {
 
 .field-row .field {
   flex: 1;
+  min-width: 0;
 }
 
 .form-error-banner {
@@ -844,6 +845,38 @@ tbody tr:last-child td {
   display: flex;
   flex-direction: column;
   gap: 18px;
+}
+
+/* One row of the "Add several transactions" modal: type, amount, description, category, remove. */
+.modal-box-wide {
+  width: 780px;
+}
+
+.multi-row {
+  display: grid;
+  grid-template-columns: 110px 110px 1fr 150px 32px;
+  gap: 8px;
+  align-items: center;
+}
+
+.multi-row .field-inline {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+@media (max-width: 640px) {
+  .multi-row {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .multi-row > :nth-child(3) {
+    grid-column: 1 / -1;
+  }
+
+  .multi-row > :nth-child(5) {
+    justify-self: end;
+  }
 }
 
 .modal-header {

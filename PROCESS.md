@@ -104,6 +104,16 @@ DigitalOcean remains the actual V1 production target once beta-ready — see `DE
 **Left:**
 - [ ] Clean up/decide fate of the scratch Postgres (Colima `scratch-pg` container, port 55433) now that Phase 3's IT suite passes against it — left running for now in case more Phase 3/4 local IT runs are needed soon
 
+## Transactions — "Add several" (feature branch `feature/multi-transaction-entry`, from `main`)
+
+**Done:**
+- [x] "Add several" modal on the Transactions page: one date and account, many rows, blank rows ignored; frontend-only through the existing `POST /transactions`
+- [x] Retry-safe partial failure: per-row `Idempotency-Key`, saved rows locked, failed rows show their own error, retry resubmits only unsaved rows
+- [x] Verified in a real browser (golden path, partial failure plus retry, phone-width layout); frontend build clean
+
+**Left:**
+- [ ] Not merged to `main` yet - waiting for the user's go-ahead
+
 ## Cross-cutting — Backend layering retrofit (domain/application/infrastructure)
 
 **Done:**

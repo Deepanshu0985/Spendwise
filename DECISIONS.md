@@ -1,3 +1,21 @@
+## Fix: "Add several" failed on the live site because the backend's cross-site rules didn't allow `Idempotency-Key`
+
+**What happened.** Right after the feature was merged, every row failed on the live site with a generic "could not save" - the request never reached the server. The feature sends an `Idempotency-Key` header on each create call (that is what makes retries safe), but `CorsConfig` only allowed `Content-Type` and `X-CSRF-Token`. The browser's preflight check on the split-origin deployment (Vercel frontend, Render backend) therefore blocked the call. Confirmed directly: a preflight asking for `idempotency-key` got back `Access-Control-Allow-Headers: content-type, x-csrf-token`.
+
+**Why testing missed it.** The feature was verified in a real browser, but against the local Vite dev proxy, where the page and API share one origin and no cross-site check ever runs. The existing single "Add transaction" never sent that header, so nothing live had exercised it. The lesson is the same one as the earlier CSRF-cookie bug: a flow that works same-origin proves nothing about the split-origin deployment, and any new request header has to be added to the allow-list.
+
+**Fix.** `Idempotency-Key` added to `CorsConfig`'s allowed headers (only the new modal uses it; nothing else on the live site was affected). New `CorsIT` pins this: a preflight from the configured frontend origin must allow every header the frontend sends, and any other origin must be refused. Verified red without the fix and green with it; the full suite passes (13 unit + 25 integration). The modal also now says "Could not reach the server" for a network-level failure instead of the misleading generic message.
+
+## "Add several transactions" for one date: frontend-only, retry-safe, built on its own branch from `main`
+
+**Decision.** The Transactions page gets an "Add several" button opening a modal: one date and account chosen once, then any number of rows (type, amount, description, category). Blank rows are ignored. It is built on `feature/multi-transaction-entry`, branched from `main` rather than `staging`, so it carries none of the unfinished statement-import work and can ship to the live app on its own. It is frontend-only: each row is posted through the existing `POST /transactions`, with no new endpoint or migration.
+
+**Why not an atomic batch endpoint.** A server-side batch would be all-or-nothing, but it means new backend code, tests and a live redeploy for a form convenience. Instead each row carries its own `Idempotency-Key`, minted when the row is created and replaced whenever the row is edited. If a submit fails part-way, saved rows are marked "Saved" and locked, failed rows show their own error, and pressing Save again resubmits only the unsaved rows - rows that did save cannot be created twice. Date and account lock once anything is saved, so one batch cannot straddle two dates.
+
+**Verified** in a real browser against `main`'s backend and an empty local database: two rows saved on one date with the blank third ignored; a mixed batch (one valid row, one the server rejects) kept the valid row, flagged the bad one, and after fixing it a retry saved only the bad row (four transactions total, no duplicate); phone-width layout fixed after it overflowed the modal. `npm run build` is clean. No backend files changed, so the backend test suite was not re-run.
+
+**Merge note.** This branch is based on `main`, whose `DECISIONS.md`/`PROCESS.md` lack the staging entries, so merging it into `staging` will need a trivial conflict resolution in those two files.
+
 ## Blank/endless "Loading..." on first visit: Render free-tier cold start, not stale browser data
 
 **What the user saw.** Opening the site after a pause showed a beige "Loading..." (or a fully blank page on /login) that never seemed to finish; clearing site data and refreshing then "worked" and showed the login page.
@@ -104,6 +122,7 @@
 **Why.** `main` is now a real, live deployment (Render backend + Vercel frontend, both git-connected and auto-deploying from pushes to `main`) that the user actually uses day to day (the Phase 5 dogfooding this very deployment enables). Building the next feature directly on `main` would mean every intermediate, half-finished commit goes live automatically the moment it's pushed - `staging` gives a place to build and iterate without that pressure, and `main` stays exactly as good as its last verified state throughout.
 
 **Consequences.** No redeploy configuration changes were needed to make this safe: Render's service is tied to a single fixed branch (`main`) and simply never sees pushes to any other branch, and Vercel only aliases its *production* domain to pushes on `main` - a push to `staging` would at most create an inert preview deployment, never touching the live URL. `staging` was branched from `main` at `ea204db` and pushed (`git push -u origin staging`). Phase 6 (statement import) is the first feature built under this convention.
+
 
 ## Bug: CSRF token delivered via cookie can't be read by a split-origin frontend at all
 
