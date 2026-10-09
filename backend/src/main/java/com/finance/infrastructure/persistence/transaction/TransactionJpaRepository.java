@@ -26,4 +26,17 @@ public interface TransactionJpaRepository extends JpaRepository<TransactionJpaEn
             @org.springframework.data.repository.query.Param("from") java.time.LocalDate from,
             @org.springframework.data.repository.query.Param("to") java.time.LocalDate to,
             @org.springframework.data.repository.query.Param("references") java.util.Collection<String> references);
+
+    // Used when no staged row carries a reference: an empty IN list is not valid everywhere, and any placeholder value
+    // would have to be a real string (a NUL byte made PostgreSQL reject the whole query), so that clause is left out.
+    @org.springframework.data.jpa.repository.Query("""
+            select t from TransactionJpaEntity t
+            where t.userId = :userId
+              and t.status = com.finance.domain.transaction.TransactionStatus.CONFIRMED
+              and t.transactionDate between :from and :to
+            """)
+    List<TransactionJpaEntity> findDuplicateCandidatesByDate(
+            @org.springframework.data.repository.query.Param("userId") UUID userId,
+            @org.springframework.data.repository.query.Param("from") java.time.LocalDate from,
+            @org.springframework.data.repository.query.Param("to") java.time.LocalDate to);
 }

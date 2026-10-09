@@ -1,3 +1,13 @@
+## Fix: a statement with no row references crashed the duplicate check (a NUL placeholder rejected by PostgreSQL)
+
+**Found live.** Opening a statement on the live site returned 500 on `duplicates/recheck`, and uploads of some statements failed with a generic error. The Render log showed `invalid byte sequence for encoding "UTF8": 0x00` on the duplicate-candidates query.
+
+**Cause.** When none of a statement's rows carries a reference (Bank of Baroda NEFT and standing-instruction rows have none), the lookup was given an empty reference list. To avoid an empty `IN ()` I had substituted a "never matches" placeholder - a NUL character - which PostgreSQL refuses in any text. Local tests missed it because every test statement had at least one reference.
+
+**Fix.** With no references the lookup now uses a separate date-only query, so no placeholder value exists at all. New integration test: a Bank of Baroda statement whose rows have no UPI reference stages, rechecks and confirms (it failed with exactly this error before the fix). 88 unit + 47 integration tests green.
+
+**Not deployed.** Fixed on `staging` only; `main` still has the bug until it is merged. Password-protected PDF support is likewise only on local `staging` - `origin/staging` and `main` predate it, which is why the live sites do not ask for a password.
+
 ## Paytm rows are assigned to the account they were actually paid from; Phase 8 is complete
 
 **Why.** A Paytm statement lists, under every payment, the account it left ("Bank Of Baroda - 21", "Ujjivan Small Finance Bank - 82", "UPI Lite"). Until now every row was staged against the one account chosen at upload, so a payment that left the user's bank was recorded against the wallet and balances were wrong.

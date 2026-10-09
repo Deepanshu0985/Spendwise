@@ -464,6 +464,28 @@ class StatementFlowIT {
     }
 
     @Test
+    void aStatementWhoseRowsCarryNoReferenceStagesRechecksAndConfirmsWithoutError() {
+        // Bank of Baroda NEFT and standing-instruction rows have no UPI reference, so no row of this statement has one -
+        // the duplicate lookup then runs with an empty reference list, which once hit the database as a NUL byte.
+        ApiResult upload = client.postMultipart(
+                "/statements/upload", Map.of("accountId", accountId), "file", "bob-no-reference.pdf",
+                PdfFixtures.statementPdf("Statement of transactions in Savings Account 12345678901 in INR", List.of(
+                        "https://www.bankofbaroda.bank.in Customer Care",
+                        "01-07-2026 Opening Balance 14795.54 Cr",
+                        "02-07-2026",
+                        "NEFT/CMS123456/ACME CORP",
+                        "5556.00 9239.46 Cr",
+                        "05-07-2026 ACHDR/EMIDUE/1234567890/111397544160 100.00 9139.46 Cr")));
+        assertThat(upload.status()).isEqualTo(200);
+        assertThat(upload.data().get("status").asText()).as(upload.data().toString()).isEqualTo("READY_FOR_REVIEW");
+        String statement = upload.data().get("id").asText();
+        assertThat(rowFor(statement, "5556").get("duplicateStatus").asText()).isEqualTo("NOT_DUPLICATE");
+
+        assertThat(client.post("/statements/" + statement + "/duplicates/recheck", Map.of()).status()).isEqualTo(200);
+        assertThat(client.post("/statements/" + statement + "/confirm", Map.of()).status()).isEqualTo(200);
+    }
+
+    @Test
     void theSupportedBanksListComesFromTheRegisteredParsers() {
         ApiResult banks = client.get("/statements/supported-banks");
 
