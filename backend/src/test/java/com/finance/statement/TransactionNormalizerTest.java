@@ -53,9 +53,9 @@ class TransactionNormalizerTest {
     }
 
     @Test
-    void cardPaymentDebitIsCardPaymentOut() {
+    void creditCardBillPaidFromABankAccountIsAPlainExpense() {
         NormalizedTransactionRow result = normalizer.normalize(row("CARD PAYMENT RECEIVED", ParsedTransactionRow.DebitCredit.DEBIT));
-        assertThat(result.transactionType()).isEqualTo(TransactionType.CARD_PAYMENT_OUT);
+        assertThat(result.transactionType()).isEqualTo(TransactionType.EXPENSE);
     }
 
     @Test

@@ -219,7 +219,17 @@ DigitalOcean remains the actual V1 production target once beta-ready — see `DE
 
 
 ## Phase 8 — Dogfood Statements
-Not started.
+
+**Done:**
+- [x] Real Paytm statements (two) and a real Bank of Baroda statement imported and working live; they exposed and fixed about six real bugs (Paytm layout and amount lines, BOB layout, bank-name detection collisions in both directions, wrapped narration, a stuck failed upload)
+- [x] Bank support made pluggable by contract: displayName/identityPosition on the interface, order-independent detector that refuses true ties, `StatementParserContractTest` over every parser with per-bank synthetic samples, and `docs/05-statement-processing/adding-a-bank.md`
+- [x] Credit card bill payments are plain expenses (user's rule)
+
+**Left:**
+- [ ] Real statements for Ujjivan and Axis (and HDFC/SBI if they are ever needed): until each is verified on a real file, its parser is synthetic-only (tracked in `adding-a-bank.md`)
+- [ ] Password-protected PDFs: started and parked in a git stash ("phase-8 password-protected PDF support"); banks often send protected statements
+- [ ] Paytm rows are staged against the Paytm wallet account even when the payment left a linked bank account; reading the per-row account label would assign the right one
+
 
 ## Phase 9 — Recurring Detection
 Not started.

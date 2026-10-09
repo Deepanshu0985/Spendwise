@@ -65,6 +65,16 @@ public class PaytmWalletStatementParser implements StatementParser {
     }
 
     @Override
+    public String displayName() {
+        return "Paytm Wallet";
+    }
+
+    @Override
+    public int identityPosition(String extractedText) {
+        return extractedText.toUpperCase().indexOf("PASSBOOK PAYMENTS HISTORY");
+    }
+
+    @Override
     public boolean matches(String extractedText) {
         // A bare "PAYTM" substring isn't specific enough: a real Bank of Baroda
         // statement's own UPI narrations routinely mention Paytm-linked merchant

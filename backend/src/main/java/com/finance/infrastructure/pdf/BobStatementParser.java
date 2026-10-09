@@ -58,6 +58,16 @@ public class BobStatementParser implements StatementParser {
     }
 
     @Override
+    public String displayName() {
+        return "Bank of Baroda";
+    }
+
+    @Override
+    public int identityPosition(String extractedText) {
+        return extractedText.toUpperCase().indexOf("BANKOFBARODA");
+    }
+
+    @Override
     public boolean matches(String extractedText) {
         String upper = extractedText.toUpperCase();
         // The real statement never actually spells out "Bank of Baroda" as a phrase
