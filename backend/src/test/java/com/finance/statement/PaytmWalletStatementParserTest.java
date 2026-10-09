@@ -118,6 +118,16 @@ class PaytmWalletStatementParserTest {
     }
 
     @Test
+    void capturesThePrintedFundingAccountOfEachRow() {
+        ParsedStatement result = parser.parse(STATEMENT_TEXT);
+
+        // wrapped over several lines, short enough to share the amount line, and a wallet-style label
+        assertThat(result.rows().get(0).accountLabel()).isEqualTo("Ujjivan Small Finance Bank - 82");
+        assertThat(result.rows().get(1).accountLabel()).isEqualTo("UPI Lite");
+        assertThat(result.rows().get(2).accountLabel()).isEqualTo("UPI Lite");
+    }
+
+    @Test
     void excludesSelfTransfersFromStagedRows() {
         ParsedStatement result = parser.parse(STATEMENT_TEXT);
 

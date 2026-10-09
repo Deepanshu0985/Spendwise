@@ -57,9 +57,10 @@ public class TransactionNormalizer {
         if (isDebit && (upper.contains("FEE") || upper.contains("CHARGE"))) {
             return new NormalizedTransactionRow(normalizedDescription, TransactionType.FEE_CHARGED, HIGH_CONFIDENCE);
         }
-        if (upper.contains("CARD PAYMENT") || upper.contains("CC PAYMENT") || upper.contains("CARD BILL")) {
-            TransactionType type = isDebit ? TransactionType.CARD_PAYMENT_OUT : TransactionType.CARD_PAYMENT_IN;
-            return new NormalizedTransactionRow(normalizedDescription, type, MEDIUM_CONFIDENCE);
+        // A credit card bill paid from a bank account is a plain expense: users record the bill, not each card
+        // purchase, so it is never turned into a card-payment transfer (and never paired with a card account).
+        if (isDebit && (upper.contains("CARD PAYMENT") || upper.contains("CC PAYMENT") || upper.contains("CARD BILL"))) {
+            return new NormalizedTransactionRow(normalizedDescription, TransactionType.EXPENSE, MEDIUM_CONFIDENCE);
         }
         if (upper.contains("SELF") || upper.contains("OWN A/C") || upper.contains("OWN ACCOUNT")) {
             TransactionType type = isDebit ? TransactionType.TRANSFER_OUT : TransactionType.TRANSFER_IN;

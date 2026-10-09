@@ -27,7 +27,9 @@ public record StatementTransactionResponse(
         UUID canonicalTransactionId,
         DuplicateReason duplicateReason,
         UUID duplicateOfTransactionId,
-        boolean duplicateOverridden) {
+        boolean duplicateOverridden,
+        String sourceAccountLabel,
+        UUID accountId) {
 
     public static StatementTransactionResponse from(StatementTransaction row) {
         return new StatementTransactionResponse(
@@ -47,6 +49,8 @@ public record StatementTransactionResponse(
                 row.getCanonicalTransactionId(),
                 row.getDuplicateReason(),
                 row.getDuplicateOfTransactionId(),
-                row.getDuplicateOverriddenAt() != null);
+                row.getDuplicateOverriddenAt() != null,
+                row.getSourceAccountLabel(),
+                row.getAccountId());
     }
 }

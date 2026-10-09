@@ -12,6 +12,9 @@ public interface StatementService {
 
     Statement upload(UUID userId, UploadStatementCommand command);
 
+    /** Names of the banks whose statements can currently be imported, for showing in the upload dialog. */
+    List<String> supportedBanks();
+
     Page<Statement> list(UUID userId, Pageable pageable);
 
     Statement getOwned(UUID userId, UUID statementId);
@@ -36,9 +39,16 @@ public interface StatementService {
     /** Undoes skipRow: the row is imported on confirm again. */
     StatementTransaction restoreRow(UUID userId, UUID statementId, UUID stagingId);
 
+    /**
+     * Says which of the user's accounts the rows printed with this source label were paid from (a Paytm row's
+     * "Bank Of Baroda - 21"). Applies to every row of the statement with that label, is remembered for future
+     * statements, and re-checks duplicates since they depend on the account. Returns all the statement's rows.
+     */
+    List<StatementTransaction> mapSourceAccount(UUID userId, UUID statementId, String sourceAccountLabel, UUID accountId);
+
     /** Idempotent: a repeat call against an already-IMPORTED statement returns the original result, never imports twice. */
     ConfirmResult confirm(UUID userId, UUID statementId);
 
-    /** Re-runs extraction/parsing after a FAILED statement. */
-    Statement retry(UUID userId, UUID statementId);
+    /** Re-runs extraction/parsing after a FAILED statement; password (nullable) opens an encrypted PDF in memory only and is never stored. */
+    Statement retry(UUID userId, UUID statementId, String password);
 }

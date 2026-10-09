@@ -69,6 +69,30 @@ class PdfProcessingTest {
     }
 
     @Test
+    void asksForThePasswordWhenAnEncryptedPdfIsUploadedWithoutOne() {
+        byte[] pdf = PdfFixtures.encryptedPdf();
+        assertThatThrownBy(() -> extractor.extract(pdf, null))
+                .isInstanceOf(StatementProcessingFailedException.class)
+                .hasMessageContaining("Enter its password");
+    }
+
+    @Test
+    void rejectsTheWrongPasswordWithAClearMessageThatDoesNotEchoIt() {
+        byte[] pdf = PdfFixtures.encryptedPdf();
+        assertThatThrownBy(() -> extractor.extract(pdf, "not-the-password"))
+                .isInstanceOf(StatementProcessingFailedException.class)
+                .hasMessageContaining("incorrect")
+                .hasMessageNotContaining("not-the-password");
+    }
+
+    @Test
+    void extractsAnEncryptedPdfGivenTheRightPassword() {
+        byte[] pdf = PdfFixtures.encryptedStatementPdf(
+                "HDFC BANK Statement of Account", List.of("15/09/26 TEST REF 15/09/26 100.00 0.00 900.00"), "user-secret");
+        assertThat(extractor.extract(pdf, "user-secret").text()).contains("HDFC BANK Statement of Account");
+    }
+
+    @Test
     void rejectsAScannedLookingPdfWithNoExtractableText() {
         byte[] pdf = PdfFixtures.scannedLookingPdf();
         assertThatThrownBy(() -> extractor.extract(pdf))

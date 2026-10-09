@@ -30,7 +30,9 @@ final class StatementTransactionMapper {
                 entity.getExternalReference(),
                 entity.getDuplicateReason(),
                 entity.getDuplicateOfTransactionId(),
-                entity.getDuplicateOverriddenAt());
+                entity.getDuplicateOverriddenAt(),
+                entity.getSourceAccountLabel(),
+                entity.getAccountId());
     }
 
     static StatementTransactionJpaEntity toNewEntity(StatementTransaction row) {
@@ -54,7 +56,9 @@ final class StatementTransactionMapper {
                 row.getExternalReference(),
                 row.getDuplicateReason(),
                 row.getDuplicateOfTransactionId(),
-                row.getDuplicateOverriddenAt());
+                row.getDuplicateOverriddenAt(),
+                row.getSourceAccountLabel(),
+                row.getAccountId());
     }
 
     /** Mutates an existing managed entity in place so Hibernate's dirty checking fires correctly. */
@@ -70,6 +74,7 @@ final class StatementTransactionMapper {
         entity.setDuplicateReason(row.getDuplicateReason());
         entity.setDuplicateOfTransactionId(row.getDuplicateOfTransactionId());
         entity.setDuplicateOverriddenAt(row.getDuplicateOverriddenAt());
+        entity.setAccountId(row.getAccountId());
         return entity;
     }
 }

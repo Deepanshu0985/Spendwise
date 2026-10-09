@@ -34,6 +34,16 @@ public class HdfcBankStatementParser implements StatementParser {
     }
 
     @Override
+    public String displayName() {
+        return "HDFC Bank";
+    }
+
+    @Override
+    public int identityPosition(String extractedText) {
+        return extractedText.toUpperCase().indexOf("HDFC BANK");
+    }
+
+    @Override
     public boolean matches(String extractedText) {
         // The name alone is not enough: other statements mention this bank in passing (e.g. Paytm's
         // "Paid to Axis Bank Limited" or a linked-account label) and would be claimed by the wrong

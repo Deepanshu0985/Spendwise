@@ -1,0 +1,13 @@
+Statement of transactions in Savings Account 12345678901 in INR for the period Jul 01, 2026 - Sep 29, 2026
+https://www.bankofbaroda.bank.in Customer Care
+DATE NARRATION CHQ.NO. WITHDRAWAL (DR) DEPOSIT (CR) BALANCE
+01-07-2026 Opening Balance 78.62 Cr
+01-07-2026
+UPI/209737101589/14:14:17/UPI/test1234@
+okbank/NA
+15000.00 15078.62 Cr
+02-07-2026
+UPI/609609496741/18:05:55/UPI/paytm.d11487@ptyes/NEFT to Axis Bank HDFC Bank State Bank of India Ujjivan
+283.08 14795.54 Cr
+05-07-2026 ACHDR/EMIDUE/1234567890/111397544160 5556.00 9239.46 Cr
+29-09-2026 Closing Balance 9239.46 Cr

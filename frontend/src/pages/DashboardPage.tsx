@@ -14,7 +14,7 @@ import {
   lastNMonthsRange,
   previousMonthRange,
 } from '../lib/format'
-import { colorForKey, initial, isDebit, TRANSACTION_TYPE_LABELS } from '../lib/labels'
+import { colorForKey, initial, isDebit } from '../lib/labels'
 import { Link } from 'react-router-dom'
 
 type Period = 'this-month' | 'last-month' | 'last-3-months'
@@ -259,7 +259,7 @@ export function DashboardPage() {
                         return (
                           <tr key={tx.id}>
                             <td>{formatDate(tx.transactionDate)}</td>
-                            <td>{tx.description || TRANSACTION_TYPE_LABELS[tx.transactionType]}</td>
+                            <td>{tx.description || <span style={{ color: 'var(--ink-faint)' }}>No description</span>}</td>
                             <td>{categoryName ?? '—'}</td>
                             <td className={`align-right ${negative ? 'amount-negative' : 'amount-positive'}`}>
                               {formatSignedCurrency(tx.amount, tx.currency, negative)}

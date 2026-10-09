@@ -6,7 +6,7 @@ Decisions that are not yet made, and the phases they block. An undecided item th
 |---|---|---|---|
 | D-01 | Which bank and card PDF formats ship in MVP | Phase 6 | Decided: ADR-014, HDFC Bank, SBI and Axis Bank |
 | D-02 | Default category taxonomy: names, hierarchy, system set | Phase 2 | Decided: ADR-015, flat taxonomy |
-| D-03 | LLM provider and model | Phase 11 | Open |
+| D-03 | LLM provider and model | Phase 11 | Decided: Mistral (the user has an API account with credits). Model to be chosen at implementation; Mistral Small tier is the starting point for classification-style calls |
 | D-04 | Email provider for password reset and verification | Phase 1 | Decided: ADR-016, Resend |
 | D-05 | Hosting provider, instance size and region | Phase 0 | Decided: ADR-017, DigitalOcean droplet, Bangalore (BLR1) for V1 production; interim pre-beta hosting on Railway (see ADR-017's update note) |
 | D-06 | Are raw statement PDFs retained after successful import | Phase 6, privacy | Open |

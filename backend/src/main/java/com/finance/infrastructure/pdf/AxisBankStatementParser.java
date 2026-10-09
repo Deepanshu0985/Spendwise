@@ -25,6 +25,16 @@ public class AxisBankStatementParser implements StatementParser {
     }
 
     @Override
+    public String displayName() {
+        return "Axis Bank";
+    }
+
+    @Override
+    public int identityPosition(String extractedText) {
+        return extractedText.toUpperCase().indexOf("AXIS BANK");
+    }
+
+    @Override
     public boolean matches(String extractedText) {
         // The name alone is not enough: other statements mention this bank in passing (e.g. Paytm's
         // "Paid to Axis Bank Limited" or a linked-account label) and would be claimed by the wrong

@@ -26,6 +26,16 @@ public class UjjivanStatementParser implements StatementParser {
     }
 
     @Override
+    public String displayName() {
+        return "Ujjivan Small Finance Bank";
+    }
+
+    @Override
+    public int identityPosition(String extractedText) {
+        return extractedText.toUpperCase().indexOf("UJJIVAN");
+    }
+
+    @Override
     public boolean matches(String extractedText) {
         // The name alone isn't enough: Paytm's own passbook statement labels a row's
         // linked account "Ujjivan Small Finance Bank" without being a Ujjivan statement

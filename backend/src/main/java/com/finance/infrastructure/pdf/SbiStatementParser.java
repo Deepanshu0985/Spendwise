@@ -32,6 +32,16 @@ public class SbiStatementParser implements StatementParser {
     }
 
     @Override
+    public String displayName() {
+        return "State Bank of India";
+    }
+
+    @Override
+    public int identityPosition(String extractedText) {
+        return extractedText.toUpperCase().indexOf("STATE BANK OF INDIA");
+    }
+
+    @Override
     public boolean matches(String extractedText) {
         // "STATE BANK OF INDIA" only, not the bare "SBI" substring - real statements say the full
         // name prominently in the header, and the abbreviation alone risks false-matching other banks'

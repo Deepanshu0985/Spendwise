@@ -46,7 +46,9 @@ public class StatementController {
     }
 
     @PostMapping(value = "/upload", consumes = "multipart/form-data")
-    public ApiResponse<StatementResponse> upload(@RequestParam("file") MultipartFile file, @RequestParam UUID accountId) {
+    public ApiResponse<StatementResponse> upload(
+            @RequestParam("file") MultipartFile file, @RequestParam UUID accountId,
+            @RequestParam(value = "password", required = false) String password) {
         UUID userId = CurrentUserGuard.require(tenantContext);
         byte[] content;
         try {
@@ -55,8 +57,14 @@ public class StatementController {
             throw new UncheckedIOException("Could not read the uploaded file.", e);
         }
         Statement statement = statementService.upload(
-                userId, new UploadStatementCommand(accountId, file.getOriginalFilename(), file.getContentType(), content));
+                userId, new UploadStatementCommand(accountId, file.getOriginalFilename(), file.getContentType(), content, password));
         return ApiResponse.of(StatementResponse.from(statement));
+    }
+
+    @GetMapping("/supported-banks")
+    public ApiResponse<List<String>> supportedBanks() {
+        CurrentUserGuard.require(tenantContext);
+        return ApiResponse.of(statementService.supportedBanks());
     }
 
     @GetMapping
@@ -102,6 +110,14 @@ public class StatementController {
         return ApiResponse.of(StatementTransactionResponse.from(row));
     }
 
+    @PutMapping("/{id}/source-accounts")
+    public ApiResponse<List<StatementTransactionResponse>> mapSourceAccount(
+            @PathVariable UUID id, @Valid @RequestBody MapSourceAccountRequest request) {
+        List<StatementTransaction> rows = statementService.mapSourceAccount(
+                CurrentUserGuard.require(tenantContext), id, request.label(), request.accountId());
+        return ApiResponse.of(rows.stream().map(StatementTransactionResponse::from).toList());
+    }
+
     @PostMapping("/{id}/transactions/{stagingId}/skip")
     public ApiResponse<StatementTransactionResponse> skipRow(@PathVariable UUID id, @PathVariable UUID stagingId) {
         return ApiResponse.of(StatementTransactionResponse.from(
@@ -124,8 +140,10 @@ public class StatementController {
     }
 
     @PostMapping("/{id}/retry")
-    public ApiResponse<StatementResponse> retry(@PathVariable UUID id) {
-        Statement statement = statementService.retry(CurrentUserGuard.require(tenantContext), id);
+    public ApiResponse<StatementResponse> retry(
+            @PathVariable UUID id, @RequestBody(required = false) RetryStatementRequest request) {
+        Statement statement = statementService.retry(
+                CurrentUserGuard.require(tenantContext), id, request == null ? null : request.password());
         return ApiResponse.of(StatementResponse.from(statement));
     }
 }

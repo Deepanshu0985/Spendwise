@@ -82,6 +82,12 @@ public class StatementTransactionJpaEntity {
     @Column(name = "duplicate_overridden_at")
     private Instant duplicateOverriddenAt;
 
+    @Column(name = "source_account_label")
+    private String sourceAccountLabel;
+
+    @Column(name = "account_id")
+    private UUID accountId;
+
     @Column(name = "source_row_reference", nullable = false)
     private String sourceRowReference;
 
@@ -113,7 +119,9 @@ public class StatementTransactionJpaEntity {
             String externalReference,
             DuplicateReason duplicateReason,
             UUID duplicateOfTransactionId,
-            Instant duplicateOverriddenAt) {
+            Instant duplicateOverriddenAt,
+            String sourceAccountLabel,
+            UUID accountId) {
         this.id = id;
         this.userId = userId;
         this.statementId = statementId;
@@ -134,6 +142,20 @@ public class StatementTransactionJpaEntity {
         this.duplicateReason = duplicateReason;
         this.duplicateOfTransactionId = duplicateOfTransactionId;
         this.duplicateOverriddenAt = duplicateOverriddenAt;
+        this.sourceAccountLabel = sourceAccountLabel;
+        this.accountId = accountId;
+    }
+
+    String getSourceAccountLabel() {
+        return sourceAccountLabel;
+    }
+
+    UUID getAccountId() {
+        return accountId;
+    }
+
+    void setAccountId(UUID accountId) {
+        this.accountId = accountId;
     }
 
     String getExternalReference() {

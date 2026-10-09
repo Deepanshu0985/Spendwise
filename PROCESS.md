@@ -219,7 +219,20 @@ DigitalOcean remains the actual V1 production target once beta-ready — see `DE
 
 
 ## Phase 8 — Dogfood Statements
-Not started.
+
+**Status: complete** except real-statement checks for Ujjivan/Axis, which the user deferred until they have such statements.
+
+**Done:**
+- [x] Real Paytm statements (two) and a real Bank of Baroda statement imported and working live; they exposed and fixed about six real bugs (Paytm layout and amount lines, BOB layout, bank-name detection collisions in both directions, wrapped narration, a stuck failed upload)
+- [x] Bank support made pluggable by contract: displayName/identityPosition on the interface, order-independent detector that refuses true ties, `StatementParserContractTest` over every parser with per-bank synthetic samples, and `docs/05-statement-processing/adding-a-bank.md`
+- [x] Credit card bill payments are plain expenses (user's rule)
+- [x] Password-protected PDFs: optional in-memory password on upload and retry, prompt on the failed statement, verified in a browser; also stopped rejecting PDFs that merely restrict printing/copying
+- [x] The supported-banks list shown in the upload dialog now comes from the backend
+- [x] Paytm rows are assigned to the account they were paid from: printed label kept per row, "Paid from" mapping on the review screen, remembered per user (`source_account_rules`, V17), used by duplicate detection and confirm; verified with the real 3-5 Oct statement in a browser
+
+**Left:**
+- [ ] Real statements for Ujjivan and Axis (and HDFC/SBI if they are ever needed): deferred by the user until such statements exist; until verified on a real file, each parser is synthetic-only (tracked in `adding-a-bank.md`)
+
 
 ## Phase 9 — Recurring Detection
 Not started.
@@ -228,7 +241,7 @@ Not started.
 Not started.
 
 ## Phase 11 — AI Categorization
-Not started. Blocked on D-03 (LLM provider and model) — see `docs/09-project/open-decisions.md`.
+Not started. D-03 is decided (Mistral); the daily/monthly cap (D-09) is still open — see `docs/09-project/open-decisions.md`.
 
 ## Phase 12 — AI Assistant
 Not started.

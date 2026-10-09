@@ -145,8 +145,14 @@ function UploadStatementModal({ onClose, onUploaded }: { onClose: () => void; on
   const { accounts } = useReferenceData()
   const [accountId, setAccountId] = useState(accounts[0]?.id ?? '')
   const [file, setFile] = useState<File | null>(null)
+  const [password, setPassword] = useState('')
+  const [supportedBanks, setSupportedBanks] = useState<string[]>([])
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+
+  useEffect(() => {
+    statementsApi.supportedBanks().then(setSupportedBanks).catch(() => setSupportedBanks([]))
+  }, [])
 
   function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
     setFile(e.target.files?.[0] ?? null)
@@ -165,7 +171,7 @@ function UploadStatementModal({ onClose, onUploaded }: { onClose: () => void; on
     }
     setSubmitting(true)
     try {
-      const statement = await statementsApi.upload(accountId, file)
+      const statement = await statementsApi.upload(accountId, file, password || undefined)
       onUploaded(statement)
     } catch (err) {
       setError(err instanceof ApiRequestError ? err.message : 'Something went wrong. Please try again.')
@@ -191,9 +197,20 @@ function UploadStatementModal({ onClose, onUploaded }: { onClose: () => void; on
           <label htmlFor="statement-file">Statement PDF</label>
           <input id="statement-file" type="file" accept="application/pdf" required onChange={handleFileChange} />
           <span style={{ fontSize: 12, color: 'var(--muted, #767268)' }}>
-            HDFC Bank, SBI, Axis Bank, Bank of Baroda, Ujjivan Small Finance Bank or Paytm Wallet statements only.
+            {supportedBanks.length > 0
+              ? `Supported: ${supportedBanks.join(', ')}. More banks are added over time.`
+              : 'Upload a bank or wallet statement PDF.'}
           </span>
         </div>
+
+        <Field
+          label="PDF password (only if the file is protected)"
+          type="password"
+          autoComplete="off"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="Leave empty if it opens without one"
+        />
 
         <div className="modal-actions">
           <Button type="button" variant="secondary" onClick={onClose}>
@@ -218,6 +235,7 @@ function StatementReview({ statementId, onBack }: { statementId: string; onBack:
   const [retrying, setRetrying] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
   const [confirmNote, setConfirmNote] = useState<string | null>(null)
+  const [retryPassword, setRetryPassword] = useState('')
 
   async function reload() {
     setLoading(true)
@@ -277,11 +295,37 @@ function StatementReview({ statementId, onBack }: { statementId: string; onBack:
     }
   }
 
-  async function handleRetry() {
+  // One mapping at a time: each response carries every row, so overlapping requests could show stale rows.
+  const [mappingLabel, setMappingLabel] = useState<string | null>(null)
+
+  async function handleMapSourceAccount(label: string, accountId: string) {
+    if (!accountId) return
+    setActionError(null)
+    setMappingLabel(label)
+    try {
+      setRows(await statementsApi.mapSourceAccount(statementId, label, accountId))
+    } catch (err) {
+      setActionError(err instanceof ApiRequestError ? err.message : 'Something went wrong. Please try again.')
+    } finally {
+      setMappingLabel(null)
+    }
+  }
+
+  // Distinct "paid from" labels printed on the rows (Paytm lists the bank behind each payment), in order of appearance.
+  const sourceLabels = rows.reduce<{ label: string; count: number; accountId: string | null }[]>((groups, row) => {
+    if (!row.sourceAccountLabel) return groups
+    const existing = groups.find((g) => g.label === row.sourceAccountLabel)
+    if (existing) existing.count += 1
+    else groups.push({ label: row.sourceAccountLabel, count: 1, accountId: row.accountId })
+    return groups
+  }, [])
+
+  async function handleRetry(passwordForFile?: string) {
     setActionError(null)
     setRetrying(true)
     try {
-      await statementsApi.retry(statementId)
+      await statementsApi.retry(statementId, passwordForFile)
+      setRetryPassword('')
       await reload()
     } catch (err) {
       setActionError(err instanceof ApiRequestError ? err.message : 'Something went wrong. Please try again.')
@@ -327,6 +371,59 @@ function StatementReview({ statementId, onBack }: { statementId: string; onBack:
       {confirmNote && <div className="badge" style={{ marginBottom: 16, padding: '8px 12px' }}>{confirmNote}</div>}
       {statement?.status === 'FAILED' && statement.errorMessage && (
         <div className="form-error-banner" style={{ marginBottom: 16 }}>{statement.errorMessage}</div>
+      )}
+      {statement?.status === 'FAILED' && /password/i.test(statement.errorMessage ?? '') && (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault()
+            void handleRetry(retryPassword)
+          }}
+          style={{ display: 'flex', gap: 10, alignItems: 'flex-end', marginBottom: 16, flexWrap: 'wrap' }}
+        >
+          <Field
+            label="PDF password"
+            type="password"
+            autoComplete="off"
+            required
+            value={retryPassword}
+            onChange={(e) => setRetryPassword(e.target.value)}
+          />
+          <Button type="submit" disabled={retrying || !retryPassword}>
+            {retrying ? 'Unlocking…' : 'Unlock and import'}
+          </Button>
+        </form>
+      )}
+
+      {!loading && statement?.status === 'READY_FOR_REVIEW' && sourceLabels.length > 0 && (
+        <div className="card" style={{ marginBottom: 16 }}>
+          <div style={{ fontWeight: 600, marginBottom: 4 }}>Paid from</div>
+          <div className="page-subtitle" style={{ marginBottom: 12 }}>
+            This statement shows which account each payment came out of. Choose which of your accounts each one is — it is
+            remembered next time. Rows left unchosen go to {accountName}.
+          </div>
+          <div style={{ display: 'grid', gap: 10 }}>
+            {sourceLabels.map((group) => (
+              <div key={group.label} style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+                <div style={{ minWidth: 220 }}>
+                  {group.label} <span className="page-subtitle">({group.count} {group.count === 1 ? 'row' : 'rows'})</span>
+                </div>
+                <select
+                  aria-label={`Account for ${group.label}`}
+                  value={group.accountId ?? ''}
+                  disabled={mappingLabel !== null}
+                  onChange={(e) => void handleMapSourceAccount(group.label, e.target.value)}
+                >
+                  <option value="">{`Use ${accountName}`}</option>
+                  {accounts.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
 
       {loading ? (

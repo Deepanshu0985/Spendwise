@@ -1,3 +1,63 @@
+## Fix: a statement with no row references crashed the duplicate check (a NUL placeholder rejected by PostgreSQL)
+
+**Found live.** Opening a statement on the live site returned 500 on `duplicates/recheck`, and uploads of some statements failed with a generic error. The Render log showed `invalid byte sequence for encoding "UTF8": 0x00` on the duplicate-candidates query.
+
+**Cause.** When none of a statement's rows carries a reference (Bank of Baroda NEFT and standing-instruction rows have none), the lookup was given an empty reference list. To avoid an empty `IN ()` I had substituted a "never matches" placeholder - a NUL character - which PostgreSQL refuses in any text. Local tests missed it because every test statement had at least one reference.
+
+**Fix.** With no references the lookup now uses a separate date-only query, so no placeholder value exists at all. New integration test: a Bank of Baroda statement whose rows have no UPI reference stages, rechecks and confirms (it failed with exactly this error before the fix). 88 unit + 47 integration tests green.
+
+**Not deployed.** Fixed on `staging` only; `main` still has the bug until it is merged. Password-protected PDF support is likewise only on local `staging` - `origin/staging` and `main` predate it, which is why the live sites do not ask for a password.
+
+## Paytm rows are assigned to the account they were actually paid from; Phase 8 is complete
+
+**Why.** A Paytm statement lists, under every payment, the account it left ("Bank Of Baroda - 21", "Ujjivan Small Finance Bank - 82", "UPI Lite"). Until now every row was staged against the one account chosen at upload, so a payment that left the user's bank was recorded against the wallet and balances were wrong.
+
+**How.** The parser keeps the printed label on each row (`ParsedTransactionRow.accountLabel`, stored as `statement_transactions.source_account_label`). The review screen shows a "Paid from" panel listing each distinct label with a dropdown of the user's own accounts (`PUT /statements/{id}/source-accounts`, body `{label, accountId}`). Choosing one assigns every row with that label, is remembered per user in `source_account_rules` (same label key as payee rules, RLS-protected, migration V17), and is applied automatically to the next statement with the same label. Rows left unchosen still go to the account picked at upload, so nothing changes for banks that print no label. Duplicate detection and confirm both use each row's own account, so "this row matches the entry I typed" now compares against the right account.
+
+**Guards.** The target account must belong to the user and have the rows' currency; a label that no row carries is a 404; mapping is only allowed while the statement awaits review. The UI allows one mapping request at a time because each response returns every row.
+
+**Verified.** The real 3-5 Oct Paytm statement, uploaded through the running app on a throwaway database: the five rows carried exactly the three expected labels; after mapping them in the browser the confirmed transactions landed on Paytm Wallet (UPI Lite), Bank Of Baroda (2 rows) and Ujjivan Savings (2 rows), and the mapping survived a reload. 88 unit + 46 integration tests green, including new tests for label capture, mapping with confirm, remembered mapping on a later statement, and rejected mappings.
+
+**Not done, by the user's choice.** Real Axis and Ujjivan statements were not verified because the user has none yet; those parsers stay marked synthetic-only in `adding-a-bank.md`. This does not hold Phase 8 open.
+
+## Password-protected statements: the password is used in memory only; supported banks come from the backend
+
+**Why.** Banks often send statements as password-protected PDFs, and the earlier answer was a dead end ("remove the password and upload again"). The user's own `3455...244.pdf` failed this way. Rebuilt on the current code (the first attempt was parked in a stash on an older base and is superseded).
+
+**How.** An optional password travels with the upload (a multipart field) or a retry (a JSON body) into `PdfTextExtractor.extract(content, password)` and is used only to open the PDF during that call. It is never stored, never put in an error message or a response, and the request DTO's `toString()` hides it. Verified that it appears nowhere in the server log. A protected file uploaded without one fails with "Enter its password to continue"; a wrong one with "That password is incorrect"; the stored copy is the original encrypted bytes. The review screen shows a password field and "Unlock and import" on exactly that failure, the upload dialog has an optional password field, and uploading the same failed file again with the password also reprocesses it.
+
+**A bug found on the way.** The extractor rejected every PDF that PDFBox flags as encrypted, even after the right password opened it, and it would also have rejected the common bank PDFs that only restrict printing or copying but open with no password. It now checks whether the text may actually be extracted (`canExtractContent`) instead.
+
+**Supported banks list.** The upload dialog still carried a hardcoded sentence naming six banks. It now reads `GET /statements/supported-banks`, built from the registered parsers (the same source as the detector's error message), so adding a bank updates every list automatically.
+
+**Verified.** 87 unit + 43 integration tests green; in a browser on a throwaway database with a synthetic protected PDF (made-up password): upload without a password fails with the prompt, a wrong password gives the clear message and keeps the field, the right one imports two rows and the field disappears.
+
+## Bank support is pluggable by contract: one interface, one sample, automatic cross-bank checks; card bills are plain expenses
+
+**Direction from the user.** Spendwise is a product for everyone and must eventually cover every bank in India, so adding a bank should mean implementing one interface and nothing else, and credit card bill payments are plain expenses (users record the bill from their bank account, not individual card purchases). Both are recorded as a standing rule in memory.
+
+**Audit.** `StatementParser` and `DescriptionCleaner` already existed as discovered Spring components, but the single-interface promise did not hold: the detector listed six banks by name in its error message, it took the first parser that claimed a file (so the result depended on Spring's classpath-scan order, which differs between a laptop and the deployed jar), and nothing forced a new bank to prove it did not collide with the others. Every real-statement bug so far (BOB/Ujjivan/Paytm/Axis claiming each other's files) was one of those collisions.
+
+**Changes.** (1) `StatementParser` gains `displayName()` and `identityPosition()`, both required so a new bank cannot skip them; the "supported banks" message is built from the registered parsers. (2) `StatementFormatDetector` no longer depends on registration order: one match wins; if several parsers claim a file, the one whose own name appears earliest wins (the letterhead precedes narration that merely mentions another bank); a genuine tie is refused with a clear error and a log line rather than guessed, because silently reading a statement with the wrong parser is worse than an error. (3) `StatementParserContractTest` scans the classpath for every parser and, with no edits when a bank is added, checks that each has a unique name, recognises and parses its own synthetic sample (`src/test/resources/statements/samples/<bankName>.txt`, each deliberately mentioning other banks, Paytm and UPI handles), and is detected as itself under the original, reversed and five shuffled orders. Verified that it fails when the old Paytm "name only" check is put back. (4) `docs/05-statement-processing/adding-a-bank.md` documents the procedure, including the step that has caught the most bugs: verify against one real statement and its printed totals. A table in it states which banks are verified on real statements (Paytm, BOB) and which are not yet (Axis, Ujjivan, HDFC, SBI).
+
+**Card bills.** A debit whose narration says card payment / CC payment / card bill is now classified `EXPENSE` instead of `CARD_PAYMENT_OUT`, and the credit-side `CARD_PAYMENT_IN` guess is gone; "Paid to Axis Bank Limited" already came through as an expense. Manual transfers between a bank and a card account (Phase 3) are unchanged. This drops the "classify card bills as card payments" item that was listed as left.
+
+**Verified.** 84 unit + 39 integration tests green.
+
+**Still true.** A tie-break by name position assumes a statement names its own bank before narration mentions another; if a real statement breaks that, the detector fails loudly (ambiguity error) instead of guessing, and the fix is per bank, found on that bank's real statement.
+
+## D-03 decided: Mistral is the LLM provider
+
+**Decision.** The user now has a working Mistral API account with credits, so the open LLM provider decision (D-03) is settled as Mistral, which unblocks Phase 11 (AI categorization). Per the plan it stays behind the `AIModelClient` interface so the provider remains swappable, and the deterministic layers (parsers, description cleaners, the keyword merchant dictionary, learned payee rules) run first so the model only sees rows they could not resolve.
+
+**Facts gathered for the design (to re-check when building).** Mistral's current small tier supports structured JSON-schema outputs and costs on the order of $0.15-0.20 per million input tokens and $0.60 per million output tokens, so categorising a statement's unknown payees costs a fraction of a cent. By default Mistral keeps API inputs and outputs for 30 days for abuse monitoring; zero data retention exists only on the pay-as-you-go plan, by written request, reviewed case by case. That is why only the cleaned payee text (never amounts, account numbers or names of account holders) is to be sent. D-09 (daily per-user and monthly global caps) is still to be set; the API key lives only in the git-ignored `.env` and Render's environment page.
+
+## Blank descriptions show "No description" instead of the transaction type
+
+**What the user saw.** Transactions added through "Add several" (and the single form) with no description appeared with "Expense" in the Description column, which looked like text they had typed. Nothing wrong was stored: the Transactions and Dashboard lists fell back to the transaction type's label whenever the description was empty (a fallback from the original pages, not from the new modal).
+
+**Fix.** Both lists now show a muted "No description"; the type is already clear from the amount's sign and colour. Verified in a browser with one blank and one described transaction. Frontend only; the Dashboard's now-unused label import was removed.
+
 ## Statement rows matching hand-typed entries are flagged, skippable, and the statements list is newest-first
 
 **What the user reported.** A Paytm statement (3-5 Oct) showed rows for payments the user had already typed in by hand (snacks 320, dinner 1,890, credit card 10,343), but nothing was flagged as a duplicate, so confirming would have double-counted them. Also asked that the latest imported statement sit at the top of the list.
