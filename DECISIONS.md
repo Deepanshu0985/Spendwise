@@ -1,3 +1,9 @@
+## D-03 decided: Mistral is the LLM provider
+
+**Decision.** The user now has a working Mistral API account with credits, so the open LLM provider decision (D-03) is settled as Mistral, which unblocks Phase 11 (AI categorization). Per the plan it stays behind the `AIModelClient` interface so the provider remains swappable, and the deterministic layers (parsers, description cleaners, the keyword merchant dictionary, learned payee rules) run first so the model only sees rows they could not resolve.
+
+**Facts gathered for the design (to re-check when building).** Mistral's current small tier supports structured JSON-schema outputs and costs on the order of $0.15-0.20 per million input tokens and $0.60 per million output tokens, so categorising a statement's unknown payees costs a fraction of a cent. By default Mistral keeps API inputs and outputs for 30 days for abuse monitoring; zero data retention exists only on the pay-as-you-go plan, by written request, reviewed case by case. That is why only the cleaned payee text (never amounts, account numbers or names of account holders) is to be sent. D-09 (daily per-user and monthly global caps) is still to be set; the API key lives only in the git-ignored `.env` and Render's environment page.
+
 ## Blank descriptions show "No description" instead of the transaction type
 
 **What the user saw.** Transactions added through "Add several" (and the single form) with no description appeared with "Expense" in the Description column, which looked like text they had typed. Nothing wrong was stored: the Transactions and Dashboard lists fell back to the transaction type's label whenever the description was empty (a fallback from the original pages, not from the new modal).
