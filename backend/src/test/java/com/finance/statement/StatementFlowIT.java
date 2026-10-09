@@ -389,6 +389,80 @@ class StatementFlowIT {
         assertThat(again.data().get("status").asText()).isEqualTo("READY_FOR_REVIEW");
     }
 
+    private static final List<String> PAYTM_LINES = List.of(
+            "30 AUG'26 - 29 SEP'26",
+            "Passbook Payments History",
+            "29 Sep", "10:05 PM", "Paid to Test Grocery", "UPI Ref No: 615023242614", "Tag:", "# Groceries",
+            "Ujjivan Small Finance Bank - 82", "- Rs.110",
+            "28 Sep", "12:44 PM", "Paid to Test Cafe", "UPI Ref No: 216815884724", "Tag:", "# Food",
+            "UPI Lite - Rs.30");
+
+    private String uploadPaytm(String fileName) {
+        ApiResult upload = client.postMultipart(
+                "/statements/upload", Map.of("accountId", accountId), "file", fileName,
+                PdfFixtures.statementPdf("Paytm Statement for", PAYTM_LINES));
+        assertThat(upload.data().get("status").asText()).isEqualTo("READY_FOR_REVIEW");
+        return upload.data().get("id").asText();
+    }
+
+    @Test
+    void aPaytmRowsFundingAccountCanBeMappedToTheUsersOwnAccountAndIsUsedOnConfirmAndRemembered() {
+        String bobAccount = client.post("/accounts", Map.of("name", "BOB", "accountType", "BANK", "currency", "INR"))
+                .data().get("id").asText();
+        String statement = uploadPaytm("paytm.pdf");
+
+        var grocery = rowFor(statement, "110");
+        assertThat(grocery.get("sourceAccountLabel").asText()).isEqualTo("Ujjivan Small Finance Bank - 82");
+        assertThat(grocery.get("accountId").isNull()).isTrue();
+        assertThat(rowFor(statement, "30").get("sourceAccountLabel").asText()).isEqualTo("UPI Lite");
+
+        ApiResult mapped = client.put("/statements/" + statement + "/source-accounts",
+                Map.of("label", "Ujjivan Small Finance Bank - 82", "accountId", bobAccount));
+        assertThat(mapped.status()).isEqualTo(200);
+        assertThat(rowFor(statement, "110").get("accountId").asText()).isEqualTo(bobAccount);
+        assertThat(rowFor(statement, "30").get("accountId").isNull()).isTrue();
+
+        client.post("/statements/" + statement + "/confirm", Map.of());
+        for (var transaction : client.get("/transactions").data()) {
+            String expected = transaction.get("amount").asDouble() == 110 ? bobAccount : accountId;
+            assertThat(transaction.get("accountId").asText()).isEqualTo(expected);
+        }
+
+    }
+
+    @Test
+    void aMappingIsRememberedSoALaterStatementWithTheSameLabelArrivesMapped() {
+        String bobAccount = client.post("/accounts", Map.of("name", "BOB", "accountType", "BANK", "currency", "INR"))
+                .data().get("id").asText();
+        String first = uploadPaytm("paytm-1.pdf");
+        client.put("/statements/" + first + "/source-accounts",
+                Map.of("label", "Ujjivan Small Finance Bank - 82", "accountId", bobAccount));
+
+        List<String> later = new java.util.ArrayList<>(PAYTM_LINES);
+        later.set(4, "Paid to Another Shop");
+        later.set(5, "UPI Ref No: 999000111222");
+        ApiResult upload = client.postMultipart(
+                "/statements/upload", Map.of("accountId", accountId), "file", "paytm-2.pdf",
+                PdfFixtures.statementPdf("Paytm Statement for", later));
+        String second = upload.data().get("id").asText();
+
+        assertThat(rowFor(second, "110").get("accountId").asText()).isEqualTo(bobAccount);
+        assertThat(rowFor(second, "30").get("accountId").isNull()).isTrue();
+    }
+
+    @Test
+    void aMappingToSomeoneElsesAccountOrAnUnknownLabelIsRejected() {
+        String statement = uploadPaytm("paytm.pdf");
+
+        ApiResult unknownAccount = client.put("/statements/" + statement + "/source-accounts",
+                Map.of("label", "UPI Lite", "accountId", java.util.UUID.randomUUID().toString()));
+        assertThat(unknownAccount.status()).isEqualTo(404);
+
+        ApiResult unknownLabel = client.put("/statements/" + statement + "/source-accounts",
+                Map.of("label", "No Such Bank - 99", "accountId", accountId));
+        assertThat(unknownLabel.status()).isEqualTo(404);
+    }
+
     @Test
     void theSupportedBanksListComesFromTheRegisteredParsers() {
         ApiResult banks = client.get("/statements/supported-banks");

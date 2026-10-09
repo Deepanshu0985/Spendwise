@@ -110,6 +110,14 @@ public class StatementController {
         return ApiResponse.of(StatementTransactionResponse.from(row));
     }
 
+    @PutMapping("/{id}/source-accounts")
+    public ApiResponse<List<StatementTransactionResponse>> mapSourceAccount(
+            @PathVariable UUID id, @Valid @RequestBody MapSourceAccountRequest request) {
+        List<StatementTransaction> rows = statementService.mapSourceAccount(
+                CurrentUserGuard.require(tenantContext), id, request.label(), request.accountId());
+        return ApiResponse.of(rows.stream().map(StatementTransactionResponse::from).toList());
+    }
+
     @PostMapping("/{id}/transactions/{stagingId}/skip")
     public ApiResponse<StatementTransactionResponse> skipRow(@PathVariable UUID id, @PathVariable UUID stagingId) {
         return ApiResponse.of(StatementTransactionResponse.from(

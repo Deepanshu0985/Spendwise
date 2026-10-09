@@ -295,6 +295,31 @@ function StatementReview({ statementId, onBack }: { statementId: string; onBack:
     }
   }
 
+  // One mapping at a time: each response carries every row, so overlapping requests could show stale rows.
+  const [mappingLabel, setMappingLabel] = useState<string | null>(null)
+
+  async function handleMapSourceAccount(label: string, accountId: string) {
+    if (!accountId) return
+    setActionError(null)
+    setMappingLabel(label)
+    try {
+      setRows(await statementsApi.mapSourceAccount(statementId, label, accountId))
+    } catch (err) {
+      setActionError(err instanceof ApiRequestError ? err.message : 'Something went wrong. Please try again.')
+    } finally {
+      setMappingLabel(null)
+    }
+  }
+
+  // Distinct "paid from" labels printed on the rows (Paytm lists the bank behind each payment), in order of appearance.
+  const sourceLabels = rows.reduce<{ label: string; count: number; accountId: string | null }[]>((groups, row) => {
+    if (!row.sourceAccountLabel) return groups
+    const existing = groups.find((g) => g.label === row.sourceAccountLabel)
+    if (existing) existing.count += 1
+    else groups.push({ label: row.sourceAccountLabel, count: 1, accountId: row.accountId })
+    return groups
+  }, [])
+
   async function handleRetry(passwordForFile?: string) {
     setActionError(null)
     setRetrying(true)
@@ -367,6 +392,38 @@ function StatementReview({ statementId, onBack }: { statementId: string; onBack:
             {retrying ? 'Unlocking…' : 'Unlock and import'}
           </Button>
         </form>
+      )}
+
+      {!loading && statement?.status === 'READY_FOR_REVIEW' && sourceLabels.length > 0 && (
+        <div className="card" style={{ marginBottom: 16 }}>
+          <div style={{ fontWeight: 600, marginBottom: 4 }}>Paid from</div>
+          <div className="page-subtitle" style={{ marginBottom: 12 }}>
+            This statement shows which account each payment came out of. Choose which of your accounts each one is — it is
+            remembered next time. Rows left unchosen go to {accountName}.
+          </div>
+          <div style={{ display: 'grid', gap: 10 }}>
+            {sourceLabels.map((group) => (
+              <div key={group.label} style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+                <div style={{ minWidth: 220 }}>
+                  {group.label} <span className="page-subtitle">({group.count} {group.count === 1 ? 'row' : 'rows'})</span>
+                </div>
+                <select
+                  aria-label={`Account for ${group.label}`}
+                  value={group.accountId ?? ''}
+                  disabled={mappingLabel !== null}
+                  onChange={(e) => void handleMapSourceAccount(group.label, e.target.value)}
+                >
+                  <option value="">{`Use ${accountName}`}</option>
+                  {accounts.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
 
       {loading ? (

@@ -98,6 +98,7 @@ public class PaytmWalletStatementParser implements StatementParser {
         int day = 0;
         Month month = null;
         StringBuilder description = new StringBuilder();
+        StringBuilder accountLabel = new StringBuilder();
         String reference = null;
         int rowIndex = 0;
 
@@ -163,6 +164,7 @@ public class PaytmWalletStatementParser implements StatementParser {
                 }
                 case EXPECT_CATEGORY -> {
                     if (CATEGORY_LINE.matcher(line).matches()) {
+                        accountLabel.setLength(0);
                         state = State.COLLECT_ACCOUNT;
                     }
                 }
@@ -173,6 +175,12 @@ public class PaytmWalletStatementParser implements StatementParser {
                     // than requiring the whole line to be just the amount.
                     Matcher amountMatcher = AMOUNT_LINE.matcher(line);
                     if (amountMatcher.find()) {
+                        // Whatever precedes the amount on its own line is the tail of the account label
+                        // ("UPI Lite" in "UPI Lite - Rs.30"); the lines before it were collected below.
+                        String beforeAmount = line.substring(0, amountMatcher.start()).trim();
+                        if (!beforeAmount.isEmpty()) {
+                            appendWithSpace(accountLabel, beforeAmount);
+                        }
                         rowIndex++;
                         String sign = amountMatcher.group(1);
                         if (sign != null) {
@@ -182,14 +190,17 @@ public class PaytmWalletStatementParser implements StatementParser {
                                     "-".equals(sign) ? ParsedTransactionRow.DebitCredit.DEBIT : ParsedTransactionRow.DebitCredit.CREDIT;
                             if (amount.signum() > 0) {
                                 rows.add(new ParsedTransactionRow(
-                                        date, amount, debitCredit, description.toString().trim(), reference, null, "p1r" + rowIndex));
+                                        date, amount, debitCredit, description.toString().trim(), reference, null, "p1r" + rowIndex,
+                                        accountLabel.isEmpty() ? null : accountLabel.toString()));
                             }
                         }
                         // sign == null: a self-transfer between the user's own accounts (Paytm's own
                         // statement note says these are excluded from totals) - not staged at all.
                         state = State.IDLE;
                     }
-                    // otherwise still inside the (possibly multi-line, wrapped) account name - skip
+                    else {
+                        appendWithSpace(accountLabel, line);
+                    }
                 }
                 default -> {
                     // IDLE with no date match: header/footer noise between transaction blocks - skip
@@ -200,6 +211,13 @@ public class PaytmWalletStatementParser implements StatementParser {
         LocalDate periodStart = rows.stream().map(ParsedTransactionRow::transactionDate).min(Comparator.naturalOrder()).orElse(null);
         LocalDate periodEnd = rows.stream().map(ParsedTransactionRow::transactionDate).max(Comparator.naturalOrder()).orElse(null);
         return new ParsedStatement(bankName(), periodStart, periodEnd, rows);
+    }
+
+    private static void appendWithSpace(StringBuilder target, String text) {
+        if (target.length() > 0) {
+            target.append(' ');
+        }
+        target.append(text.trim());
     }
 
     /** Reads the "DD Mon'YY - DD Mon'YY" header; falls back to the current year for both ends if it's missing or unparseable. */

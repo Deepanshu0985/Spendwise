@@ -35,6 +35,8 @@ public class StatementTransaction {
     private DuplicateReason duplicateReason;
     private UUID duplicateOfTransactionId;
     private Instant duplicateOverriddenAt;
+    private final String sourceAccountLabel;
+    private UUID accountId;
 
     public StatementTransaction(
             UUID userId,
@@ -51,9 +53,30 @@ public class StatementTransaction {
             String sourceRowReference,
             String externalReference) {
         this(
+                userId, statementId, transactionDate, amount, currency, rawDescription, normalizedDescription, suggestedMerchantId,
+                suggestedCategoryId, suggestedTransactionType, confidenceScore, sourceRowReference, externalReference, null);
+    }
+
+    /** sourceAccountLabel: the account the statement says this payment came from (null when the statement does not say). */
+    public StatementTransaction(
+            UUID userId,
+            UUID statementId,
+            LocalDate transactionDate,
+            BigDecimal amount,
+            String currency,
+            String rawDescription,
+            String normalizedDescription,
+            UUID suggestedMerchantId,
+            UUID suggestedCategoryId,
+            TransactionType suggestedTransactionType,
+            BigDecimal confidenceScore,
+            String sourceRowReference,
+            String externalReference,
+            String sourceAccountLabel) {
+        this(
                 UUID.randomUUID(), userId, statementId, transactionDate, amount, currency, rawDescription, normalizedDescription,
                 suggestedMerchantId, suggestedCategoryId, suggestedTransactionType, confidenceScore, DuplicateStatus.UNKNOWN,
-                ReviewStatus.PENDING, null, sourceRowReference, null, externalReference, null, null, null);
+                ReviewStatus.PENDING, null, sourceRowReference, null, externalReference, null, null, null, sourceAccountLabel, null);
     }
 
     /** Reconstitution constructor - used by the persistence mapper to rebuild a domain object from a stored row. */
@@ -78,7 +101,9 @@ public class StatementTransaction {
             String externalReference,
             DuplicateReason duplicateReason,
             UUID duplicateOfTransactionId,
-            Instant duplicateOverriddenAt) {
+            Instant duplicateOverriddenAt,
+            String sourceAccountLabel,
+            UUID accountId) {
         this.id = id;
         this.userId = userId;
         this.statementId = statementId;
@@ -100,6 +125,8 @@ public class StatementTransaction {
         this.duplicateReason = duplicateReason;
         this.duplicateOfTransactionId = duplicateOfTransactionId;
         this.duplicateOverriddenAt = duplicateOverriddenAt;
+        this.sourceAccountLabel = sourceAccountLabel;
+        this.accountId = accountId;
     }
 
     /** The user correcting a staged row before confirming - moves review status to EDITED. */
@@ -165,6 +192,16 @@ public class StatementTransaction {
 
     public boolean isUnresolvedDuplicate() {
         return duplicateStatus == DuplicateStatus.DUPLICATE && duplicateOverriddenAt == null;
+    }
+
+    /** The user (or a remembered rule) saying which of their accounts this payment really came from. */
+    public void assignAccount(UUID accountId) {
+        this.accountId = accountId;
+    }
+
+    /** The account this row belongs to: its own assignment if it has one, otherwise the statement's account. */
+    public UUID effectiveAccountId(UUID statementAccountId) {
+        return accountId != null ? accountId : statementAccountId;
     }
 
     public void markPromoted(UUID canonicalTransactionId) {
@@ -238,6 +275,14 @@ public class StatementTransaction {
 
     public Instant getCreatedAt() {
         return createdAt;
+    }
+
+    public String getSourceAccountLabel() {
+        return sourceAccountLabel;
+    }
+
+    public UUID getAccountId() {
+        return accountId;
     }
 
     public String getExternalReference() {

@@ -31,6 +31,8 @@ export const statementsApi = {
     apiClient.post<StatementTransaction>(`/statements/${statementId}/transactions/${stagingId}/skip`),
   restoreRow: (statementId: string, stagingId: string) =>
     apiClient.post<StatementTransaction>(`/statements/${statementId}/transactions/${stagingId}/restore`),
+  mapSourceAccount: (statementId: string, label: string, accountId: string) =>
+    apiClient.put<StatementTransaction[]>(`/statements/${statementId}/source-accounts`, { label, accountId }),
   retry: (id: string, password?: string) =>
     apiClient.post<Statement>(`/statements/${id}/retry`, password ? { password } : undefined),
   supportedBanks: () => apiClient.get<string[]>('/statements/supported-banks'),

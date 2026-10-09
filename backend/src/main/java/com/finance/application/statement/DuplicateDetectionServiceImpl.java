@@ -25,7 +25,7 @@ public class DuplicateDetectionServiceImpl implements DuplicateDetectionService 
     }
 
     @Override
-    public void score(UUID userId, UUID accountId, List<StatementTransaction> rows) {
+    public void score(UUID userId, UUID statementAccountId, List<StatementTransaction> rows) {
         List<StatementTransaction> toScore = rows.stream().filter(row -> row.getReviewStatus() != ReviewStatus.REJECTED).toList();
         if (toScore.isEmpty()) {
             return;
@@ -42,7 +42,7 @@ public class DuplicateDetectionServiceImpl implements DuplicateDetectionService 
 
         Set<UUID> alreadyMatched = new HashSet<>();
         for (StatementTransaction row : toScore) {
-            DuplicateMatch match = DuplicateScorer.score(row, accountId, candidates, alreadyMatched).orElse(null);
+            DuplicateMatch match = DuplicateScorer.score(row, row.effectiveAccountId(statementAccountId), candidates, alreadyMatched).orElse(null);
             row.applyDuplicateScore(match);
             if (match != null) {
                 alreadyMatched.add(match.matchedTransactionId());

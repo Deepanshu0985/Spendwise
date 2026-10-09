@@ -8,6 +8,7 @@ import com.finance.domain.account.Account;
 import com.finance.domain.account.AccountRepository;
 import com.finance.domain.statement.ParsedStatement;
 import com.finance.domain.statement.ParsedTransactionRow;
+import com.finance.domain.statement.PayeeKey;
 import com.finance.domain.statement.ReviewStatus;
 import com.finance.domain.statement.Statement;
 import com.finance.domain.statement.StatementRepository;
@@ -56,6 +57,7 @@ public class StatementServiceImpl implements StatementService {
     private final DescriptionCleanerRegistry descriptionCleanerRegistry;
     private final DuplicateDetectionService duplicateDetectionService;
     private final PayeeRuleService payeeRuleService;
+    private final SourceAccountRuleService sourceAccountRuleService;
     private final StorageService storageService;
 
     public StatementServiceImpl(
@@ -70,6 +72,7 @@ public class StatementServiceImpl implements StatementService {
             DescriptionCleanerRegistry descriptionCleanerRegistry,
             DuplicateDetectionService duplicateDetectionService,
             PayeeRuleService payeeRuleService,
+            SourceAccountRuleService sourceAccountRuleService,
             StorageService storageService) {
         this.statementRepository = statementRepository;
         this.statementTransactionRepository = statementTransactionRepository;
@@ -82,6 +85,7 @@ public class StatementServiceImpl implements StatementService {
         this.descriptionCleanerRegistry = descriptionCleanerRegistry;
         this.duplicateDetectionService = duplicateDetectionService;
         this.payeeRuleService = payeeRuleService;
+        this.sourceAccountRuleService = sourceAccountRuleService;
         this.storageService = storageService;
     }
 
@@ -247,7 +251,7 @@ public class StatementServiceImpl implements StatementService {
                 continue;
             }
             Transaction transaction = new Transaction(
-                    userId, statement.getAccountId(), row.getSuggestedMerchantId(), row.getSuggestedCategoryId(),
+                    userId, row.effectiveAccountId(statement.getAccountId()), row.getSuggestedMerchantId(), row.getSuggestedCategoryId(),
                     row.getTransactionDate(), row.getAmount(), row.getCurrency(), row.getNormalizedDescription(),
                     row.getRawDescription(), row.getSuggestedTransactionType(), TransactionSource.STATEMENT,
                     row.getExternalReference(), TransactionStatus.CONFIRMED);
@@ -294,6 +298,7 @@ public class StatementServiceImpl implements StatementService {
                     .map(row -> toStagedRow(userId, statementId, account.getCurrency(), parsed.detectedBank(), row))
                     .toList();
             payeeRuleService.applyTo(userId, staged);
+            sourceAccountRuleService.applyTo(userId, staged);
             duplicateDetectionService.score(userId, account.getId(), staged);
             statementTransactionRepository.saveAll(staged);
             statement.markReadyForReview(parsed.periodStart(), parsed.periodEnd());
@@ -310,6 +315,35 @@ public class StatementServiceImpl implements StatementService {
                 .orElseThrow(() -> new StatementProcessingFailedException("Statement disappeared during processing."));
     }
 
+    @Override
+    @Transactional
+    public List<StatementTransaction> mapSourceAccount(UUID userId, UUID statementId, String sourceAccountLabel, UUID accountId) {
+        Statement statement = requireOwnedStatement(userId, statementId);
+        if (statement.getStatus() != StatementStatus.READY_FOR_REVIEW) {
+            throw new DomainValidationException(
+                    "Accounts can only be mapped while the statement is awaiting review (current status: " + statement.getStatus() + ").",
+                    List.of());
+        }
+        Account target = requireOwnedAccount(userId, accountId);
+        List<StatementTransaction> rows = statementTransactionRepository.findByStatementIdAndUserId(statementId, userId);
+        String key = PayeeKey.of(sourceAccountLabel);
+        List<StatementTransaction> matching = rows.stream()
+                .filter(row -> row.getSourceAccountLabel() != null && PayeeKey.of(row.getSourceAccountLabel()).equals(key))
+                .toList();
+        if (matching.isEmpty()) {
+            throw new NotFoundException("No rows in this statement are paid from \"" + sourceAccountLabel + "\".");
+        }
+        if (matching.stream().anyMatch(row -> !row.getCurrency().equals(target.getCurrency()))) {
+            throw new DomainValidationException(
+                    "That account is in " + target.getCurrency() + ", but these rows are in " + matching.get(0).getCurrency() + ".", List.of());
+        }
+        matching.forEach(row -> row.assignAccount(accountId));
+        sourceAccountRuleService.remember(userId, sourceAccountLabel, accountId);
+        // The account decides which hand-typed entries a row can be a duplicate of, so score again.
+        duplicateDetectionService.score(userId, statement.getAccountId(), rows);
+        return statementTransactionRepository.saveAll(rows);
+    }
+
     private StatementTransaction toStagedRow(
             UUID userId, UUID statementId, String currency, String bankName, ParsedTransactionRow row) {
         NormalizedTransactionRow normalized = transactionNormalizer.normalize(row);
@@ -317,7 +351,7 @@ public class StatementServiceImpl implements StatementService {
         return new StatementTransaction(
                 userId, statementId, row.transactionDate(), row.amount(), currency, row.rawDescription(),
                 description, null, null, normalized.transactionType(), normalized.confidenceScore(),
-                row.sourceRowReference(), row.reference());
+                row.sourceRowReference(), row.reference(), row.accountLabel());
     }
 
     private Account requireOwnedAccount(UUID userId, UUID accountId) {

@@ -39,6 +39,13 @@ public interface StatementService {
     /** Undoes skipRow: the row is imported on confirm again. */
     StatementTransaction restoreRow(UUID userId, UUID statementId, UUID stagingId);
 
+    /**
+     * Says which of the user's accounts the rows printed with this source label were paid from (a Paytm row's
+     * "Bank Of Baroda - 21"). Applies to every row of the statement with that label, is remembered for future
+     * statements, and re-checks duplicates since they depend on the account. Returns all the statement's rows.
+     */
+    List<StatementTransaction> mapSourceAccount(UUID userId, UUID statementId, String sourceAccountLabel, UUID accountId);
+
     /** Idempotent: a repeat call against an already-IMPORTED statement returns the original result, never imports twice. */
     ConfirmResult confirm(UUID userId, UUID statementId);
 

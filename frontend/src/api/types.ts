@@ -155,6 +155,8 @@ export interface StatementTransaction {
   duplicateReason: DuplicateReason | null
   duplicateOfTransactionId: string | null
   duplicateOverridden: boolean
+  sourceAccountLabel: string | null
+  accountId: string | null
 }
 
 export interface ConfirmStatementResult {

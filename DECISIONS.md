@@ -1,3 +1,15 @@
+## Paytm rows are assigned to the account they were actually paid from; Phase 8 is complete
+
+**Why.** A Paytm statement lists, under every payment, the account it left ("Bank Of Baroda - 21", "Ujjivan Small Finance Bank - 82", "UPI Lite"). Until now every row was staged against the one account chosen at upload, so a payment that left the user's bank was recorded against the wallet and balances were wrong.
+
+**How.** The parser keeps the printed label on each row (`ParsedTransactionRow.accountLabel`, stored as `statement_transactions.source_account_label`). The review screen shows a "Paid from" panel listing each distinct label with a dropdown of the user's own accounts (`PUT /statements/{id}/source-accounts`, body `{label, accountId}`). Choosing one assigns every row with that label, is remembered per user in `source_account_rules` (same label key as payee rules, RLS-protected, migration V17), and is applied automatically to the next statement with the same label. Rows left unchosen still go to the account picked at upload, so nothing changes for banks that print no label. Duplicate detection and confirm both use each row's own account, so "this row matches the entry I typed" now compares against the right account.
+
+**Guards.** The target account must belong to the user and have the rows' currency; a label that no row carries is a 404; mapping is only allowed while the statement awaits review. The UI allows one mapping request at a time because each response returns every row.
+
+**Verified.** The real 3-5 Oct Paytm statement, uploaded through the running app on a throwaway database: the five rows carried exactly the three expected labels; after mapping them in the browser the confirmed transactions landed on Paytm Wallet (UPI Lite), Bank Of Baroda (2 rows) and Ujjivan Savings (2 rows), and the mapping survived a reload. 88 unit + 46 integration tests green, including new tests for label capture, mapping with confirm, remembered mapping on a later statement, and rejected mappings.
+
+**Not done, by the user's choice.** Real Axis and Ujjivan statements were not verified because the user has none yet; those parsers stay marked synthetic-only in `adding-a-bank.md`. This does not hold Phase 8 open.
+
 ## Password-protected statements: the password is used in memory only; supported banks come from the backend
 
 **Why.** Banks often send statements as password-protected PDFs, and the earlier answer was a dead end ("remove the password and upload again"). The user's own `3455...244.pdf` failed this way. Rebuilt on the current code (the first attempt was parked in a stash on an older base and is superseded).
