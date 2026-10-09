@@ -6,6 +6,7 @@ import { transactionsApi } from '../api/transactions'
 import type { CreateTransactionRequest, UpdateTransactionRequest } from '../api/transactions'
 import { transferApi } from '../api/transfers'
 import type { PageMeta, Transaction, TransferKind } from '../api/types'
+import { AddMultipleTransactionsModal } from '../components/AddMultipleTransactionsModal'
 import { CalendarIcon, EditIcon, PlusIcon, TrashIcon } from '../components/icons'
 import { Button } from '../components/ui/Button'
 import { Field } from '../components/ui/Field'
@@ -67,6 +68,7 @@ export function TransactionsPage() {
   const [pendingId, setPendingId] = useState<string | null>(null)
 
   const [transferOpen, setTransferOpen] = useState(false)
+  const [multiOpen, setMultiOpen] = useState(false)
 
   const categoryById = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories])
   const merchantById = useMemo(() => new Map(merchants.map((m) => [m.id, m])), [merchants])
@@ -219,6 +221,9 @@ export function TransactionsPage() {
         <div style={{ display: 'flex', gap: 10 }}>
           <Button variant="secondary" onClick={() => setTransferOpen(true)}>
             Record transfer
+          </Button>
+          <Button variant="secondary" onClick={() => setMultiOpen(true)}>
+            Add several
           </Button>
           <Button onClick={openCreate}>
             <PlusIcon />
@@ -466,6 +471,16 @@ export function TransactionsPage() {
             </div>
           </form>
         </Modal>
+      )}
+
+      {multiOpen && (
+        <AddMultipleTransactionsModal
+          onClose={() => setMultiOpen(false)}
+          onDone={() => {
+            setMultiOpen(false)
+            void reloadList()
+          }}
+        />
       )}
 
       {transferOpen && (
