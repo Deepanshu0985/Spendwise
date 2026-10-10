@@ -239,7 +239,7 @@ DigitalOcean remains the actual V1 production target once beta-ready — see `DE
 **Done:**
 - [x] Deterministic detector (grouping, frequency inference, amount tolerance, confidence, next expected date, monthly/yearly estimate, stopped detection) with 12 unit tests
 - [x] `recurring_expenses` table (V18, RLS), `GET /recurring-expenses`, `POST /recurring-expenses/detect`, `PUT /recurring-expenses/{id}`, `POST /recurring-expenses/{id}/dismiss`; user choices survive re-detection; per-user lock against overlapping detections
-- [x] Recurring page: summary, active and stopped lists, confirm, rename, "Not recurring"; verified in a browser on seeded data
+- [x] Recurring page: summary, active and stopped lists, confirm, rename, "Not recurring"; verified in a browser on seeded data (opened by URL - the sidebar link was added afterwards, once it was reported missing)
 
 **Left:**
 - [ ] Recurring total on the dashboard (optional); category picker on the page; detection after a statement import rather than only on page open
