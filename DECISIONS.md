@@ -1,3 +1,15 @@
+## Fix: "COFFEE" was classified as a bank fee, and other substring misfires in the statement classifier
+
+**Found by.** The real-model check on made-up rows: "UNIVERSITY FEE PAYMENT" came back typed as a bank fee. The cause was the existing rule engine, not the AI: it looked for the letters FEE anywhere in the narration.
+
+**What was wrong.** The classifier used plain substring checks, so any narration merely containing those letters matched: COFFEE (FEE) became a bank fee, HOSPITAL TREATMENT (ATM) became a cash withdrawal, SUPERCHARGED or DISCHARGE (CHARGE) became a fee, SELFRIDGES (SELF) became a self-transfer. These are everyday merchants, and a transfer or cash withdrawal also skips the normal expense handling.
+
+**Fix.** ATM, INTEREST, SELF/OWN ACCOUNT and FEE/CHARGE are now matched as whole words. A fee or charge is also not treated as a bank fee when the narration names an institution the user paid for something (university, school, college, tuition, exam, admission, course, academy, institute, coaching, hostel, hospital, clinic, toll, parking): that is a purchase, so it is an ordinary expense. Real bank narrations (SMS CHARGES, SERVICE CHARGE GST, NEFT CHARGES, LATE FEE, ANNUAL FEES, MIN BAL CHARGES) are still fees, and ATM withdrawals in their usual forms are still cash withdrawals.
+
+**Limits.** The institution list is a heuristic: a bank fee whose narration happens to include one of those words would now be an expense, and a payee type missing from the list can still read as a fee. Both cases are reviewable on the import screen. Rows already imported keep the type they were given; nothing is rewritten.
+
+**Verified.** Five new unit tests (real fees, institution fees, look-alike words, ATM forms, SELF and INTEREST look-alikes) were written first and failed on COFFEE DAY OUTLET, UNIVERSITY FEE PAYMENT and SELFRIDGES; they pass now. 139 unit + 73 integration tests green.
+
 ## Phase 11: AI category suggestions behind one gateway, with free rules first and hard caps
 
 **What it does.** A "Suggest categories" button on the statement review screen fills categories for rows that have none. Free layers first: remembered edits already applied at import, then a built-in list of well-known brands (Zomato to Food & Dining, Netflix to Subscriptions, and so on; the more specific "Instamart" is matched before "Swiggy"). Only rows still uncategorised go to the model (Mistral, `mistral-small-latest`, D-03). It is a button, not automatic at upload, so uploads stay fast and cannot fail because of an AI outage, and the user sees when credits are used.
