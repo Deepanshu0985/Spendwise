@@ -38,6 +38,18 @@ Structured search cannot know that "coffee" means *Cafe Coffee Day*. For that:
 
 Measure before building part 2: if structured plus text search answers the golden questions well, semantic retrieval may only need to cover the remainder.
 
+## Freshness: a payment added a moment ago must be findable
+
+A payment you add by hand is confirmed at once, so it is real data from that second. The plan makes sure the assistant sees it:
+
+- **Structured and text search read the live database**, so a new payment is found immediately, with no delay and no indexing step.
+- **The embedding index is updated in the background** after a transaction is confirmed or edited, so semantic matches (the "coffee finds Cafe Coffee Day" kind) can lag by seconds to a minute or two.
+- **No gap is allowed to hide a record.** `semantic_search` always runs together with the text search, and any transaction that has no embedding yet is included through the text and date filters. A just-added payment is therefore found by its description, merchant, amount or date straight away, and by meaning shortly after.
+- **Edits and deletions follow the same path.** An edited description is re-embedded (the stored text hash changes); a deleted payment is excluded from every query at once and its vector is removed.
+- **Staged statement rows are not included** until the statement is confirmed, as everywhere else in the product.
+
+A test in this phase adds a payment and asks about it in the same breath, with indexing deliberately held back, and requires it to be found.
+
 ## Design decisions to make
 
 | ID | Decision | Recommendation |
