@@ -1283,3 +1283,41 @@ tbody tr:last-child td {
   color: var(--ink);
   overflow-wrap: anywhere;
 }
+
+/* ---------- Dashboard insight card ---------- */
+
+.insight-card {
+  margin-bottom: 20px;
+}
+
+.insight-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.insight-title {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.insight-summary {
+  margin: 6px 0 8px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.insight-highlights {
+  margin: 0 0 8px;
+  padding-left: 18px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.insight-note {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--ink-muted);
+}

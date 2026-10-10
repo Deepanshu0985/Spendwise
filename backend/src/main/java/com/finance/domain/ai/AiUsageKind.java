@@ -5,5 +5,7 @@ public enum AiUsageKind {
     /** Statement rows sent to the model for a category suggestion. */
     CATEGORIZATION,
     /** Messages sent to the assistant. */
-    CHAT
+    CHAT,
+    /** Monthly insights written by the model. */
+    INSIGHT
 }

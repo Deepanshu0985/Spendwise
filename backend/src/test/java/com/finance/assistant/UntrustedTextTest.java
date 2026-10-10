@@ -9,7 +9,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class UntrustedTextTest {
 
     private static String of(String name) throws Exception {
-        Method method = Class.forName("com.finance.application.assistant.tools.UntrustedText").getDeclaredMethod("of", String.class);
+        Method method = Class.forName("com.finance.application.ai.UntrustedText").getDeclaredMethod("of", String.class);
         method.setAccessible(true);
         return (String) method.invoke(null, name);
     }

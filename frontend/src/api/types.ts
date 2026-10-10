@@ -274,3 +274,16 @@ export interface AiStatus {
   remainingMessagesToday: number
   dailyMessageLimit: number
 }
+
+export interface MonthlyInsight {
+  month: string
+  title: string
+  summary: string
+  highlights: string[]
+  writtenByAi: boolean
+  modelName: string
+  promptVersion: string
+  generatedAt: string | null
+  cached: boolean
+  note: string | null
+}

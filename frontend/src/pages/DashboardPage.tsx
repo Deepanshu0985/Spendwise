@@ -3,6 +3,7 @@ import { analyticsApi } from '../api/analytics'
 import { transactionsApi } from '../api/transactions'
 import type { CategoryBreakdownEntry, MerchantBreakdownEntry, Transaction, TrendPoint } from '../api/types'
 import { CalendarIcon } from '../components/icons'
+import { InsightCard } from '../components/InsightCard'
 import { useReferenceData } from '../data/ReferenceDataContext'
 import {
   currentMonthRange,
@@ -161,6 +162,8 @@ export function DashboardPage() {
               <div className="summary-note">of every 100 earned</div>
             </div>
           </div>
+
+          <InsightCard month={period === 'last-3-months' ? null : range.from.slice(0, 7)} />
 
           <div className="dashboard-grid">
             <div className="card">

@@ -35,6 +35,11 @@ public class FakeAiModelClient implements AiModelClient {
     public volatile List<ToolSpec> lastTools = List.of();
 
     @Override
+    public String modelName() {
+        return "fake-model";
+    }
+
+    @Override
     public boolean isAvailable() {
         return available;
     }

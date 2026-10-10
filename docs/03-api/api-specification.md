@@ -82,7 +82,7 @@ All analytics endpoints accept `currency`, defaulting to the user's default curr
 `GET /recurring-expenses?activeOnly=`, `POST /recurring-expenses/detect` (re-runs detection, returns the refreshed list), `PUT /recurring-expenses/{id}` (name, categoryId, confirmed - all optional), `POST /recurring-expenses/{id}/dismiss` (idempotent, 204)
 
 ## AI
-`POST /ai/chat` (body: the conversation so far, at most ten turns, oldest first, ending with the user's question; stateless - nothing is stored; returns the answer, what it was based on, the transactions it looked at (no ids) and the remaining daily messages; 429 `AI_QUOTA_EXCEEDED` / 503 `AI_UNAVAILABLE`), `GET /ai/status`, `POST /statements/{id}/suggest-categories` (replaces `/ai/categorize`), `POST /ai/insights/monthly` (Phase 14)
+`POST /ai/chat` (body: the conversation so far, at most ten turns, oldest first, ending with the user's question; stateless - nothing is stored; returns the answer, what it was based on, the transactions it looked at (no ids) and the remaining daily messages; 429 `AI_QUOTA_EXCEEDED` / 503 `AI_UNAVAILABLE`), `GET /ai/status`, `POST /statements/{id}/suggest-categories` (replaces `/ai/categorize`), `GET /ai/insights/monthly?month=yyyy-mm` (the stored insight or null; never calls a model) and `POST /ai/insights/monthly` (body `{month, refresh?}`; returns the stored insight while the figures are unchanged, otherwise writes a new one - the model's wording when it passes the figure check, a fixed template otherwise; 400 for a future or too-old month)
 
 Subject to per-user and global quotas; `AI_QUOTA_EXCEEDED` is returned when a cap is reached.
 

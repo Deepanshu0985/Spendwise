@@ -294,7 +294,15 @@ DigitalOcean remains the actual V1 production target once beta-ready — see `DE
 Planned for later, only if real use of 13a shows structured search is not enough; needs decisions D-20 to D-23 and is best done after Phase 15.
 
 ## Phase 14 — AI Insights
-Not started.
+
+**Done:**
+- [x] Dashboard Insight card for This month / Last month; looked up on open, written on the user's click, reused until the figures change
+- [x] Figures and unusual-spending findings computed in code (category spike, large non-recurring payment); the model only writes the wording and every figure it uses is checked; a fixed template covers AI off, over cap, outage and unverifiable wording
+- [x] `ai_insights` (V23, RLS) with figures, model name and prompt version; third usage kind with its own daily and monthly caps
+- [x] Verified on the real Mistral model (18 of 18 written by the model after fixing JSON-mode failures and rent/groceries noise); 20 new unit + 12 new integration tests
+
+**Left:**
+- [ ] Weekly or yearly insights; a scored golden-dataset evaluation of insight quality
 
 ## Phase 15 — Beta Readiness
 Not started.

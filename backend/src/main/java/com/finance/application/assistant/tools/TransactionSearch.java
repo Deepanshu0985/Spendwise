@@ -1,5 +1,6 @@
 package com.finance.application.assistant.tools;
 
+import com.finance.application.ai.UntrustedText;
 import com.finance.application.assistant.FuzzyMatcher;
 import com.finance.application.assistant.ToolArgumentException;
 import com.finance.application.assistant.ToolArguments;

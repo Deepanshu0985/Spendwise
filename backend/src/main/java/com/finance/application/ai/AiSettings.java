@@ -14,6 +14,8 @@ public class AiSettings {
     private final int maxRowsPerRequest;
     private final int dailyChatMessagesPerUser;
     private final int monthlyChatMessages;
+    private final int dailyInsightsPerUser;
+    private final int monthlyInsights;
 
     public AiSettings(
             @Value("${ai.limits.daily-rows-per-user:100}") int dailyRowLimitPerUser,
@@ -22,7 +24,9 @@ public class AiSettings {
             @Value("${ai.categorization.batch-size:20}") int batchSize,
             @Value("${ai.categorization.max-rows-per-request:60}") int maxRowsPerRequest,
             @Value("${ai.limits.daily-chat-messages-per-user:30}") int dailyChatMessagesPerUser,
-            @Value("${ai.limits.monthly-chat-messages:5000}") int monthlyChatMessages) {
+            @Value("${ai.limits.monthly-chat-messages:5000}") int monthlyChatMessages,
+            @Value("${ai.limits.daily-insights-per-user:10}") int dailyInsightsPerUser,
+            @Value("${ai.limits.monthly-insights:2000}") int monthlyInsights) {
         this.dailyRowLimitPerUser = dailyRowLimitPerUser;
         this.monthlyRowLimit = monthlyRowLimit;
         this.confidenceThreshold = confidenceThreshold;
@@ -30,6 +34,16 @@ public class AiSettings {
         this.maxRowsPerRequest = maxRowsPerRequest;
         this.dailyChatMessagesPerUser = dailyChatMessagesPerUser;
         this.monthlyChatMessages = monthlyChatMessages;
+        this.dailyInsightsPerUser = dailyInsightsPerUser;
+        this.monthlyInsights = monthlyInsights;
+    }
+
+    public int dailyInsightsPerUser() {
+        return dailyInsightsPerUser;
+    }
+
+    public int monthlyInsights() {
+        return monthlyInsights;
     }
 
     public int dailyChatMessagesPerUser() {

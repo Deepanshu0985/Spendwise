@@ -62,6 +62,11 @@ public class MistralModelClient implements AiModelClient {
     }
 
     @Override
+    public String modelName() {
+        return model;
+    }
+
+    @Override
     public boolean isAvailable() {
         return enabled && !apiKey.isEmpty();
     }

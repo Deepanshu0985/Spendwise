@@ -21,8 +21,10 @@ Estimates assume the decisions in `open-decisions.md` are used as scoped: three 
 | 10 | Budgets and Goals | 3–5 days | 4 |
 | 11 | AI Categorization | 1–1.5 weeks | 9, D-03 |
 | 12 | AI Assistant | 1–1.5 weeks | 11 |
-| 13 | AI Insights | 3–5 days | 12 |
-| 14 | Beta Readiness | 1.5–2 weeks | 13 |
+| 13a | Assistant Search Tools | 3–5 days | 12 |
+| 13b | Semantic Search (later) | 1.5–2 weeks | 13a, D-20 to D-23 |
+| 14 | AI Insights | 3–5 days | 12 |
+| 15 | Beta Readiness | 1.5–2 weeks | 14 |
 
 **Total: ~19–22 weeks solo full-time.** Phase 5 and Phase 8 are calendar soak time more than build effort and can overlap with early work on the following phase where the roadmap allows it (Phase 5 findings should still land before Phase 6 design is final). Phase 10 has no dependency on Phase 6–9 and can run in parallel with Phases 6–9 if a second contributor is available.
 
@@ -170,7 +172,7 @@ Estimates assume the decisions in `open-decisions.md` are used as scoped: three 
 
 **Duration:** 3–5 days
 
-**Tasks:** monthly-summary and unusual-spending explanation generation over verified metrics only; `ai_insights` rows record `model_name` and `prompt_version` for attribution.
+**Tasks:** monthly-summary and unusual-spending explanation generation over verified metrics only; `ai_insights` rows record `model_name` and `prompt_version` for attribution. The figures and the unusual-spending findings are computed in code, the model only writes the wording, every figure in it is checked, and a fixed template covers AI being off, capped or failing.
 
 **Depends on:** Phase 12.
 

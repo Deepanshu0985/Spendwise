@@ -56,7 +56,11 @@ public class AiUsageLimiterImpl implements AiUsageLimiter {
     @Override
     @Transactional(readOnly = true)
     public String limitMessage(UUID userId, AiUsageKind kind) {
-        String what = kind == AiUsageKind.CHAT ? "assistant messages" : "AI-suggested rows";
+        String what = switch (kind) {
+            case CHAT -> "assistant messages";
+            case INSIGHT -> "AI-written insights";
+            case CATEGORIZATION -> "AI-suggested rows";
+        };
         if (dailyLimit(kind) - usageRepository.usedToday(userId, kind, today()) <= 0) {
             return "You've reached today's limit of " + dailyLimit(kind) + " " + what + ". It resets tomorrow.";
         }
@@ -68,11 +72,19 @@ public class AiUsageLimiterImpl implements AiUsageLimiter {
 
     @Override
     public int dailyLimit(AiUsageKind kind) {
-        return kind == AiUsageKind.CHAT ? settings.dailyChatMessagesPerUser() : settings.dailyRowLimitPerUser();
+        return switch (kind) {
+            case CHAT -> settings.dailyChatMessagesPerUser();
+            case INSIGHT -> settings.dailyInsightsPerUser();
+            case CATEGORIZATION -> settings.dailyRowLimitPerUser();
+        };
     }
 
     private int monthlyLimit(AiUsageKind kind) {
-        return kind == AiUsageKind.CHAT ? settings.monthlyChatMessages() : settings.monthlyRowLimit();
+        return switch (kind) {
+            case CHAT -> settings.monthlyChatMessages();
+            case INSIGHT -> settings.monthlyInsights();
+            case CATEGORIZATION -> settings.monthlyRowLimit();
+        };
     }
 
     @Override
