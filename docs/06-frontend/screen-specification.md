@@ -31,7 +31,7 @@ Create goal, progress and target date.
 Detected merchant, frequency, amount, next date, confirm/dismiss.
 
 ## S11 AI Assistant
-Chat and suggested questions.
+Not a screen: a chat panel docked on the right of every screen, opened from a round button. Suggested questions change with the screen being viewed; the conversation survives moving between screens.
 
 ## S12 Settings
 Profile, currency, timezone, privacy, export, deletion and AI preferences.

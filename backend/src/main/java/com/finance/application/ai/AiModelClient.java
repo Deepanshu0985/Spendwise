@@ -16,4 +16,12 @@ public interface AiModelClient {
      * @throws com.finance.application.exception.AiUnavailableException when the model cannot be reached or answers with an error
      */
     ModelResult complete(String systemPrompt, String userContent);
+
+    /**
+     * A conversation turn with optional tools (the assistant). The same rules as complete(): this is the only way to reach
+     * the model, and tool calls come back as data for the caller to validate and run - the model never executes anything.
+     *
+     * @throws com.finance.application.exception.AiUnavailableException when the model cannot be reached or answers with an error
+     */
+    ChatResult chat(String systemPrompt, java.util.List<ChatMessage> messages, java.util.List<ToolSpec> tools);
 }

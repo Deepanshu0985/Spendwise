@@ -11,7 +11,7 @@ Decisions that are not yet made, and the phases they block. An undecided item th
 | D-05 | Hosting provider, instance size and region | Phase 0 | Decided: ADR-017, DigitalOcean droplet, Bangalore (BLR1) for V1 production; interim pre-beta hosting on Railway (see ADR-017's update note) |
 | D-06 | Are raw statement PDFs retained after successful import | Phase 6, privacy | Open |
 | D-07 | Retention periods: staging rows, audit logs, AI conversations, deleted-user data | Privacy | Open |
-| D-08 | Is AI chat history persisted, or stateless per request | Phase 12 | Open |
+| D-08 | Is AI chat history persisted, or stateless per request | Phase 12 | Decided: stateless - the browser sends the last ten turns each time and the server stores none |
 | D-09 | AI cost caps: per-user daily quota and global monthly ceiling | Phase 11 | Decided (defaults, adjustable): 100 rows per user per day and 20,000 rows per month overall, counted in rows sent to the model; see DECISIONS.md |
 | D-10 | Backup RPO and RTO targets | Phase 0 | Open |
 | D-11 | Web-only or PWA for V1 | Frontend scope | Open |
@@ -23,6 +23,10 @@ Decisions that are not yet made, and the phases they block. An undecided item th
 | D-17 | Transaction splits | — | Decided: ADR-013, schema now, UI later |
 | D-18 | Refund treatment | — | Decided: reduces expenses |
 | D-19 | Google OAuth ("Sign in with Google") as an additional login method, alongside email/password | Auth (Phase 1 area) | Deferred - user explicitly wants this built, but later, not now |
+| D-20 | Embedding model and provider for RAG | Phase 13b | Open - recommendation in `docs/04-ai/rag-plan.md`: Mistral embeddings through the existing gateway |
+| D-21 | What the RAG index contains | Phase 13b | Open - recommendation: confirmed transactions only |
+| D-22 | Vector store | Phase 13b | Open - recommendation: pgvector in the existing PostgreSQL with row-level security |
+| D-23 | Embedding spend caps | Phase 13b | Open - recommendation: a third usage kind with per-user daily and global monthly caps |
 
 ## Gating Decisions
 

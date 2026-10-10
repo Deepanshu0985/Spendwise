@@ -1,7 +1,7 @@
 # UI/UX Specification
 
 ## Navigation
-Dashboard, Transactions, Accounts, Statements, Budgets, Goals, Recurring, AI Assistant, Settings.
+Dashboard, Transactions, Accounts, Statements, Budgets, Goals, Recurring, Settings. The AI Assistant is not in the navigation: it is a panel docked on the right of every screen.
 
 ## Dashboard
 Period selector; income; expenses; savings; savings rate; category breakdown; trend; top merchants; budgets; recurring payments; AI insights.

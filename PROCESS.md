@@ -64,7 +64,7 @@ DigitalOcean remains the actual V1 production target once beta-ready — see `DE
 - [ ] Automated JUnit/integration test suite codifying the above (currently verified manually via curl, not yet in the repo as tests)
 - [ ] CI: add a PostgreSQL service so the isolation and pooled-connection-leakage tests actually run in CI, not just locally (marked TODO in `ci.yml`)
 - [ ] Real `ResendEmailSender` once a Resend API key exists (D-04) — `LoggingEmailSender` stands in for now
-- [ ] Rate limiting on auth endpoints — deliberately deferred to Phase 14 per `development-roadmap.md`'s own sequencing, not forgotten
+- [ ] Rate limiting on auth endpoints — deliberately deferred to Phase 15 per `development-roadmap.md`'s own sequencing, not forgotten
 - [ ] Session-listing/revoke-all could use direct JUnit coverage of `AuthServiceImpl` beyond the manual curl pass
 - [ ] Google OAuth ("Sign in with Google") as an additional login method — user explicitly wants this, but later, not now (D-19 in `docs/09-project/open-decisions.md`)
 
@@ -268,10 +268,33 @@ DigitalOcean remains the actual V1 production target once beta-ready — see `DE
 - [ ] Optional: run automatically at import, merchant suggestions, assistant-style 429 for caps
 
 ## Phase 12 — AI Assistant
+
+**Done:**
+- [x] Tool-calling added to the single `AiModelClient` gateway; seven read-only tools over the existing services; session-derived identity (no tool takes a user id); validated, bounded arguments
+- [x] Grounding gate: every figure in an answer must have been returned by a tool, one rewrite attempt, then a plain listing of the figures; data delimited and instruction-like names hidden
+- [x] Usage caps per kind (V22): 30 chat messages per user per day, 5,000 per month; 429 / 503 with clear messages; D-08 decided (stateless chat)
+- [x] Assistant chat as a panel docked on the right of every screen (opened from a round button, conversation kept across tabs, suggestions follow the page, "based on" context, daily allowance); verified on the real Mistral model with made-up data, which found and fixed five issues; 36 new unit + 14 new integration tests
+
+**Left:**
+- [ ] Scored golden-dataset evaluation (accuracy, hallucination rate, latency and cost per answer) per `docs/04-ai/ai-evaluation.md`
+- [ ] Optional streaming and saved history (would need D-07 retention decisions)
+
+## Phase 13a — Assistant Search Tools
+
+**Done:**
+- [x] `search_transactions`, `aggregate` and `compare_periods`: read-only, computed in code, per-currency, live data (a just-added payment is found at once), typo-tolerant fallback done in the application
+- [x] "Transactions looked at" list under each answer; record ids stay server-side
+- [x] Grounding gate extended (quoted description digits, numbers the user typed) and a tidy fallback listing
+- [x] Verified on the real Mistral model, which found and fixed four prompt and tool-choice issues; 8 new unit + 15 new integration tests
+
+**Left:**
+- [ ] Link a listed transaction to its row on the Transactions page; scored golden-dataset evaluation; Phase 13b (embeddings) only if real use shows search is not enough
+
+## Phase 13b — Semantic Search (embeddings)
+Planned for later, only if real use of 13a shows structured search is not enough; needs decisions D-20 to D-23 and is best done after Phase 15.
+
+## Phase 14 — AI Insights
 Not started.
 
-## Phase 13 — AI Insights
-Not started.
-
-## Phase 14 — Beta Readiness
+## Phase 15 — Beta Readiness
 Not started.

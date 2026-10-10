@@ -61,8 +61,7 @@ function App() {
             <Route path="budgets" element={<BudgetsPage />} />
             <Route path="goals" element={<GoalsPage />} />
             <Route path="recurring" element={<RecurringPage />} />
-            <Route path="assistant" element={<ComingSoonPage title="AI Assistant" phase="Phase 12" />} />
-            <Route path="settings" element={<ComingSoonPage title="Settings" phase="Phase 14" />} />
+            <Route path="settings" element={<ComingSoonPage title="Settings" phase="Phase 15" />} />
           </Route>
         </Route>
 

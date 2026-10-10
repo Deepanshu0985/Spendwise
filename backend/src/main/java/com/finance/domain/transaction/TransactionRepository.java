@@ -33,5 +33,11 @@ public interface TransactionRepository {
     /** Confirmed EXPENSE transactions dated on or after since - the history recurring-payment detection reads. */
     List<Transaction> findConfirmedExpensesSince(UUID userId, java.time.LocalDate since);
 
+    /** Confirmed transactions matching the lookup, in the given order, at most limit of them. */
+    List<Transaction> lookup(UUID userId, TransactionLookup lookup, TransactionLookup.Sort sort, int limit);
+
+    /** How many confirmed transactions match the lookup. */
+    long countLookup(UUID userId, TransactionLookup lookup);
+
     Page<Transaction> search(UUID userId, TransactionFilter filter, Pageable pageable);
 }

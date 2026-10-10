@@ -1,7 +1,10 @@
 package com.finance.support;
 
 import com.finance.application.ai.AiModelClient;
+import com.finance.application.ai.ChatMessage;
+import com.finance.application.ai.ChatResult;
 import com.finance.application.ai.ModelResult;
+import com.finance.application.ai.ToolSpec;
 import com.finance.application.exception.AiUnavailableException;
 
 import java.util.ArrayList;
@@ -25,6 +28,12 @@ public class FakeAiModelClient implements AiModelClient {
     public final List<String> systemPrompts = new ArrayList<>();
     public final List<String> userContents = new ArrayList<>();
 
+    /** Scripted assistant: given the conversation so far, returns the model's next turn. Records every call for inspection. */
+    public volatile Function<List<ChatMessage>, ChatResult> chatResponder = messages -> new ChatResult("(no script)", List.of(), 10, 5);
+    public final List<List<ChatMessage>> chatCalls = new ArrayList<>();
+    public final List<String> chatSystemPrompts = new ArrayList<>();
+    public volatile List<ToolSpec> lastTools = List.of();
+
     @Override
     public boolean isAvailable() {
         return available;
@@ -40,9 +49,24 @@ public class FakeAiModelClient implements AiModelClient {
         return new ModelResult(responder.apply(userContent), 100, 50);
     }
 
+    @Override
+    public synchronized ChatResult chat(String systemPrompt, List<ChatMessage> messages, List<ToolSpec> tools) {
+        chatSystemPrompts.add(systemPrompt);
+        chatCalls.add(new ArrayList<>(messages));
+        lastTools = tools;
+        if (failing) {
+            throw new AiUnavailableException("simulated outage");
+        }
+        return chatResponder.apply(messages);
+    }
+
     public synchronized void reset() {
         available = true;
         failing = false;
+        chatResponder = messages -> new ChatResult("(no script)", List.of(), 10, 5);
+        chatCalls.clear();
+        chatSystemPrompts.clear();
+        lastTools = List.of();
         responder = content -> "{\"results\":[]}";
         systemPrompts.clear();
         userContents.clear();

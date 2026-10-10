@@ -9,17 +9,17 @@ import java.util.UUID;
  */
 public interface AiUsageRepository {
 
-    /** Adds rows to the user's count for the day only if the total stays within limit. */
-    boolean tryReserveDaily(UUID userId, LocalDate day, int rows, int limit);
+    /** Adds units to the user's count for the day only if the total stays within limit. */
+    boolean tryReserveDaily(UUID userId, AiUsageKind kind, LocalDate day, int units, int limit);
 
-    /** Adds rows to the month's global count only if the total stays within limit. */
-    boolean tryReserveMonthly(LocalDate firstOfMonth, int rows, int limit);
+    /** Adds units to the month's global count only if the total stays within limit. */
+    boolean tryReserveMonthly(AiUsageKind kind, LocalDate firstOfMonth, int units, int limit);
 
-    void releaseDaily(UUID userId, LocalDate day, int rows);
+    void releaseDaily(UUID userId, AiUsageKind kind, LocalDate day, int units);
 
-    void releaseMonthly(LocalDate firstOfMonth, int rows);
+    void releaseMonthly(AiUsageKind kind, LocalDate firstOfMonth, int units);
 
-    int usedToday(UUID userId, LocalDate day);
+    int usedToday(UUID userId, AiUsageKind kind, LocalDate day);
 
-    int usedThisMonth(LocalDate firstOfMonth);
+    int usedThisMonth(AiUsageKind kind, LocalDate firstOfMonth);
 }

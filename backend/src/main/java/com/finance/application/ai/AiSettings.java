@@ -12,18 +12,32 @@ public class AiSettings {
     private final double confidenceThreshold;
     private final int batchSize;
     private final int maxRowsPerRequest;
+    private final int dailyChatMessagesPerUser;
+    private final int monthlyChatMessages;
 
     public AiSettings(
             @Value("${ai.limits.daily-rows-per-user:100}") int dailyRowLimitPerUser,
             @Value("${ai.limits.monthly-rows:20000}") int monthlyRowLimit,
             @Value("${ai.categorization.confidence-threshold:0.75}") double confidenceThreshold,
             @Value("${ai.categorization.batch-size:20}") int batchSize,
-            @Value("${ai.categorization.max-rows-per-request:60}") int maxRowsPerRequest) {
+            @Value("${ai.categorization.max-rows-per-request:60}") int maxRowsPerRequest,
+            @Value("${ai.limits.daily-chat-messages-per-user:30}") int dailyChatMessagesPerUser,
+            @Value("${ai.limits.monthly-chat-messages:5000}") int monthlyChatMessages) {
         this.dailyRowLimitPerUser = dailyRowLimitPerUser;
         this.monthlyRowLimit = monthlyRowLimit;
         this.confidenceThreshold = confidenceThreshold;
         this.batchSize = batchSize;
         this.maxRowsPerRequest = maxRowsPerRequest;
+        this.dailyChatMessagesPerUser = dailyChatMessagesPerUser;
+        this.monthlyChatMessages = monthlyChatMessages;
+    }
+
+    public int dailyChatMessagesPerUser() {
+        return dailyChatMessagesPerUser;
+    }
+
+    public int monthlyChatMessages() {
+        return monthlyChatMessages;
     }
 
     public int dailyRowLimitPerUser() {

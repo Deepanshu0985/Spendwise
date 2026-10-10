@@ -47,14 +47,20 @@ Budget definitions, category limits, progress and pacing, savings goals.
 Rules and merchant history first; the model sees only genuinely ambiguous rows. Structured output validation, confidence, review queue. Cost caps, per-user quotas and the kill switch ship **with** this phase, not after it.
 
 ## Phase 12 — AI Assistant
-Tool registry, session-derived user identity, injection-resistant prompt structure, chat UX.
+Tool registry, session-derived user identity, injection-resistant prompt structure, chat as a side panel docked on every screen.
 
 **Gate:** grounding tests pass — every monetary claim maps to tool output.
 
-## Phase 13 — AI Insights
+## Phase 13a — Assistant Search Tools
+Structured and text search over the user's own records (`search_transactions`, `aggregate`, `compare_periods`) so the assistant can answer questions beyond its fixed tools. Cited answers; grounding and tenant isolation preserved. See `docs/04-ai/rag-plan.md`.
+
+## Phase 13b — Semantic Search (later)
+Embeddings in pgvector for meaning-based matches ("coffee" finding "Cafe Coffee Day"), combined with the structured filters. Built only if real use of 13a shows it is needed.
+
+## Phase 14 — AI Insights
 Monthly summaries and unusual-spending explanations over verified metrics.
 
-## Phase 14 — Beta Readiness
+## Phase 15 — Beta Readiness
 Rate limiting, quota enforcement, observability and alerting, privacy policy, export and deletion, breach response plan, restore drill signed off, uptime monitoring.
 
 **Gate:** the internal-to-beta checklist is complete.

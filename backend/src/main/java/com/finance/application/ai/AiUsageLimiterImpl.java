@@ -1,5 +1,6 @@
 package com.finance.application.ai;
 
+import com.finance.domain.ai.AiUsageKind;
 import com.finance.domain.ai.AiUsageRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,23 +24,23 @@ public class AiUsageLimiterImpl implements AiUsageLimiter {
 
     @Override
     @Transactional(readOnly = true)
-    public int remainingRows(UUID userId) {
-        int dailyLeft = settings.dailyRowLimitPerUser() - usageRepository.usedToday(userId, today());
-        int monthlyLeft = settings.monthlyRowLimit() - usageRepository.usedThisMonth(firstOfMonth());
+    public int remaining(UUID userId, AiUsageKind kind) {
+        int dailyLeft = dailyLimit(kind) - usageRepository.usedToday(userId, kind, today());
+        int monthlyLeft = monthlyLimit(kind) - usageRepository.usedThisMonth(kind, firstOfMonth());
         return Math.max(0, Math.min(dailyLeft, monthlyLeft));
     }
 
     @Override
     @Transactional
-    public boolean tryReserve(UUID userId, int rows) {
-        if (rows <= 0) {
+    public boolean tryReserve(UUID userId, AiUsageKind kind, int units) {
+        if (units <= 0) {
             return true;
         }
-        if (!usageRepository.tryReserveMonthly(firstOfMonth(), rows, settings.monthlyRowLimit())) {
+        if (!usageRepository.tryReserveMonthly(kind, firstOfMonth(), units, monthlyLimit(kind))) {
             return false;
         }
-        if (!usageRepository.tryReserveDaily(userId, today(), rows, settings.dailyRowLimitPerUser())) {
-            usageRepository.releaseMonthly(firstOfMonth(), rows);
+        if (!usageRepository.tryReserveDaily(userId, kind, today(), units, dailyLimit(kind))) {
+            usageRepository.releaseMonthly(kind, firstOfMonth(), units);
             return false;
         }
         return true;
@@ -47,24 +48,35 @@ public class AiUsageLimiterImpl implements AiUsageLimiter {
 
     @Override
     @Transactional
-    public void release(UUID userId, int rows) {
-        usageRepository.releaseDaily(userId, today(), rows);
-        usageRepository.releaseMonthly(firstOfMonth(), rows);
+    public void release(UUID userId, AiUsageKind kind, int units) {
+        usageRepository.releaseDaily(userId, kind, today(), units);
+        usageRepository.releaseMonthly(kind, firstOfMonth(), units);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public String limitMessage(UUID userId) {
-        if (settings.dailyRowLimitPerUser() - usageRepository.usedToday(userId, today()) <= 0) {
-            return "You've reached today's limit of " + settings.dailyRowLimitPerUser() + " AI-suggested rows. It resets tomorrow.";
+    public String limitMessage(UUID userId, AiUsageKind kind) {
+        String what = kind == AiUsageKind.CHAT ? "assistant messages" : "AI-suggested rows";
+        if (dailyLimit(kind) - usageRepository.usedToday(userId, kind, today()) <= 0) {
+            return "You've reached today's limit of " + dailyLimit(kind) + " " + what + ". It resets tomorrow.";
         }
-        if (settings.monthlyRowLimit() - usageRepository.usedThisMonth(firstOfMonth()) <= 0) {
-            return "AI suggestions have reached their monthly limit for everyone. They resume next month.";
+        if (monthlyLimit(kind) - usageRepository.usedThisMonth(kind, firstOfMonth()) <= 0) {
+            return "The monthly limit of " + what + " for everyone has been reached. It resets on the 1st of next month.";
         }
         return null;
     }
 
-    private LocalDate today() {
+    @Override
+    public int dailyLimit(AiUsageKind kind) {
+        return kind == AiUsageKind.CHAT ? settings.dailyChatMessagesPerUser() : settings.dailyRowLimitPerUser();
+    }
+
+    private int monthlyLimit(AiUsageKind kind) {
+        return kind == AiUsageKind.CHAT ? settings.monthlyChatMessages() : settings.monthlyRowLimit();
+    }
+
+    @Override
+    public LocalDate today() {
         return LocalDate.now(clock);
     }
 

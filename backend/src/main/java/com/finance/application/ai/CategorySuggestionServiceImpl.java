@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.finance.application.exception.AiUnavailableException;
 import com.finance.domain.ai.AiRowInput;
 import com.finance.domain.ai.AiSuggestion;
+import com.finance.domain.ai.AiUsageKind;
 import com.finance.domain.ai.AiSuggestionValidator;
 import com.finance.domain.ai.RawSuggestion;
 import org.slf4j.Logger;
@@ -41,7 +42,7 @@ public class CategorySuggestionServiceImpl implements CategorySuggestionService 
     @Override
     public CategorySuggestionResult suggest(UUID userId, UUID statementId) {
         boolean aiAvailable = modelClient.isAvailable();
-        int budget = aiAvailable ? Math.min(settings.maxRowsPerRequest(), limiter.remainingRows(userId)) : 0;
+        int budget = aiAvailable ? Math.min(settings.maxRowsPerRequest(), limiter.remaining(userId, AiUsageKind.CATEGORIZATION)) : 0;
         CategorySuggestionPlan plan = store.prepare(userId, statementId, aiAvailable, budget);
 
         int aiApplied = 0;
@@ -52,7 +53,7 @@ public class CategorySuggestionServiceImpl implements CategorySuggestionService 
         List<AiRowInput> toAsk = plan.rowsToAsk();
         for (int from = 0; from < toAsk.size() && stoppedReason == null; from += settings.batchSize()) {
             List<AiRowInput> batch = toAsk.subList(from, Math.min(toAsk.size(), from + settings.batchSize()));
-            if (!limiter.tryReserve(userId, batch.size())) {
+            if (!limiter.tryReserve(userId, AiUsageKind.CATEGORIZATION, batch.size())) {
                 stoppedReason = "LIMIT";
                 break;
             }
@@ -60,7 +61,7 @@ public class CategorySuggestionServiceImpl implements CategorySuggestionService 
             try {
                 suggestions = askModel(batch, plan);
             } catch (AiUnavailableException e) {
-                limiter.release(userId, batch.size());
+                limiter.release(userId, AiUsageKind.CATEGORIZATION, batch.size());
                 stoppedReason = "UNAVAILABLE";
                 break;
             }
@@ -69,11 +70,11 @@ public class CategorySuggestionServiceImpl implements CategorySuggestionService 
         }
 
         int notAsked = plan.eligibleBeyondLimit() + Math.max(0, toAsk.size() - asked);
-        if (aiAvailable && stoppedReason == null && plan.eligibleBeyondLimit() > 0 && limiter.remainingRows(userId) == 0) {
+        if (aiAvailable && stoppedReason == null && plan.eligibleBeyondLimit() > 0 && limiter.remaining(userId, AiUsageKind.CATEGORIZATION) == 0) {
             stoppedReason = "LIMIT"; // nothing could be sent at all because a cap was already used up
         }
         if ("LIMIT".equals(stoppedReason)) {
-            limitMessage = limiter.limitMessage(userId);
+            limitMessage = limiter.limitMessage(userId, AiUsageKind.CATEGORIZATION);
         }
         // Rows beyond the per-request cap are simply "not asked yet": the user can press the button again.
         int needsReview = Math.max(0, asked - aiApplied);
@@ -84,7 +85,9 @@ public class CategorySuggestionServiceImpl implements CategorySuggestionService 
     @Override
     public AiStatus status(UUID userId) {
         boolean enabled = modelClient.isAvailable();
-        return new AiStatus(enabled, enabled ? limiter.remainingRows(userId) : 0, settings.dailyRowLimitPerUser());
+        return new AiStatus(
+                enabled, enabled ? limiter.remaining(userId, AiUsageKind.CATEGORIZATION) : 0, limiter.dailyLimit(AiUsageKind.CATEGORIZATION),
+                enabled ? limiter.remaining(userId, AiUsageKind.CHAT) : 0, limiter.dailyLimit(AiUsageKind.CHAT));
     }
 
     private List<AiSuggestion> askModel(List<AiRowInput> batch, CategorySuggestionPlan plan) {

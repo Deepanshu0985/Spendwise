@@ -244,3 +244,33 @@ export interface Goal {
   requiredPerMonth: number | null
   overdue: boolean
 }
+
+export interface AssistantTurn {
+  role: 'user' | 'assistant'
+  content: string
+}
+
+export interface AssistantSource {
+  date: string
+  description: string
+  merchant: string | null
+  amount: number
+  currency: string
+  type: string
+}
+
+export interface AssistantReply {
+  answer: string
+  toolsUsed: { name: string; context: string }[]
+  sources: AssistantSource[]
+  fallback: boolean
+  remainingMessagesToday: number
+}
+
+export interface AiStatus {
+  enabled: boolean
+  remainingRowsToday: number
+  dailyLimit: number
+  remainingMessagesToday: number
+  dailyMessageLimit: number
+}

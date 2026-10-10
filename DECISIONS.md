@@ -1,3 +1,79 @@
+## Phase 13a: the assistant can search and total your transactions, and show what it looked at
+
+**What was added.** Three read-only tools beside the original seven, so the assistant can answer questions about individual payments instead of only fixed totals: `search_transactions` (filters: words in the description or merchant name, merchant, category, type, date range, amount range, sort, up to 20 rows, plus the true number of matches), `aggregate` (total and count, optionally grouped by category, merchant, month or type, worked out in code) and `compare_periods` (two periods with the difference and percentage computed in code, so the model quotes them instead of subtracting). A payment added a moment ago is found at once because the tools read the live database; only confirmed, non-deleted rows are ever returned, never statement rows still awaiting review.
+
+**Decisions inside it.**
+- Typo tolerance is done in the application, not with a database extension: when nothing matches as typed, the most recent 2,000 rows that satisfy the other filters are checked for close spellings (a word within one or two edits), and the answer is told these are close matches. This avoids adding `pg_trgm` to a managed database and risking a failed deploy.
+- A text filter with no usable word (only punctuation such as `%`, or single letters) is refused. Found by testing: it had silently become "no filter" and returned every transaction. Wildcard characters are also escaped in the query.
+- `aggregate` and `compare_periods` add up one type at a time (expenses unless asked otherwise), never mix currencies (one total per currency), and do not net refunds, so they can differ from the dashboard's net figures; the tool descriptions tell the model to prefer `monthly_summary` or `category_spending` for net spending. More than 20,000 matching rows is refused rather than cut.
+- A `get_transaction` tool was dropped: each search row already carries every field.
+- Names and descriptions go to the model through the instruction-like-text filter, but the user's own list shows what they actually typed, as plain text.
+
+**What the user sees.** Under an answer, a collapsible "Transactions looked at (N)" lists the rows the search returned (date, description, merchant, amount). The record ids stay on the server; the model never saw them either.
+
+**Grounding gate, extended.** Digits inside a quoted description (a reference or invoice number) may be repeated as text, but never count as an amount; a figure with a currency or percent sign must come from a tool. Numbers the user typed in their own question may be echoed back ("payments over 1,500"). When an answer cannot be verified the fallback now lists transactions as tidy lines instead of raw fields.
+
+**Found by running the real model (made-up data, about 15 questions) - fixed.**
+- It asked "which period?" for a plain lookup; the prompt now says to search everything for lookups and ask for a period only for totals and comparisons.
+- It used `top_merchants` for "my biggest expenses" and answered with one merchant bucket; the tool descriptions and prompt now send that question to a sorted search.
+- It echoed "1500" from the question, which the figure check rejected and then showed ugly raw fields; both fixed as above.
+- It handled the typo ("sharama"), the invoice number, a multi-merchant total, a comparison of two months and a payment whose description was an injected instruction correctly: the instruction was not followed and the row was reported honestly as odd.
+
+**Verified.** 8 new unit tests (typo matcher, quoted digits, user-typed numbers) and 15 integration tests with a scripted model on a real database: a just-added payment is found; filters combine; sort and limit with the true total; typo fallback; wildcards refused; deleted rows invisible; every bad argument returns a readable error; another user's data is invisible to search and totals; currencies kept apart and income not counted; grouping by merchant and month with a group limit; period comparison with a null percentage when the first period is empty; hostile descriptions hidden from the model but shown to the user. In a browser the panel answered "Find my payments to Uber this year" and listed the four transactions. 162 unit + 102 integration tests green.
+
+**Not done.** No meaning-based search (that is Phase 13b); no link from a listed transaction to its row on the Transactions page; the grounding gate still checks figures, not meaning; pg_trgm-style indexing is not used, so typo search is limited to the 2,000 most recent candidate rows.
+
+## Keeping the free-tier backend awake: a ping script, and why not both services
+
+**Problem.** Render's free tier puts a service to sleep after about 15 minutes without a request; the next request then waits 60 to 90 seconds for it to wake (the blank loading page seen earlier).
+
+**What was added.** `scripts/keep-awake.sh [URL] [seconds]` calls the health endpoint on a timer and prints the time, status code and response time (default: the live backend, every 600 seconds). Anything under about 14 minutes keeps a service awake, so pinging every 10 seconds adds nothing over every 10 minutes; a 5-second floor is enforced and the interval is an argument. It stops at once on Ctrl-C or a stop signal even in the middle of a slow request (the first version waited for the request to finish; found by testing). Checked against the live backend (first ping 7.0s, then about 0.4s) and against a dead address (reports NOT OK).
+
+**Limits that matter.**
+- It only runs while the terminal is open and the computer is awake. It cannot make the backend "always" awake.
+- Render's free tier allows 750 instance-hours a month for the whole workspace. One service awake all month uses about 720. Keeping both staging and main awake would exceed that and Render would suspend the free services until next month. Keep only main awake and let staging sleep.
+- For genuinely always-on without a computer, the options are a hosted pinger (UptimeRobot or cron-job.org free plans, which need an account created by the owner of the project; the free plans' shortest interval is a few minutes, which is enough) or a paid Render instance, which does not sleep. GitHub Actions on a schedule is possible but unreliable at short intervals and uses Actions minutes on a private repository.
+
+## The assistant is a side panel on every screen, not a page; RAG becomes its own next phase
+
+**What was wrong.** Phase 12 put the assistant on a page of its own. The request was a chat reachable from every tab, so you can ask about what you are looking at without leaving it.
+
+**What changed.** The Assistant page and its sidebar link are removed (`/assistant` now redirects home). A round button at the bottom-right of every screen opens a chat panel docked on the right: on a wide window the page content makes room beside it, on a narrow one it overlays. The panel lives in the layout above the pages, so the conversation survives closing the panel and moving between tabs; opening or closing is remembered across reloads (the conversation itself is not stored, as before - D-08). Esc closes it. The suggested questions follow the page you are on (Budgets suggests budget questions, Recurring suggests recurring ones). The model's `**bold**` is shown as bold by a small renderer that never builds HTML from the text, and the prompt now asks for plain text. Checked in a browser: the panel opened on the Dashboard, answered a question, kept the conversation on Budgets, showed budget suggestions on a fresh chat there, and closed on Esc with the launcher returning.
+
+**RAG is planned, not built.** Answering beyond the seven fixed tools needs retrieval over the user's own records. It is added to the plan as **Phase 13 - RAG Assistant**, and the phases after it move forward: AI Insights is now Phase 14 and Beta Readiness Phase 15 (`phase-plan.md`, `development-roadmap.md`, `PROCESS.md` and the Settings placeholder updated). The plan is `docs/04-ai/rag-plan.md`, and its main point is the order: first structured retrieval (a `search_transactions` filter-and-text-search tool, an `aggregate` tool and a `compare_periods` tool that do the arithmetic in code), which answers most open questions exactly and needs no new infrastructure; then embeddings in pgvector for fuzzy matches like "coffee" finding "Cafe Coffee Day". Retrieval finds records, code computes totals, the model only words the result, and the grounding gate and tenant isolation carry over. Four decisions (D-20 to D-23) are open with recommendations.
+
+**Verified.** Frontend builds; 155 unit + 87 integration tests still green (the only backend change is one line of prompt wording).
+
+**Not done.** No new retrieval capability yet - until Phase 13 the assistant still answers only what its seven tools can; the grounding check verifies numbers, not meaning.
+
+## Phase 12: an assistant that can only read, as you, through seven checked tools, with every figure verified
+
+**What it is.** An Assistant page (sidebar, chat) for questions like "how much did I spend on food last month?" or "which recurring payments do I have?". The model interprets the question and picks tools; the application validates and runs them and the model only words the result. It cannot read the database, cannot write anything, and never sees another user.
+
+**The seven tools** (ai-tools.md): `monthly_summary`, `category_spending`, `top_merchants`, `spending_trend`, `recurring_expenses`, `budget_status`, `goal_status`. Each calls the same service that produces the number on screen. Deviations from the doc: `category_spending` has no transaction count (the analytics service does not produce one), and `budget_status`/`goal_status` filter by name text rather than an identifier, so the model never handles ids.
+
+**Controls, in the order they act.**
+1. Identity: the tool signature is `execute(userId, argumentsJson)` with the user taken from the session by the caller. No tool declares a user parameter, and arguments are checked against the declared field list, so a model passing `userId` gets "Unknown argument" back instead of having it ignored.
+2. Arguments: dates must be real and `from` not after `to`; a period over five years is rejected, never clamped; limits are range-checked; unknown tools and unknown fields are errors returned to the model as the tool's result.
+3. Untrusted data: tool results go to the model inside a delimiter that is random per request, with any `<<<`/`>>>` removed; the system prompt says the content is data. Names (merchants, categories, budgets, goals) are passed through `UntrustedText`: a name that reads like an instruction is replaced by a placeholder, so the row and its figure still appear but the instruction never reaches the model.
+4. Grounding gate (the Phase 12 exit gate): before an answer is shown, every amount, percentage and larger number in it is checked against the JSON numbers the tools returned in that exchange. Dates, years, list numbers and small counts are ignored; digits inside strings (dates, names) do not authorise a figure; a whole number may be a tool value rounded to the nearest unit. An ungrounded answer is sent back once with the offending figures named; if it is still ungrounded the user gets a plain listing of the tool figures, marked as such, never the unverified wording. A blank reply gets the same plain listing.
+5. Limits: at most 4 model rounds and 6 tool calls per question; 30 messages per user per day and 5,000 per month overall (`AI_DAILY_CHAT_MESSAGES_PER_USER`, `AI_MONTHLY_CHAT_MESSAGES`), reserved atomically and given back if the model is unreachable; a cap returns 429 `AI_QUOTA_EXCEEDED` saying which limit and when it resets, and AI off or an outage returns 503 `AI_UNAVAILABLE` (here, unlike categorisation, the error contract fits because AI is the whole feature). Usage caps are now per kind (V22: categorisation rows and chat messages are counted separately).
+6. Logging: the tool name and counts only, never figures or text.
+
+**D-08 decided: the conversation is stateless.** The browser sends the last ten turns each time and the server stores nothing, so there is no chat retention to define under D-07. A client-supplied "assistant" turn is just text the user could have typed; it grants nothing.
+
+**Found by running it on the real model (made-up data, about 17 questions) - fixed.**
+- "You spent 400 INR less" slipped past the grounding check because only a leading currency marker counted. Amounts with the currency after the number are now checked.
+- Date stripping read "September 19,249" as the date "Sep 19"; an amount right after a month name is no longer treated as a date.
+- "The month before last" was resolved to the wrong month. The system prompt now carries exact date ranges for this month, last month, the month before last, the last 3 and 6 full months, this year and last year, computed in code, so the model does no calendar arithmetic.
+- A merchant whose name was an injected instruction was silently left out of a list. The row is now shown with the placeholder name and its amount.
+- Detected recurring payments were called "subscriptions"; the prompt now says "recurring payments".
+- Where it behaves well: it refused to reveal its prompt or other users' data, declined an off-topic question, and for "how much more in September than August" it stated both figures instead of subtracting.
+
+**Verified.** 36 new unit tests (grounding checker, period guide, name sanitiser) and 14 integration tests with a scripted model: a question runs a tool and quotes its figures; an invented figure is sent back once and accepted when rewritten; a model that cannot comply gets the plain figures; invalid arguments (too long, unknown field, bad date, reversed range, unknown tool) are returned to the model and never run; a second user's data never reaches the first; hostile text arrives only inside the delimiter and is hidden; all seven tools return their figures; a runaway model stops at the cap; a blank reply gets a listing; the daily cap and its message; an outage and AI-off cost nothing; malformed conversations are rejected; unauthenticated is 401. In a browser the page listed the suggestions, answered a question with "Based on" context and counted down the allowance (read through page text; the pane could not be displayed, so the layout was not looked at). 155 unit + 87 integration tests green.
+
+**Not done.** No conversation history and no streaming of the reply; the grounding gate checks figures, not meaning, so the model can still pick a wrong period or word things poorly (the exact-period guide reduces this, it does not remove it); the instruction-name filter is a heuristic; the assistant cannot take actions; and there is no golden-dataset evaluation harness with scored accuracy yet.
+
 ## Fix: "COFFEE" was classified as a bank fee, and other substring misfires in the statement classifier
 
 **Found by.** The real-model check on made-up rows: "UNIVERSITY FEE PAYMENT" came back typed as a bank fee. The cause was the existing rule engine, not the AI: it looked for the letters FEE anywhere in the narration.

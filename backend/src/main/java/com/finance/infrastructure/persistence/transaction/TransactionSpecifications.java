@@ -1,6 +1,7 @@
 package com.finance.infrastructure.persistence.transaction;
 
 import com.finance.domain.transaction.TransactionFilter;
+import com.finance.domain.transaction.TransactionLookup;
 import com.finance.domain.transaction.TransactionStatus;
 import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.jpa.domain.Specification;
@@ -52,5 +53,52 @@ final class TransactionSpecifications {
 
             return cb.and(predicates.toArray(new Predicate[0]));
         };
+    }
+
+    /** The assistant's search: confirmed rows only, every text word must match somewhere (see TransactionLookup). */
+    static Specification<TransactionJpaEntity> forLookup(UUID userId, TransactionLookup lookup) {
+        return (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            predicates.add(cb.equal(root.get("userId"), userId));
+            predicates.add(cb.equal(root.get("status"), TransactionStatus.CONFIRMED));
+            if (lookup.from() != null) {
+                predicates.add(cb.greaterThanOrEqualTo(root.get("transactionDate"), lookup.from()));
+            }
+            if (lookup.to() != null) {
+                predicates.add(cb.lessThanOrEqualTo(root.get("transactionDate"), lookup.to()));
+            }
+            if (lookup.minAmount() != null) {
+                predicates.add(cb.greaterThanOrEqualTo(root.get("amount"), lookup.minAmount()));
+            }
+            if (lookup.maxAmount() != null) {
+                predicates.add(cb.lessThanOrEqualTo(root.get("amount"), lookup.maxAmount()));
+            }
+            if (lookup.type() != null) {
+                predicates.add(cb.equal(root.get("transactionType"), lookup.type()));
+            }
+            if (lookup.categoryId() != null) {
+                predicates.add(cb.equal(root.get("categoryId"), lookup.categoryId()));
+            }
+            if (lookup.merchantIds() != null) {
+                // An empty set means "a merchant was named but none matched": nothing can match.
+                predicates.add(lookup.merchantIds().isEmpty() ? cb.disjunction() : root.get("merchantId").in(lookup.merchantIds()));
+            }
+            for (TransactionLookup.TextMatcher matcher : lookup.textMatchers()) {
+                String pattern = "%" + escapeLike(matcher.word().toLowerCase(java.util.Locale.ROOT)) + "%";
+                List<Predicate> anyOf = new ArrayList<>();
+                anyOf.add(cb.like(cb.lower(cb.coalesce(root.<String>get("description"), "")), pattern, '\\'));
+                anyOf.add(cb.like(cb.lower(cb.coalesce(root.<String>get("rawDescription"), "")), pattern, '\\'));
+                if (!matcher.merchantIdsWhoseNameContainsIt().isEmpty()) {
+                    anyOf.add(root.get("merchantId").in(matcher.merchantIdsWhoseNameContainsIt()));
+                }
+                predicates.add(cb.or(anyOf.toArray(new Predicate[0])));
+            }
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+    }
+
+    /** The words come from a model, so % _ and \ are made literal rather than acting as wildcards. */
+    private static String escapeLike(String word) {
+        return word.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
     }
 }
