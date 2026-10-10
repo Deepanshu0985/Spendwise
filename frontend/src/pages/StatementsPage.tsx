@@ -236,6 +236,8 @@ function StatementReview({ statementId, onBack }: { statementId: string; onBack:
   const [actionError, setActionError] = useState<string | null>(null)
   const [confirmNote, setConfirmNote] = useState<string | null>(null)
   const [retryPassword, setRetryPassword] = useState('')
+  const [suggesting, setSuggesting] = useState(false)
+  const [suggestNote, setSuggestNote] = useState<string | null>(null)
 
   async function reload() {
     setLoading(true)
@@ -272,6 +274,31 @@ function StatementReview({ statementId, onBack }: { statementId: string; onBack:
       setActionError(err instanceof ApiRequestError ? err.message : 'Something went wrong. Please try again.')
     } finally {
       setConfirming(false)
+    }
+  }
+
+  async function handleSuggest() {
+    setActionError(null)
+    setSuggestNote(null)
+    setSuggesting(true)
+    try {
+      const result = await statementsApi.suggestCategories(statementId)
+      setRows(result.rows)
+      const parts: string[] = []
+      if (result.ruleApplied > 0) parts.push(`${result.ruleApplied} filled from well-known brands`)
+      if (result.aiApplied > 0) parts.push(`${result.aiApplied} suggested by AI`)
+      if (result.needsReview > 0) parts.push(`${result.needsReview} the AI wasn't sure about - left for you`)
+      if (result.notAsked > 0 && result.stoppedReason === null) parts.push(`${result.notAsked} more rows - press again to continue`)
+      let note = parts.length > 0 ? parts.join(' · ') + '.' : 'Nothing new to suggest.'
+      if (result.stoppedReason === 'LIMIT' && result.limitMessage) note += ` ${result.limitMessage}`
+      if (result.stoppedReason === 'UNAVAILABLE') {
+        note += result.aiAvailable ? " AI isn't responding right now - try again later." : ' AI suggestions are switched off.'
+      }
+      setSuggestNote(note)
+    } catch (err) {
+      setActionError(err instanceof ApiRequestError ? err.message : 'Something went wrong. Please try again.')
+    } finally {
+      setSuggesting(false)
     }
   }
 
@@ -359,6 +386,11 @@ function StatementReview({ statementId, onBack }: { statementId: string; onBack:
               </Button>
             )}
             {statement.status === 'READY_FOR_REVIEW' && (
+              <Button variant="secondary" onClick={() => void handleSuggest()} disabled={suggesting}>
+                {suggesting ? 'Suggesting…' : 'Suggest categories'}
+              </Button>
+            )}
+            {statement.status === 'READY_FOR_REVIEW' && (
               <Button onClick={() => void handleConfirm()} disabled={confirming}>
                 {confirming ? 'Confirming…' : 'Confirm import'}
               </Button>
@@ -368,6 +400,7 @@ function StatementReview({ statementId, onBack }: { statementId: string; onBack:
       </div>
 
       {actionError && <div className="form-error-banner" style={{ marginBottom: 16 }}>{actionError}</div>}
+      {suggestNote && <div className="badge" style={{ marginBottom: 16, padding: '8px 12px' }}>{suggestNote}</div>}
       {confirmNote && <div className="badge" style={{ marginBottom: 16, padding: '8px 12px' }}>{confirmNote}</div>}
       {statement?.status === 'FAILED' && statement.errorMessage && (
         <div className="form-error-banner" style={{ marginBottom: 16 }}>{statement.errorMessage}</div>
@@ -522,6 +555,13 @@ function StatementReview({ statementId, onBack }: { statementId: string; onBack:
                                 Undo
                               </button>
                             )}
+                          </div>
+                        )}
+                        {row.aiSuggested && (
+                          <div style={{ marginTop: 4 }}>
+                            <span className="badge" title={row.aiReason ?? 'Suggested by AI - edit the row to override'}>
+                              AI suggested{row.aiReason ? ` · ${row.aiReason}` : ''}
+                            </span>
                           </div>
                         )}
                         {row.duplicateOverridden && (

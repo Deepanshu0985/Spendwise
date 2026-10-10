@@ -12,7 +12,7 @@ Decisions that are not yet made, and the phases they block. An undecided item th
 | D-06 | Are raw statement PDFs retained after successful import | Phase 6, privacy | Open |
 | D-07 | Retention periods: staging rows, audit logs, AI conversations, deleted-user data | Privacy | Open |
 | D-08 | Is AI chat history persisted, or stateless per request | Phase 12 | Open |
-| D-09 | AI cost caps: per-user daily quota and global monthly ceiling | Phase 11 | Open |
+| D-09 | AI cost caps: per-user daily quota and global monthly ceiling | Phase 11 | Decided (defaults, adjustable): 100 rows per user per day and 20,000 rows per month overall, counted in rows sent to the model; see DECISIONS.md |
 | D-10 | Backup RPO and RTO targets | Phase 0 | Open |
 | D-11 | Web-only or PWA for V1 | Frontend scope | Open |
 | D-12 | Financial-health score methodology | Post-MVP | Deferred |

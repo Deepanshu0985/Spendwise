@@ -26,6 +26,16 @@ public class TransactionNormalizer {
     private static final Pattern PAYMENT_PREFIX =
             Pattern.compile("^(UPI|POS|NEFT|IMPS|ATM)[/\\-\\s]+", Pattern.CASE_INSENSITIVE);
 
+    // Whole words only. Plain substring checks misfire on everyday narrations: COFFEE contains FEE, TREATMENT contains
+    // ATM, SELFRIDGES contains SELF, SUPERCHARGED and DISCHARGE contain CHARGE.
+    private static final Pattern ATM = Pattern.compile("\\bATM\\b");
+    private static final Pattern FEE_OR_CHARGE = Pattern.compile("\\b(?:FEES?|CHARGES?)\\b");
+    private static final Pattern INTEREST = Pattern.compile("\\bINTEREST\\b");
+    private static final Pattern SELF_TRANSFER = Pattern.compile("\\bSELF\\b|\\bOWN A/C\\b|\\bOWN ACCOUNT\\b");
+    // A "fee" paid to one of these is something the user bought (tuition, an exam, a toll), not a fee the bank charged.
+    private static final Pattern PAID_TO_AN_INSTITUTION = Pattern.compile(
+            "\\b(?:UNIVERSITY|SCHOOL|COLLEGE|TUITION|EXAM|ADMISSION|COURSE|ACADEMY|INSTITUTE|COACHING|HOSTEL|HOSPITAL|CLINIC|TOLL|PARKING)\\b");
+
     private static final BigDecimal HIGH_CONFIDENCE = new BigDecimal("0.85");
     private static final BigDecimal MEDIUM_CONFIDENCE = new BigDecimal("0.75");
     private static final BigDecimal LOW_CONFIDENCE = new BigDecimal("0.60");
@@ -39,7 +49,7 @@ public class TransactionNormalizer {
         // first and classifying after would throw away the evidence.
         String upper = row.rawDescription().toUpperCase();
 
-        if (isDebit && upper.contains("ATM")) {
+        if (isDebit && ATM.matcher(upper).find()) {
             return new NormalizedTransactionRow(normalizedDescription, TransactionType.CASH_WITHDRAWAL, HIGH_CONFIDENCE);
         }
         if (!isDebit && upper.contains("SALARY")) {
@@ -48,13 +58,13 @@ public class TransactionNormalizer {
         if (!isDebit && (upper.contains("REVERSAL") || upper.contains("REFUND"))) {
             return new NormalizedTransactionRow(normalizedDescription, TransactionType.REFUND, HIGH_CONFIDENCE);
         }
-        if (isDebit && upper.contains("INTEREST")) {
+        if (isDebit && INTEREST.matcher(upper).find()) {
             return new NormalizedTransactionRow(normalizedDescription, TransactionType.INTEREST_CHARGED, HIGH_CONFIDENCE);
         }
-        if (!isDebit && upper.contains("INTEREST")) {
+        if (!isDebit && INTEREST.matcher(upper).find()) {
             return new NormalizedTransactionRow(normalizedDescription, TransactionType.INTEREST_EARNED, HIGH_CONFIDENCE);
         }
-        if (isDebit && (upper.contains("FEE") || upper.contains("CHARGE"))) {
+        if (isDebit && FEE_OR_CHARGE.matcher(upper).find() && !PAID_TO_AN_INSTITUTION.matcher(upper).find()) {
             return new NormalizedTransactionRow(normalizedDescription, TransactionType.FEE_CHARGED, HIGH_CONFIDENCE);
         }
         // A credit card bill paid from a bank account is a plain expense: users record the bill, not each card
@@ -62,7 +72,7 @@ public class TransactionNormalizer {
         if (isDebit && (upper.contains("CARD PAYMENT") || upper.contains("CC PAYMENT") || upper.contains("CARD BILL"))) {
             return new NormalizedTransactionRow(normalizedDescription, TransactionType.EXPENSE, MEDIUM_CONFIDENCE);
         }
-        if (upper.contains("SELF") || upper.contains("OWN A/C") || upper.contains("OWN ACCOUNT")) {
+        if (SELF_TRANSFER.matcher(upper).find()) {
             TransactionType type = isDebit ? TransactionType.TRANSFER_OUT : TransactionType.TRANSFER_IN;
             return new NormalizedTransactionRow(normalizedDescription, type, MEDIUM_CONFIDENCE);
         }

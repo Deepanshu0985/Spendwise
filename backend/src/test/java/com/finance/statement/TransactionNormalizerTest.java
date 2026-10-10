@@ -53,6 +53,54 @@ class TransactionNormalizerTest {
     }
 
     @Test
+    void realBankFeeAndChargeNarrationsAreStillFeeCharged() {
+        for (String narration : new String[] {
+                "SMS CHARGES", "SERVICE CHARGE GST", "NEFT CHARGES", "LATE FEE", "DEBIT CARD ANNUAL FEES", "AMC CHARGES FOR SAVINGS ACCOUNT",
+                "MIN BAL CHARGES"}) {
+            assertThat(normalizer.normalize(row(narration, ParsedTransactionRow.DebitCredit.DEBIT)).transactionType())
+                    .as(narration).isEqualTo(TransactionType.FEE_CHARGED);
+        }
+    }
+
+    @Test
+    void aFeePaidToAnInstitutionIsAnExpenseNotABankFee() {
+        // The word "fee" here is what the user paid a school or university, not something the bank charged.
+        for (String narration : new String[] {
+                "UNIVERSITY FEE PAYMENT", "TUITION FEE Q2", "SCHOOL FEES TERM 1", "COLLEGE EXAM FEE", "COACHING INSTITUTE FEE", "FASTAG TOLL FEE",
+                "HOSPITAL REGISTRATION CHARGES"}) {
+            assertThat(normalizer.normalize(row(narration, ParsedTransactionRow.DebitCredit.DEBIT)).transactionType())
+                    .as(narration).isEqualTo(TransactionType.EXPENSE);
+        }
+    }
+
+    @Test
+    void wordsThatMerelyContainFeeOrChargeOrAtmAreNotClassifiedByThem() {
+        // COFFEE contains FEE, TREATMENT contains ATM, SUPERCHARGED and DISCHARGE contain CHARGE - none of them mean what the rule means.
+        for (String narration : new String[] {"COFFEE DAY OUTLET", "UPI/CAFFEE SHOP", "HOSPITAL TREATMENT", "ATMOSPHERE RESTAURANT", "SUPERCHARGED GYM", "DISCHARGE SUMMARY PHARMACY"}) {
+            assertThat(normalizer.normalize(row(narration, ParsedTransactionRow.DebitCredit.DEBIT)).transactionType())
+                    .as(narration).isEqualTo(TransactionType.EXPENSE);
+        }
+    }
+
+    @Test
+    void atmCashWithdrawalsAreStillRecognisedInTheirCommonForms() {
+        for (String narration : new String[] {"ATM WDL CASH", "ATM/CASH WDL/123", "NFS ATM WITHDRAWAL", "CASH WITHDRAWAL ATM-HDFC"}) {
+            assertThat(normalizer.normalize(row(narration, ParsedTransactionRow.DebitCredit.DEBIT)).transactionType())
+                    .as(narration).isEqualTo(TransactionType.CASH_WITHDRAWAL);
+        }
+    }
+
+    @Test
+    void aMerchantNamedLikeSelfOrInterestIsNotATransferOrInterest() {
+        assertThat(normalizer.normalize(row("SELFRIDGES ONLINE", ParsedTransactionRow.DebitCredit.DEBIT)).transactionType())
+                .isEqualTo(TransactionType.EXPENSE);
+        assertThat(normalizer.normalize(row("SELF TRANSFER TO SAVINGS", ParsedTransactionRow.DebitCredit.DEBIT)).transactionType())
+                .isEqualTo(TransactionType.TRANSFER_OUT);
+        assertThat(normalizer.normalize(row("INTERESTING BOOKS STORE", ParsedTransactionRow.DebitCredit.DEBIT)).transactionType())
+                .isEqualTo(TransactionType.EXPENSE);
+    }
+
+    @Test
     void creditCardBillPaidFromABankAccountIsAPlainExpense() {
         NormalizedTransactionRow result = normalizer.normalize(row("CARD PAYMENT RECEIVED", ParsedTransactionRow.DebitCredit.DEBIT));
         assertThat(result.transactionType()).isEqualTo(TransactionType.EXPENSE);

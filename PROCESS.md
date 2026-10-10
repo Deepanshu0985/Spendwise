@@ -255,7 +255,17 @@ DigitalOcean remains the actual V1 production target once beta-ready — see `DE
 - [ ] Budget/goal summaries on the dashboard; alerts when a budget nears its limit; copying a budget to the next period; linking goals to accounts or transactions
 
 ## Phase 11 — AI Categorization
-Not started. D-03 is decided (Mistral); the daily/monthly cap (D-09) is still open — see `docs/09-project/open-decisions.md`.
+
+**Done:**
+- [x] `AiModelClient` gateway with a Mistral implementation (timeout, one retry, key never logged), `AI_ENABLED` kill switch (off by default and when the key is empty)
+- [x] Free layers first: remembered edits, then a built-in brand-to-category list; only the leftovers go to the model
+- [x] Redaction before anything is sent, a random-delimiter prompt, strict validation (types, the user's own categories, direction), 0.75 confidence threshold, review-queue fallback
+- [x] D-09 decided: 100 rows per user per day, 20,000 rows per month, atomically reserved; V21 (AI flags on staged rows, usage counters)
+- [x] "Suggest categories" button and "AI suggested" badge on the review screen; 23 unit + 9 integration tests; verified in a browser against a local stand-in for the Mistral API
+
+**Left:**
+- [ ] Put `MISTRAL_API_KEY` in `.env` and in Render's environment (and set `AI_ENABLED=true`), then run the golden-dataset evaluation against the real model and look at accuracy and cost per row (`docs/04-ai/ai-evaluation.md`)
+- [ ] Optional: run automatically at import, merchant suggestions, assistant-style 429 for caps
 
 ## Phase 12 — AI Assistant
 Not started.

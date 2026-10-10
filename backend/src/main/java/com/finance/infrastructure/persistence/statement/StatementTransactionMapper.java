@@ -32,7 +32,9 @@ final class StatementTransactionMapper {
                 entity.getDuplicateOfTransactionId(),
                 entity.getDuplicateOverriddenAt(),
                 entity.getSourceAccountLabel(),
-                entity.getAccountId());
+                entity.getAccountId(),
+                entity.isAiSuggested(),
+                entity.getAiReason());
     }
 
     static StatementTransactionJpaEntity toNewEntity(StatementTransaction row) {
@@ -58,7 +60,9 @@ final class StatementTransactionMapper {
                 row.getDuplicateOfTransactionId(),
                 row.getDuplicateOverriddenAt(),
                 row.getSourceAccountLabel(),
-                row.getAccountId());
+                row.getAccountId(),
+                row.isAiSuggested(),
+                row.getAiReason());
     }
 
     /** Mutates an existing managed entity in place so Hibernate's dirty checking fires correctly. */
@@ -75,6 +79,8 @@ final class StatementTransactionMapper {
         entity.setDuplicateOfTransactionId(row.getDuplicateOfTransactionId());
         entity.setDuplicateOverriddenAt(row.getDuplicateOverriddenAt());
         entity.setAccountId(row.getAccountId());
+        entity.setAiSuggested(row.isAiSuggested());
+        entity.setAiReason(row.getAiReason());
         return entity;
     }
 }

@@ -157,6 +157,19 @@ export interface StatementTransaction {
   duplicateOverridden: boolean
   sourceAccountLabel: string | null
   accountId: string | null
+  aiSuggested: boolean
+  aiReason: string | null
+}
+
+export interface SuggestCategoriesResult {
+  rows: StatementTransaction[]
+  ruleApplied: number
+  aiApplied: number
+  needsReview: number
+  notAsked: number
+  aiAvailable: boolean
+  stoppedReason: 'UNAVAILABLE' | 'LIMIT' | null
+  limitMessage: string | null
 }
 
 export interface ConfirmStatementResult {
