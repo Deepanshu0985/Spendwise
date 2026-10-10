@@ -164,3 +164,22 @@ export function RepeatIcon({ size = 17 }: IconProps) {
     </svg>
   )
 }
+
+export function TargetIcon({ size = 17 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" {...base}>
+      <circle cx="12" cy="12" r="10" />
+      <circle cx="12" cy="12" r="6" />
+      <circle cx="12" cy="12" r="2" />
+    </svg>
+  )
+}
+
+export function PiggyIcon({ size = 17 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" {...base}>
+      <path d="M19 10h1a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-1.2a6 6 0 0 1-2.3 3.2V20h-3v-1.2H10V20H7v-2.8A6 6 0 0 1 4 12c0-3.3 3.1-6 7-6h4.5a3 3 0 0 0 3-3" />
+      <circle cx="15.5" cy="10" r="0.6" />
+    </svg>
+  )
+}
