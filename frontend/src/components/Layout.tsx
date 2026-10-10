@@ -1,18 +1,19 @@
 import { NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { ReferenceDataProvider } from '../data/ReferenceDataContext'
-import { BankIcon, FileTextIcon, GridIcon, ListIcon, LogoutIcon } from './icons'
+import { BankIcon, FileTextIcon, GridIcon, ListIcon, LogoutIcon, RepeatIcon } from './icons'
 
 const NAV_ITEMS = [
   { to: '/', label: 'Dashboard', Icon: GridIcon, end: true },
   { to: '/transactions', label: 'Transactions', Icon: ListIcon, end: false },
   { to: '/accounts', label: 'Accounts', Icon: BankIcon, end: false },
   { to: '/statements', label: 'Statements', Icon: FileTextIcon, end: false },
+  { to: '/recurring', label: 'Recurring', Icon: RepeatIcon, end: false },
 ] as const
 
-// Navigation is scoped to what's actually built (through Phase 6) - the
+// Navigation is scoped to what's actually built (through Phase 9) - the
 // remaining docs/06-frontend/ui-ux-specification.md sections (Budgets, Goals,
-// Recurring, AI Assistant) come with their own phases.
+// AI Assistant) get their link in their own phases.
 export function Layout() {
   const { user, logout } = useAuth()
 

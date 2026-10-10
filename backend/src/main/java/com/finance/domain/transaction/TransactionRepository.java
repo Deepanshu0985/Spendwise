@@ -30,5 +30,8 @@ public interface TransactionRepository {
     List<Transaction> findDuplicateCandidates(
             UUID userId, java.time.LocalDate from, java.time.LocalDate to, java.util.Collection<String> externalReferences);
 
+    /** Confirmed EXPENSE transactions dated on or after since - the history recurring-payment detection reads. */
+    List<Transaction> findConfirmedExpensesSince(UUID userId, java.time.LocalDate since);
+
     Page<Transaction> search(UUID userId, TransactionFilter filter, Pageable pageable);
 }

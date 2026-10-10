@@ -48,6 +48,11 @@ public class TransactionRepositoryImpl implements TransactionRepository {
     }
 
     @Override
+    public List<Transaction> findConfirmedExpensesSince(UUID userId, java.time.LocalDate since) {
+        return jpaRepository.findConfirmedExpensesSince(userId, since).stream().map(TransactionMapper::toDomain).toList();
+    }
+
+    @Override
     public Page<Transaction> search(UUID userId, TransactionFilter filter, Pageable pageable) {
         return jpaRepository.findAll(TransactionSpecifications.forUserAndFilter(userId, filter), pageable).map(TransactionMapper::toDomain);
     }

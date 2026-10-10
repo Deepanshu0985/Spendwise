@@ -164,3 +164,23 @@ export interface ConfirmStatementResult {
   importedTransactionIds: string[]
   skippedDuplicateCount: number
 }
+
+export type RecurrenceFrequency = 'WEEKLY' | 'MONTHLY' | 'QUARTERLY' | 'YEARLY'
+
+export interface RecurringExpense {
+  id: string
+  name: string
+  merchantId: string | null
+  categoryId: string | null
+  currency: string
+  averageAmount: number
+  frequency: RecurrenceFrequency
+  lastSeenDate: string
+  nextExpectedDate: string
+  monthlyEstimate: number
+  yearlyEstimate: number
+  occurrences: number
+  confidenceScore: number
+  isActive: boolean
+  confirmed: boolean
+}

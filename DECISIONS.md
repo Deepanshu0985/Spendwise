@@ -1,3 +1,22 @@
+## Phase 9: recurring payments are found by a deterministic detector over confirmed expenses
+
+**Why.** Subscriptions, EMIs and bills are what most people want surfaced ("what am I paying for every month?"), and the plan asks for pattern detection, frequency, next expected date, monthly/yearly estimates, a list view and a dismiss action. No model is involved: it is cheap, explainable, and testable with plain dates.
+
+**How the detector decides** (`RecurrenceDetector`, framework-free).
+- Payments are grouped by payee: the assigned merchant when there is one, otherwise the description with reference-like numbers (4+ digits) removed, so "Spotify 8123456789" and "Spotify 5567788990" are one payee. Same-day charges count as one payment.
+- The gaps between payments must cluster around a known frequency: weekly (6-8 days), monthly (26-35), every 3 months (84-98) or yearly (350-380). At least 75% of gaps must be in band, so one missed month is tolerated once there is enough history, but three payments must all be regular. Three payments are needed, two for yearly.
+- Amounts must stay close to the median: within 10% for weekly (so a habit like food delivery, with varying amounts, is not mistaken for a subscription) and within 50% for longer periods (so a fluctuating electricity bill still counts, with a lower score).
+- Confidence = 0.4 x regular-gap share + 0.3 x amount stability + 0.3 x history length; below 0.60 is dropped.
+- Next expected date = last payment plus one period (month-end dates clamp rather than drift). A pattern whose next date is more than a grace period past (14 days weekly, 15 monthly, 30 quarterly, 45 yearly) is marked as stopped but kept. The shown amount is the average of the last three payments, so a price rise shows up quickly.
+
+**Behaviour.** `POST /recurring-expenses/detect` re-reads three years of confirmed EXPENSE transactions, stores what repeats and returns the list; the Recurring page calls it on open. A user's rename, category and confirm choices survive re-detection; "Not recurring" (dismiss) stays dismissed. Patterns that stop being detected (for example after deleting transactions) become inactive rather than vanishing. Only EXPENSE-type transactions are read: transfers, refunds and income are never subscriptions, and a credit-card bill is an expense by the existing rule, so a monthly card bill is found.
+
+**A bug found by using it.** The page runs detection when it opens, and in development React runs that effect twice, so two detections overlapped and both inserted the same new pattern: a unique-key violation and an "unexpected error" banner. Detection now takes a per-user PostgreSQL advisory lock for its transaction. The integration profile uses a single database connection, so the overlap cannot be reproduced there; the concurrency test is a smoke test and says so. The fix was confirmed in the browser against the real overlapping requests.
+
+**Verified.** 12 detector unit tests (monthly, weekly, yearly, a varying-amount weekly habit rejected, a fluctuating bill accepted with lower confidence, irregular gaps rejected, a stopped plan, a missed month, number-stripped descriptions, merchant grouping, month-end projection); 7 integration tests (detect, ignores one-offs, name/confirm kept, dismiss persists, stopped kept but not active, another user gets 404 on update/dismiss, unknown category). In a browser on a throwaway database with seeded expenses: Netflix, Spotify, the electricity bill and a yearly domain renewal were found with correct next dates and totals (2,818 per month, 33,816 per year), a stopped plan appeared under "Stopped", food delivery and a one-off purchase were not listed, confirm and "Not recurring" persisted. 100 unit + 54 integration tests green.
+
+**Not done.** Recurring is not yet on the dashboard summary. Bi-weekly and other frequencies, and a category picker on the page (the API accepts a category), are left for when they are asked for. Detection runs when the page opens, not automatically after a statement import.
+
 ## Fix: a statement with no row references crashed the duplicate check (a NUL placeholder rejected by PostgreSQL)
 
 **Found live.** Opening a statement on the live site returned 500 on `duplicates/recheck`, and uploads of some statements failed with a generic error. The Render log showed `invalid byte sequence for encoding "UTF8": 0x00` on the duplicate-candidates query.
