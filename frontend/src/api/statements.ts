@@ -1,5 +1,5 @@
 import { apiClient } from './client'
-import type { ConfirmStatementResult, PageMeta, Statement, StatementTransaction, TransactionType } from './types'
+import type { ConfirmStatementResult, PageMeta, Statement, StatementTransaction, SuggestCategoriesResult, TransactionType } from './types'
 
 export interface UpdateStagedTransactionRequest {
   transactionDate: string
@@ -33,6 +33,7 @@ export const statementsApi = {
     apiClient.post<StatementTransaction>(`/statements/${statementId}/transactions/${stagingId}/restore`),
   mapSourceAccount: (statementId: string, label: string, accountId: string) =>
     apiClient.put<StatementTransaction[]>(`/statements/${statementId}/source-accounts`, { label, accountId }),
+  suggestCategories: (id: string) => apiClient.post<SuggestCategoriesResult>(`/statements/${id}/suggest-categories`),
   retry: (id: string, password?: string) =>
     apiClient.post<Statement>(`/statements/${id}/retry`, password ? { password } : undefined),
   supportedBanks: () => apiClient.get<string[]>('/statements/supported-banks'),

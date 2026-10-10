@@ -88,6 +88,12 @@ public class StatementTransactionJpaEntity {
     @Column(name = "account_id")
     private UUID accountId;
 
+    @Column(name = "ai_suggested", nullable = false)
+    private boolean aiSuggested;
+
+    @Column(name = "ai_reason")
+    private String aiReason;
+
     @Column(name = "source_row_reference", nullable = false)
     private String sourceRowReference;
 
@@ -121,7 +127,9 @@ public class StatementTransactionJpaEntity {
             UUID duplicateOfTransactionId,
             Instant duplicateOverriddenAt,
             String sourceAccountLabel,
-            UUID accountId) {
+            UUID accountId,
+            boolean aiSuggested,
+            String aiReason) {
         this.id = id;
         this.userId = userId;
         this.statementId = statementId;
@@ -144,6 +152,24 @@ public class StatementTransactionJpaEntity {
         this.duplicateOverriddenAt = duplicateOverriddenAt;
         this.sourceAccountLabel = sourceAccountLabel;
         this.accountId = accountId;
+        this.aiSuggested = aiSuggested;
+        this.aiReason = aiReason;
+    }
+
+    boolean isAiSuggested() {
+        return aiSuggested;
+    }
+
+    String getAiReason() {
+        return aiReason;
+    }
+
+    void setAiSuggested(boolean aiSuggested) {
+        this.aiSuggested = aiSuggested;
+    }
+
+    void setAiReason(String aiReason) {
+        this.aiReason = aiReason;
     }
 
     String getSourceAccountLabel() {

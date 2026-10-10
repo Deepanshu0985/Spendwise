@@ -29,7 +29,9 @@ public record StatementTransactionResponse(
         UUID duplicateOfTransactionId,
         boolean duplicateOverridden,
         String sourceAccountLabel,
-        UUID accountId) {
+        UUID accountId,
+        boolean aiSuggested,
+        String aiReason) {
 
     public static StatementTransactionResponse from(StatementTransaction row) {
         return new StatementTransactionResponse(
@@ -51,6 +53,8 @@ public record StatementTransactionResponse(
                 row.getDuplicateOfTransactionId(),
                 row.getDuplicateOverriddenAt() != null,
                 row.getSourceAccountLabel(),
-                row.getAccountId());
+                row.getAccountId(),
+                row.isAiSuggested(),
+                row.getAiReason());
     }
 }

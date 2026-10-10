@@ -1,5 +1,6 @@
 package com.finance.infrastructure.web.statement;
 
+import com.finance.application.ai.CategorySuggestionService;
 import com.finance.application.statement.StatementService;
 import com.finance.application.statement.UpdateStagedTransactionCommand;
 import com.finance.application.statement.UploadStatementCommand;
@@ -36,11 +37,15 @@ import java.util.UUID;
 public class StatementController {
 
     private final StatementService statementService;
+    private final CategorySuggestionService suggestionService;
     private final TenantContext tenantContext;
     private final IdempotencyService idempotencyService;
 
-    public StatementController(StatementService statementService, TenantContext tenantContext, IdempotencyService idempotencyService) {
+    public StatementController(
+            StatementService statementService, CategorySuggestionService suggestionService, TenantContext tenantContext,
+            IdempotencyService idempotencyService) {
         this.statementService = statementService;
+        this.suggestionService = suggestionService;
         this.tenantContext = tenantContext;
         this.idempotencyService = idempotencyService;
     }
@@ -116,6 +121,12 @@ public class StatementController {
         List<StatementTransaction> rows = statementService.mapSourceAccount(
                 CurrentUserGuard.require(tenantContext), id, request.label(), request.accountId());
         return ApiResponse.of(rows.stream().map(StatementTransactionResponse::from).toList());
+    }
+
+    /** Free brand rules, then (if AI is available and within its caps) the model, for rows with no category yet. */
+    @PostMapping("/{id}/suggest-categories")
+    public ApiResponse<SuggestCategoriesResponse> suggestCategories(@PathVariable UUID id) {
+        return ApiResponse.of(SuggestCategoriesResponse.from(suggestionService.suggest(CurrentUserGuard.require(tenantContext), id)));
     }
 
     @PostMapping("/{id}/transactions/{stagingId}/skip")

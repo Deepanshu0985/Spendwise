@@ -37,6 +37,8 @@ public class StatementTransaction {
     private Instant duplicateOverriddenAt;
     private final String sourceAccountLabel;
     private UUID accountId;
+    private boolean aiSuggested;
+    private String aiReason;
 
     public StatementTransaction(
             UUID userId,
@@ -76,7 +78,7 @@ public class StatementTransaction {
         this(
                 UUID.randomUUID(), userId, statementId, transactionDate, amount, currency, rawDescription, normalizedDescription,
                 suggestedMerchantId, suggestedCategoryId, suggestedTransactionType, confidenceScore, DuplicateStatus.UNKNOWN,
-                ReviewStatus.PENDING, null, sourceRowReference, null, externalReference, null, null, null, sourceAccountLabel, null);
+                ReviewStatus.PENDING, null, sourceRowReference, null, externalReference, null, null, null, sourceAccountLabel, null, false, null);
     }
 
     /** Reconstitution constructor - used by the persistence mapper to rebuild a domain object from a stored row. */
@@ -103,7 +105,9 @@ public class StatementTransaction {
             UUID duplicateOfTransactionId,
             Instant duplicateOverriddenAt,
             String sourceAccountLabel,
-            UUID accountId) {
+            UUID accountId,
+            boolean aiSuggested,
+            String aiReason) {
         this.id = id;
         this.userId = userId;
         this.statementId = statementId;
@@ -127,6 +131,8 @@ public class StatementTransaction {
         this.duplicateOverriddenAt = duplicateOverriddenAt;
         this.sourceAccountLabel = sourceAccountLabel;
         this.accountId = accountId;
+        this.aiSuggested = aiSuggested;
+        this.aiReason = aiReason;
     }
 
     /** The user correcting a staged row before confirming - moves review status to EDITED. */
@@ -139,6 +145,26 @@ public class StatementTransaction {
         this.suggestedCategoryId = suggestedCategoryId;
         this.suggestedTransactionType = suggestedTransactionType;
         this.reviewStatus = ReviewStatus.EDITED;
+        // The user has now looked at the row and decided, so it is no longer "the model's suggestion".
+        this.aiSuggested = false;
+        this.aiReason = null;
+    }
+
+    /**
+     * Applies a model's suggestion, but only to a row nobody has reviewed and that has no category yet. The type is
+     * taken only when the row's own type is still unknown - the statement's own signals outrank a guess.
+     */
+    public boolean applyAiSuggestion(UUID categoryId, TransactionType type, String reason) {
+        if (reviewStatus != ReviewStatus.PENDING || suggestedCategoryId != null || categoryId == null) {
+            return false;
+        }
+        this.suggestedCategoryId = categoryId;
+        if (suggestedTransactionType == null || suggestedTransactionType.isUnknown()) {
+            this.suggestedTransactionType = type;
+        }
+        this.aiSuggested = true;
+        this.aiReason = reason;
+        return true;
     }
 
     /** Fills merchant/category from a remembered rule, but only where the row has none and the user hasn't reviewed it. */
@@ -279,6 +305,14 @@ public class StatementTransaction {
 
     public String getSourceAccountLabel() {
         return sourceAccountLabel;
+    }
+
+    public boolean isAiSuggested() {
+        return aiSuggested;
+    }
+
+    public String getAiReason() {
+        return aiReason;
     }
 
     public UUID getAccountId() {
