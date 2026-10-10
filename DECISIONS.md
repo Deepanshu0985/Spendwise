@@ -1,3 +1,14 @@
+## Keeping the free-tier backend awake: a ping script, and why not both services
+
+**Problem.** Render's free tier puts a service to sleep after about 15 minutes without a request; the next request then waits 60 to 90 seconds for it to wake (the blank loading page seen earlier).
+
+**What was added.** `scripts/keep-awake.sh [URL] [seconds]` calls the health endpoint on a timer and prints the time, status code and response time (default: the live backend, every 600 seconds). Anything under about 14 minutes keeps a service awake, so pinging every 10 seconds adds nothing over every 10 minutes; a 5-second floor is enforced and the interval is an argument. It stops at once on Ctrl-C or a stop signal even in the middle of a slow request (the first version waited for the request to finish; found by testing). Checked against the live backend (first ping 7.0s, then about 0.4s) and against a dead address (reports NOT OK).
+
+**Limits that matter.**
+- It only runs while the terminal is open and the computer is awake. It cannot make the backend "always" awake.
+- Render's free tier allows 750 instance-hours a month for the whole workspace. One service awake all month uses about 720. Keeping both staging and main awake would exceed that and Render would suspend the free services until next month. Keep only main awake and let staging sleep.
+- For genuinely always-on without a computer, the options are a hosted pinger (UptimeRobot or cron-job.org free plans, which need an account created by the owner of the project; the free plans' shortest interval is a few minutes, which is enough) or a paid Render instance, which does not sleep. GitHub Actions on a schedule is possible but unreliable at short intervals and uses Actions minutes on a private repository.
+
 ## The assistant is a side panel on every screen, not a page; RAG becomes its own next phase
 
 **What was wrong.** Phase 12 put the assistant on a page of its own. The request was a chat reachable from every tab, so you can ask about what you are looking at without leaving it.
