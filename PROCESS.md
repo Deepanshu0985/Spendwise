@@ -245,7 +245,14 @@ DigitalOcean remains the actual V1 production target once beta-ready — see `DE
 - [ ] Recurring total on the dashboard (optional); category picker on the page; detection after a statement import rather than only on page open
 
 ## Phase 10 — Budgets and Goals
-Not started.
+
+**Done:**
+- [x] Budgets (monthly or custom dates) with a total limit and optional category limits; progress computed from the dashboard's own category spending; ON_TRACK / CLOSE_TO_LIMIT / OVER_BUDGET
+- [x] Savings goals with a hand-entered saved amount, % complete, amount needed per month, achieved/overdue
+- [x] Tables V19/V20 with RLS, full CRUD endpoints, Budgets and Goals pages with sidebar links; 13 unit + 10 integration tests; verified by clicking through in a browser
+
+**Left:**
+- [ ] Budget/goal summaries on the dashboard; alerts when a budget nears its limit; copying a budget to the next period; linking goals to accounts or transactions
 
 ## Phase 11 — AI Categorization
 Not started. D-03 is decided (Mistral); the daily/monthly cap (D-09) is still open — see `docs/09-project/open-decisions.md`.

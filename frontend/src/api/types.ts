@@ -184,3 +184,50 @@ export interface RecurringExpense {
   isActive: boolean
   confirmed: boolean
 }
+
+export type BudgetPeriodType = 'MONTHLY' | 'CUSTOM'
+export type BudgetStatus = 'ON_TRACK' | 'CLOSE_TO_LIMIT' | 'OVER_BUDGET'
+
+export interface BudgetCategoryProgress {
+  categoryId: string
+  limitAmount: number
+  spent: number
+  remaining: number
+  percentUsed: number
+  status: BudgetStatus
+}
+
+export interface Budget {
+  id: string
+  name: string
+  periodType: BudgetPeriodType
+  startDate: string
+  endDate: string | null
+  totalLimit: number
+  currency: string
+  progress: {
+    windowStart: string
+    windowEnd: string
+    totalSpent: number
+    remaining: number
+    percentUsed: number
+    status: BudgetStatus
+    categories: BudgetCategoryProgress[]
+  }
+}
+
+export type GoalStatus = 'ACTIVE' | 'ACHIEVED'
+
+export interface Goal {
+  id: string
+  name: string
+  targetAmount: number
+  currentAmount: number
+  targetDate: string | null
+  currency: string
+  status: GoalStatus
+  remaining: number
+  percentComplete: number
+  requiredPerMonth: number | null
+  overdue: boolean
+}

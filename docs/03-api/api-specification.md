@@ -73,10 +73,10 @@ All analytics endpoints accept `currency`, defaulting to the user's default curr
 `confirm` is idempotent: it is valid only from `READY_FOR_REVIEW`, and a repeat call against an already-`IMPORTED` statement returns the original result rather than importing twice.
 
 ## Budgets
-`GET/POST /budgets`, `GET/PUT/DELETE /budgets/{id}`
+`GET/POST /budgets`, `GET/PUT/DELETE /budgets/{id}` - each budget is returned with its current-window `progress` (total and per-category spent, remaining, percent used, status)
 
 ## Goals
-`GET/POST /goals`, `PUT/DELETE /goals/{id}`
+`GET/POST /goals`, `PUT/DELETE /goals/{id}` - each goal is returned with `remaining`, `percentComplete`, `requiredPerMonth` and `overdue`
 
 ## Recurring
 `GET /recurring-expenses?activeOnly=`, `POST /recurring-expenses/detect` (re-runs detection, returns the refreshed list), `PUT /recurring-expenses/{id}` (name, categoryId, confirmed - all optional), `POST /recurring-expenses/{id}/dismiss` (idempotent, 204)
