@@ -136,27 +136,39 @@ Estimates assume the decisions in `open-decisions.md` are used as scoped: three 
 
 **Duration:** 1–1.5 weeks
 
-**Tasks:** finance tool registry (`monthly_summary`, `category_spending`, `top_merchants`, `spending_trend`, `recurring_expenses`, `budget_status`, `goal_status`), session-derived user identity wired through every tool call, structural separation of data vs. instructions in the prompt, chat UX, golden dataset including injection-attempt rows.
+**Tasks:** finance tool registry (`monthly_summary`, `category_spending`, `top_merchants`, `spending_trend`, `recurring_expenses`, `budget_status`, `goal_status`), session-derived user identity wired through every tool call, structural separation of data vs. instructions in the prompt, chat UX as a panel docked on the right of every screen (not a page of its own), golden dataset including injection-attempt rows.
 
 **Depends on:** Phase 11.
 
 **Exit gate:** grounding tests pass — every monetary claim in an AI answer maps to a value returned by a tool in that exchange.
 
-## Phase 13 — AI Insights
+## Phase 13 — RAG Assistant (planned)
+
+**Duration:** 1.5–2 weeks
+
+**Why.** The Phase 12 assistant answers only what its seven fixed tools can answer. Real questions go beyond them - "what was that payment to Sharma in March?", "show my Uber rides", "did I pay the electricity bill in June?". Full design, options and open decisions: `docs/04-ai/rag-plan.md`.
+
+**Tasks:** (1) expand the tool set with structured retrieval first - `search_transactions` (date, amount, text, category, merchant and type filters), `aggregate` (group and total by category, merchant or month with filters) and `compare_periods` computed in code so the model never does arithmetic; (2) embeddings of the user's own transactions behind the same `AiModelClient` gateway, stored per user with row-level security, plus `semantic_search` for fuzzy matches ("coffee" finding Cafe Coffee Day); (3) cited answers, where each record the answer relies on is shown and linked; (4) extend the grounding gate so figures taken from retrieved records are verified and any total comes from code; (5) a scored golden dataset with injection rows.
+
+**Depends on:** Phase 12; decisions D-20 to D-23 in `open-decisions.md`.
+
+**Exit gate:** the grounding tests still pass with retrieval in the loop, cross-tenant retrieval is shown impossible by test, and recall and answer accuracy on the golden dataset meet the bar set in `rag-plan.md`.
+
+## Phase 14 — AI Insights
 
 **Duration:** 3–5 days
 
 **Tasks:** monthly-summary and unusual-spending explanation generation over verified metrics only; `ai_insights` rows record `model_name` and `prompt_version` for attribution.
 
-**Depends on:** Phase 12.
+**Depends on:** Phase 13.
 
-## Phase 14 — Beta Readiness
+## Phase 15 — Beta Readiness
 
 **Duration:** 1.5–2 weeks
 
 **Tasks:** rate limiting on auth, upload and AI endpoints; full metrics/alerting per `observability-monitoring.md`; privacy policy and DPDP-compliant deletion path reviewed by someone qualified; export endpoint; incident response plan; signed-off restore drill; uptime monitoring.
 
-**Depends on:** Phase 13.
+**Depends on:** Phase 14.
 
 **Exit gate:** the internal-to-beta checklist in `development-roadmap.md` is complete.
 

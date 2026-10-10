@@ -64,7 +64,7 @@ DigitalOcean remains the actual V1 production target once beta-ready — see `DE
 - [ ] Automated JUnit/integration test suite codifying the above (currently verified manually via curl, not yet in the repo as tests)
 - [ ] CI: add a PostgreSQL service so the isolation and pooled-connection-leakage tests actually run in CI, not just locally (marked TODO in `ci.yml`)
 - [ ] Real `ResendEmailSender` once a Resend API key exists (D-04) — `LoggingEmailSender` stands in for now
-- [ ] Rate limiting on auth endpoints — deliberately deferred to Phase 14 per `development-roadmap.md`'s own sequencing, not forgotten
+- [ ] Rate limiting on auth endpoints — deliberately deferred to Phase 15 per `development-roadmap.md`'s own sequencing, not forgotten
 - [ ] Session-listing/revoke-all could use direct JUnit coverage of `AuthServiceImpl` beyond the manual curl pass
 - [ ] Google OAuth ("Sign in with Google") as an additional login method — user explicitly wants this, but later, not now (D-19 in `docs/09-project/open-decisions.md`)
 
@@ -273,14 +273,17 @@ DigitalOcean remains the actual V1 production target once beta-ready — see `DE
 - [x] Tool-calling added to the single `AiModelClient` gateway; seven read-only tools over the existing services; session-derived identity (no tool takes a user id); validated, bounded arguments
 - [x] Grounding gate: every figure in an answer must have been returned by a tool, one rewrite attempt, then a plain listing of the figures; data delimited and instruction-like names hidden
 - [x] Usage caps per kind (V22): 30 chat messages per user per day, 5,000 per month; 429 / 503 with clear messages; D-08 decided (stateless chat)
-- [x] Assistant page with suggested questions, "based on" context and the daily allowance; verified on the real Mistral model with made-up data, which found and fixed five issues; 36 new unit + 14 new integration tests
+- [x] Assistant chat as a panel docked on the right of every screen (opened from a round button, conversation kept across tabs, suggestions follow the page, "based on" context, daily allowance); verified on the real Mistral model with made-up data, which found and fixed five issues; 36 new unit + 14 new integration tests
 
 **Left:**
 - [ ] Scored golden-dataset evaluation (accuracy, hallucination rate, latency and cost per answer) per `docs/04-ai/ai-evaluation.md`
-- [ ] Look at the page layout in a browser with a visible pane; optional streaming and saved history (would need D-07 retention decisions)
+- [ ] Optional streaming and saved history (would need D-07 retention decisions)
 
-## Phase 13 — AI Insights
+## Phase 13 — RAG Assistant
+Planned, not started. Plan and open decisions: `docs/04-ai/rag-plan.md`. Order of work: structured retrieval tools first (`search_transactions`, `aggregate`, `compare_periods`), then embeddings and `semantic_search`, then cited answers and a scored evaluation.
+
+## Phase 14 — AI Insights
 Not started.
 
-## Phase 14 — Beta Readiness
+## Phase 15 — Beta Readiness
 Not started.

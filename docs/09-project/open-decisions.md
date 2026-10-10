@@ -23,6 +23,10 @@ Decisions that are not yet made, and the phases they block. An undecided item th
 | D-17 | Transaction splits | — | Decided: ADR-013, schema now, UI later |
 | D-18 | Refund treatment | — | Decided: reduces expenses |
 | D-19 | Google OAuth ("Sign in with Google") as an additional login method, alongside email/password | Auth (Phase 1 area) | Deferred - user explicitly wants this built, but later, not now |
+| D-20 | Embedding model and provider for RAG | Phase 13 | Open - recommendation in `docs/04-ai/rag-plan.md`: Mistral embeddings through the existing gateway |
+| D-21 | What the RAG index contains | Phase 13 | Open - recommendation: confirmed transactions only |
+| D-22 | Vector store | Phase 13 | Open - recommendation: pgvector in the existing PostgreSQL with row-level security |
+| D-23 | Embedding spend caps | Phase 13 | Open - recommendation: a third usage kind with per-user daily and global monthly caps |
 
 ## Gating Decisions
 

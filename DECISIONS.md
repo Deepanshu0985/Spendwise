@@ -1,3 +1,15 @@
+## The assistant is a side panel on every screen, not a page; RAG becomes its own next phase
+
+**What was wrong.** Phase 12 put the assistant on a page of its own. The request was a chat reachable from every tab, so you can ask about what you are looking at without leaving it.
+
+**What changed.** The Assistant page and its sidebar link are removed (`/assistant` now redirects home). A round button at the bottom-right of every screen opens a chat panel docked on the right: on a wide window the page content makes room beside it, on a narrow one it overlays. The panel lives in the layout above the pages, so the conversation survives closing the panel and moving between tabs; opening or closing is remembered across reloads (the conversation itself is not stored, as before - D-08). Esc closes it. The suggested questions follow the page you are on (Budgets suggests budget questions, Recurring suggests recurring ones). The model's `**bold**` is shown as bold by a small renderer that never builds HTML from the text, and the prompt now asks for plain text. Checked in a browser: the panel opened on the Dashboard, answered a question, kept the conversation on Budgets, showed budget suggestions on a fresh chat there, and closed on Esc with the launcher returning.
+
+**RAG is planned, not built.** Answering beyond the seven fixed tools needs retrieval over the user's own records. It is added to the plan as **Phase 13 - RAG Assistant**, and the phases after it move forward: AI Insights is now Phase 14 and Beta Readiness Phase 15 (`phase-plan.md`, `development-roadmap.md`, `PROCESS.md` and the Settings placeholder updated). The plan is `docs/04-ai/rag-plan.md`, and its main point is the order: first structured retrieval (a `search_transactions` filter-and-text-search tool, an `aggregate` tool and a `compare_periods` tool that do the arithmetic in code), which answers most open questions exactly and needs no new infrastructure; then embeddings in pgvector for fuzzy matches like "coffee" finding "Cafe Coffee Day". Retrieval finds records, code computes totals, the model only words the result, and the grounding gate and tenant isolation carry over. Four decisions (D-20 to D-23) are open with recommendations.
+
+**Verified.** Frontend builds; 155 unit + 87 integration tests still green (the only backend change is one line of prompt wording).
+
+**Not done.** No new retrieval capability yet - until Phase 13 the assistant still answers only what its seven tools can; the grounding check verifies numbers, not meaning.
+
 ## Phase 12: an assistant that can only read, as you, through seven checked tools, with every figure verified
 
 **What it is.** An Assistant page (sidebar, chat) for questions like "how much did I spend on food last month?" or "which recurring payments do I have?". The model interprets the question and picks tools; the application validates and runs them and the model only words the result. It cannot read the database, cannot write anything, and never sees another user.

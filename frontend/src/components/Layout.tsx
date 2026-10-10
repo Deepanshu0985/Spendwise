@@ -1,6 +1,8 @@
+import { useCallback, useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { ReferenceDataProvider } from '../data/ReferenceDataContext'
+import { AssistantPanel } from './AssistantPanel'
 import { BankIcon, ChatIcon, FileTextIcon, GridIcon, ListIcon, LogoutIcon, PiggyIcon, RepeatIcon, TargetIcon } from './icons'
 
 const NAV_ITEMS = [
@@ -11,13 +13,34 @@ const NAV_ITEMS = [
   { to: '/recurring', label: 'Recurring', Icon: RepeatIcon, end: false },
   { to: '/budgets', label: 'Budgets', Icon: TargetIcon, end: false },
   { to: '/goals', label: 'Goals', Icon: PiggyIcon, end: false },
-  { to: '/assistant', label: 'Assistant', Icon: ChatIcon, end: false },
 ] as const
 
-// Navigation is scoped to what's actually built (through Phase 12) - the
-// remaining docs/06-frontend/ui-ux-specification.md sections (Settings) get their link in their own phases. A page and its link ship together.
+// Navigation is scoped to what's actually built - the remaining docs/06-frontend/ui-ux-specification.md sections
+// (Settings) get their link in their own phases. A page and its link ship together. The assistant is not a page: it is a
+// panel docked on the right of every page, opened from the round button.
+const PANEL_KEY = 'assistantPanelOpen'
+
+function readPanelOpen(): boolean {
+  try {
+    return window.localStorage.getItem(PANEL_KEY) === 'true'
+  } catch {
+    return false
+  }
+}
+
 export function Layout() {
   const { user, logout } = useAuth()
+  const [assistantOpen, setAssistantOpen] = useState(readPanelOpen)
+
+  const setOpen = useCallback((open: boolean) => {
+    setAssistantOpen(open)
+    try {
+      window.localStorage.setItem(PANEL_KEY, String(open))
+    } catch {
+      // remembering the panel is a convenience only
+    }
+  }, [])
+  const closeAssistant = useCallback(() => setOpen(false), [setOpen])
 
   async function handleLogout() {
     await logout()
@@ -57,6 +80,12 @@ export function Layout() {
         <main className="main-content">
           <Outlet />
         </main>
+        <AssistantPanel open={assistantOpen} onClose={closeAssistant} />
+        {!assistantOpen && (
+          <button type="button" className="assistant-launcher" aria-label="Open assistant" title="Ask the assistant" onClick={() => setOpen(true)}>
+            <ChatIcon size={22} />
+          </button>
+        )}
       </div>
     </ReferenceDataProvider>
   )
