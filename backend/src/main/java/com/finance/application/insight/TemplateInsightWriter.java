@@ -20,7 +20,7 @@ import java.util.Optional;
 @Component("templateInsightWriter")
 public class TemplateInsightWriter implements InsightWriter {
 
-    public static final String TEMPLATE_VERSION = "template-v1";
+    public static final String TEMPLATE_VERSION = "template-v2";
     private static final int MAX_HIGHLIGHTS = 6;
 
     @Override
@@ -88,8 +88,9 @@ public class TemplateInsightWriter implements InsightWriter {
         for (JsonNode budget : m.path("budgets")) {
             String status = budget.get("status").asText();
             if (!"ON_TRACK".equals(status)) {
+                String over = budget.has("overBy") ? ", over by " + money(currency, budget.get("overBy").decimalValue()) : "";
                 highlights.add("Budget \"" + budget.get("name").asText() + "\": " + money(currency, budget.get("spent").decimalValue()) + " of "
-                        + money(currency, budget.get("limit").decimalValue()) + " used (" + budget.get("percentUsed").decimalValue().toPlainString() + "%).");
+                        + money(currency, budget.get("limit").decimalValue()) + " used (" + budget.get("percentUsed").decimalValue().toPlainString() + "%)" + over + ".");
             }
         }
         return Optional.of(new InsightText(name + " at a glance", summary.toString(), highlights.stream().limit(MAX_HIGHLIGHTS).toList()));

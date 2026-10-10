@@ -37,7 +37,8 @@ class InsightWritersTest {
              "topMerchants":[{"name":"Zomato","amount":3360.00}],
              "unusual":[{"kind":"CATEGORY_SPIKE","label":"Food & Dining","amount":5800.00,"typical":3600.00,"increase":2200.00,"timesTypical":1.6},
                         {"kind":"LARGE_PAYMENT","label":"Laptop","amount":48000.00,"typical":400.00,"increase":47600.00,"timesTypical":120.0,"date":"2026-10-03"}],
-             "budgets":[{"name":"Monthly spending","limit":40000.00,"spent":33093.00,"percentUsed":82.7,"status":"CLOSE_TO_LIMIT"},
+             "budgets":[{"name":"Monthly spending","limit":40000.00,"spent":33093.00,"percentUsed":82.7,"status":"CLOSE_TO_LIMIT","remaining":6907.00},
+                        {"name":"Shopping","limit":30000.00,"spent":33093.00,"percentUsed":110.3,"status":"OVER_BUDGET","remaining":-3093.00,"overBy":3093.00,"percentOver":10.3},
                         {"name":"Fun","limit":5000.00,"spent":100.00,"percentUsed":2.0,"status":"ON_TRACK"}]}
             """;
 
@@ -55,6 +56,7 @@ class InsightWritersTest {
         // only budgets that are not on track are mentioned
         assertThat(text.highlights()).anyMatch(h -> h.contains("Monthly spending") && h.contains("82.7%"));
         assertThat(text.highlights()).noneMatch(h -> h.contains("\"Fun\""));
+        assertThat(text.highlights()).anyMatch(h -> h.contains("\"Shopping\"") && h.contains("110.3%), over by ₹3,093.00"));
     }
 
     @Test

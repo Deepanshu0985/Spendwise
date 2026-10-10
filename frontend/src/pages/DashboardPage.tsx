@@ -4,6 +4,7 @@ import { transactionsApi } from '../api/transactions'
 import type { CategoryBreakdownEntry, MerchantBreakdownEntry, Transaction, TrendPoint } from '../api/types'
 import { CalendarIcon } from '../components/icons'
 import { InsightCard } from '../components/InsightCard'
+import { MoneyTip } from '../components/MoneyTip'
 import { useReferenceData } from '../data/ReferenceDataContext'
 import {
   currentMonthRange,
@@ -124,11 +125,14 @@ export function DashboardPage() {
         </div>
       </div>
 
+      <MoneyTip />
+
       {error && <div className="form-error-banner" style={{ marginBottom: 20 }}>{error}</div>}
 
       {loading && !data ? (
-        <div className="loading-state">
-          <span className="spinner" /> Loading your dashboard&hellip;
+        <div className="loading-state" style={{ flexDirection: 'column' }}>
+          <div><span className="spinner" /> Loading your dashboard&hellip;</div>
+          <MoneyTip variant="inline" />
         </div>
       ) : data ? (
         <>

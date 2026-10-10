@@ -296,7 +296,8 @@ Planned for later, only if real use of 13a shows structured search is not enough
 ## Phase 14 — AI Insights
 
 **Done:**
-- [x] Dashboard Insight card for This month / Last month; looked up on open, written on the user's click, reused until the figures change
+- [x] Dashboard Insight card for This month / Last month, drawn as animated charts (savings ring, this month vs last, categories, budgets, flagged items) with the checked words underneath; looked up on open, written on the user's click, reused until the figures change
+- [x] Rotating daily tip or app fact under the Dashboard header (original text, hideable)
 - [x] Figures and unusual-spending findings computed in code (category spike, large non-recurring payment); the model only writes the wording and every figure it uses is checked; a fixed template covers AI off, over cap, outage and unverifiable wording
 - [x] `ai_insights` (V23, RLS) with figures, model name and prompt version; third usage kind with its own daily and monthly caps
 - [x] Verified on the real Mistral model (18 of 18 written by the model after fixing JSON-mode failures and rent/groceries noise); 20 new unit + 12 new integration tests

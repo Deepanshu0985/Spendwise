@@ -39,7 +39,7 @@ import java.util.UUID;
 public class InsightMetricsBuilderImpl implements InsightMetricsBuilder {
 
     /** Bumped whenever the metrics' shape or the wording rules change, so older stored text is regenerated. */
-    public static final String METRICS_VERSION = "metrics-v1";
+    public static final String METRICS_VERSION = "metrics-v2";
 
     /** Exact decimals: without this Jackson would write 12000.00 as 1.2E+4, which the model and the figure check should never see. */
     private static final com.fasterxml.jackson.databind.node.JsonNodeFactory JSON = com.fasterxml.jackson.databind.node.JsonNodeFactory.withExactBigDecimals(true);
@@ -107,6 +107,16 @@ public class InsightMetricsBuilderImpl implements InsightMetricsBuilder {
             } else {
                 change.putNull("percent");
             }
+            // The other differences a sentence naturally reaches for, worked out here so the model never has to subtract.
+            ObjectNode incomeChange = json.putObject("incomeChange");
+            BigDecimal incomeDifference = income.subtract(before.figures().income());
+            incomeChange.put("difference", money(incomeDifference));
+            if (before.figures().income().signum() > 0) {
+                incomeChange.put("percent", incomeDifference.multiply(BigDecimal.valueOf(100)).divide(before.figures().income(), 1, RoundingMode.HALF_UP));
+            } else {
+                incomeChange.putNull("percent");
+            }
+            json.putObject("savingsChange").put("difference", money(summary.figures().savings().subtract(before.figures().savings())));
         }
 
         CategoryBreakdownView categories = analyticsService.categoryBreakdown(userId, from, to, currency);
@@ -160,6 +170,12 @@ public class InsightMetricsBuilderImpl implements InsightMetricsBuilder {
                 node.put("spent", money(view.progress().totalSpent()));
                 node.put("percentUsed", view.progress().percentUsed());
                 node.put("status", view.progress().status().name());
+                // Remaining and over-by are worked out here: "exceeded by" is the first thing a sentence about a budget wants to say.
+                node.put("remaining", money(view.budget().getTotalLimit().subtract(view.progress().totalSpent())));
+                if (view.progress().totalSpent().compareTo(view.budget().getTotalLimit()) > 0) {
+                    node.put("overBy", money(view.progress().totalSpent().subtract(view.budget().getTotalLimit())));
+                    node.put("percentOver", view.progress().percentUsed().subtract(BigDecimal.valueOf(100)).setScale(1, RoundingMode.HALF_UP));
+                }
             }
         }
         return new InsightMetrics(json, hash(json.toString()), hasActivity);

@@ -148,11 +148,43 @@ class InsightFlowIT {
         assertThat(insight.get("summary").asText()).contains("₹12,000.00").contains("₹80,000.00");
         assertThat(insight.get("cached").asBoolean()).isFalse();
         assertThat(insight.get("note").isNull()).isTrue();
+        // the screen draws its charts from the same figures the words were written from
+        JsonNode metrics = insight.get("metrics");
+        assertThat(metrics.get("month").asText()).isEqualTo(thisMonth.toString());
+        assertThat(metrics.get("expenses").decimalValue()).isEqualByComparingTo("12000");
+        assertThat(metrics.get("income").decimalValue()).isEqualByComparingTo("80000");
+        assertThat(metrics.get("savingsRate").decimalValue()).isEqualByComparingTo("85.0");
+        assertThat(metrics.get("topCategories").isArray()).isTrue();
+        assertThat(metrics.get("unusual").isArray()).isTrue();
+        assertThat(metrics.get("budgets").isArray()).isTrue();
         // what the model was given: exact figures worked out here, nothing from the user's free text except sanitised names
         JsonNode sent = metricsSent(0);
         assertThat(sent.get("expenses").decimalValue()).isEqualByComparingTo("12000");
         assertThat(sent.get("savings").decimalValue()).isEqualByComparingTo("68000");
         assertThat(sent.get("savingsRate").decimalValue()).isEqualByComparingTo("85.0");
+    }
+
+    @Test
+    void theDifferencesASentenceWouldReachForArriveAlreadyWorkedOut() {
+        // a previous month, this month with more spending, and a budget that is exceeded
+        add(client, accountId, thisMonth.minusMonths(1).atDay(5), 90000, "Salary", "INCOME", null, null);
+        add(client, accountId, thisMonth.minusMonths(1).atDay(6), 10000, "Spend", "EXPENSE", null, null);
+        add(client, accountId, thisMonth.atDay(1), 80000, "Salary", "INCOME", null, null);
+        add(client, accountId, thisMonth.atDay(2), 30000, "Spend", "EXPENSE", null, null);
+        assertThat(client.post("/budgets", Map.of("name", "Tight", "periodType", "MONTHLY", "totalLimit", 20000, "currency", "INR")).status()).isEqualTo(200);
+        modelWritesGroundedText();
+
+        JsonNode metrics = generate(client, thisMonth.toString(), false).data().get("metrics");
+
+        assertThat(metrics.get("expensesChange").get("difference").decimalValue()).isEqualByComparingTo("20000");
+        assertThat(metrics.get("expensesChange").get("percent").decimalValue()).isEqualByComparingTo("200.0");
+        assertThat(metrics.get("incomeChange").get("difference").decimalValue()).isEqualByComparingTo("-10000");
+        assertThat(metrics.get("incomeChange").get("percent").decimalValue()).isEqualByComparingTo("-11.1");
+        assertThat(metrics.get("savingsChange").get("difference").decimalValue()).isEqualByComparingTo("-30000");
+        JsonNode budget = metrics.get("budgets").get(0);
+        assertThat(budget.get("remaining").decimalValue()).isEqualByComparingTo("-10000");
+        assertThat(budget.get("overBy").decimalValue()).isEqualByComparingTo("10000");
+        assertThat(budget.get("percentOver").decimalValue()).isEqualByComparingTo("50.0");
     }
 
     @Test
@@ -167,6 +199,7 @@ class InsightFlowIT {
         assertThat(fakeAi.chatCalls).hasSize(1); // no second model call
         ApiResult stored = client.get("/ai/insights/monthly?month=" + thisMonth);
         assertThat(stored.data().get("summary").asText()).isEqualTo(again.data().get("summary").asText());
+        assertThat(stored.data().get("metrics").get("expenses").decimalValue()).isEqualByComparingTo("5000");
 
         add(today.withDayOfMonth(1), 700, "A new purchase");
         ApiResult changed = generate(client, thisMonth.toString(), false);
