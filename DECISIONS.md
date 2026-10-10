@@ -1,3 +1,28 @@
+## Phase 13a: the assistant can search and total your transactions, and show what it looked at
+
+**What was added.** Three read-only tools beside the original seven, so the assistant can answer questions about individual payments instead of only fixed totals: `search_transactions` (filters: words in the description or merchant name, merchant, category, type, date range, amount range, sort, up to 20 rows, plus the true number of matches), `aggregate` (total and count, optionally grouped by category, merchant, month or type, worked out in code) and `compare_periods` (two periods with the difference and percentage computed in code, so the model quotes them instead of subtracting). A payment added a moment ago is found at once because the tools read the live database; only confirmed, non-deleted rows are ever returned, never statement rows still awaiting review.
+
+**Decisions inside it.**
+- Typo tolerance is done in the application, not with a database extension: when nothing matches as typed, the most recent 2,000 rows that satisfy the other filters are checked for close spellings (a word within one or two edits), and the answer is told these are close matches. This avoids adding `pg_trgm` to a managed database and risking a failed deploy.
+- A text filter with no usable word (only punctuation such as `%`, or single letters) is refused. Found by testing: it had silently become "no filter" and returned every transaction. Wildcard characters are also escaped in the query.
+- `aggregate` and `compare_periods` add up one type at a time (expenses unless asked otherwise), never mix currencies (one total per currency), and do not net refunds, so they can differ from the dashboard's net figures; the tool descriptions tell the model to prefer `monthly_summary` or `category_spending` for net spending. More than 20,000 matching rows is refused rather than cut.
+- A `get_transaction` tool was dropped: each search row already carries every field.
+- Names and descriptions go to the model through the instruction-like-text filter, but the user's own list shows what they actually typed, as plain text.
+
+**What the user sees.** Under an answer, a collapsible "Transactions looked at (N)" lists the rows the search returned (date, description, merchant, amount). The record ids stay on the server; the model never saw them either.
+
+**Grounding gate, extended.** Digits inside a quoted description (a reference or invoice number) may be repeated as text, but never count as an amount; a figure with a currency or percent sign must come from a tool. Numbers the user typed in their own question may be echoed back ("payments over 1,500"). When an answer cannot be verified the fallback now lists transactions as tidy lines instead of raw fields.
+
+**Found by running the real model (made-up data, about 15 questions) - fixed.**
+- It asked "which period?" for a plain lookup; the prompt now says to search everything for lookups and ask for a period only for totals and comparisons.
+- It used `top_merchants` for "my biggest expenses" and answered with one merchant bucket; the tool descriptions and prompt now send that question to a sorted search.
+- It echoed "1500" from the question, which the figure check rejected and then showed ugly raw fields; both fixed as above.
+- It handled the typo ("sharama"), the invoice number, a multi-merchant total, a comparison of two months and a payment whose description was an injected instruction correctly: the instruction was not followed and the row was reported honestly as odd.
+
+**Verified.** 8 new unit tests (typo matcher, quoted digits, user-typed numbers) and 15 integration tests with a scripted model on a real database: a just-added payment is found; filters combine; sort and limit with the true total; typo fallback; wildcards refused; deleted rows invisible; every bad argument returns a readable error; another user's data is invisible to search and totals; currencies kept apart and income not counted; grouping by merchant and month with a group limit; period comparison with a null percentage when the first period is empty; hostile descriptions hidden from the model but shown to the user. In a browser the panel answered "Find my payments to Uber this year" and listed the four transactions. 162 unit + 102 integration tests green.
+
+**Not done.** No meaning-based search (that is Phase 13b); no link from a listed transaction to its row on the Transactions page; the grounding gate still checks figures, not meaning; pg_trgm-style indexing is not used, so typo search is limited to the 2,000 most recent candidate rows.
+
 ## Keeping the free-tier backend awake: a ping script, and why not both services
 
 **Problem.** Render's free tier puts a service to sleep after about 15 minutes without a request; the next request then waits 60 to 90 seconds for it to wake (the blank loading page seen earlier).

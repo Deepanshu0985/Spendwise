@@ -1249,3 +1249,37 @@ tbody tr:last-child td {
   opacity: 0.45;
   cursor: default;
 }
+
+.assistant-sources {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+
+.assistant-sources summary {
+  cursor: pointer;
+}
+
+.assistant-sources ul {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.assistant-sources li {
+  display: flex;
+  flex-direction: column;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: var(--border-soft);
+}
+
+.assistant-source-main {
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}

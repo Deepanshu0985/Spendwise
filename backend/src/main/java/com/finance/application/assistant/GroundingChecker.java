@@ -54,8 +54,45 @@ public final class GroundingChecker {
         }
     }
 
+    /** Every number written in a piece of text (the user's own question), commas allowed. */
+    public static Set<BigDecimal> numbersInText(String text) {
+        Set<BigDecimal> numbers = new HashSet<>();
+        Matcher m = Pattern.compile("\\d{1,3}(?:,\\d{2,3})+(?:\\.\\d+)?|\\d+(?:\\.\\d+)?").matcher(text == null ? "" : text);
+        while (m.find()) {
+            numbers.add(new BigDecimal(m.group().replace(",", "")));
+        }
+        return numbers;
+    }
+
+    /**
+     * Digit runs that appear inside text values of tool results (a reference number or invoice number in a quoted
+     * description). Quoting such a number is legitimate; it never authorises an amount (a figure with a currency or a percent sign).
+     */
+    public static Set<String> textNumbersIn(Collection<JsonNode> toolResults) {
+        Set<String> numbers = new HashSet<>();
+        for (JsonNode result : toolResults) {
+            collectText(result, numbers);
+        }
+        return numbers;
+    }
+
+    private static void collectText(JsonNode node, Set<String> out) {
+        if (node.isTextual()) {
+            Matcher m = Pattern.compile("\\d+").matcher(node.asText());
+            while (m.find()) {
+                out.add(m.group());
+            }
+        } else if (node.isContainerNode()) {
+            node.forEach(child -> collectText(child, out));
+        }
+    }
+
     /** The figures in the answer that no tool returned, as written; empty when the answer is grounded. */
     public static List<String> ungrounded(String answer, Set<BigDecimal> allowed) {
+        return ungrounded(answer, allowed, Set.of());
+    }
+
+    public static List<String> ungrounded(String answer, Set<BigDecimal> allowed, Set<String> allowedQuotedDigits) {
         String text = LIST_MARKER.matcher(DATE_LIKE.matcher(answer).replaceAll(" ")).replaceAll(" ");
         List<String> bad = new ArrayList<>();
         Matcher m = NUMBER.matcher(text);
@@ -71,7 +108,8 @@ public final class GroundingChecker {
                 continue;
             }
             BigDecimal value = new BigDecimal(raw.replace(",", ""));
-            if (!isAllowed(value, raw.contains("."), allowed)) {
+            boolean quotedText = !marked && !raw.contains(".") && allowedQuotedDigits.contains(raw.replace(",", ""));
+            if (!quotedText && !isAllowed(value, raw.contains("."), allowed)) {
                 bad.add(m.group(0).trim());
             }
         }

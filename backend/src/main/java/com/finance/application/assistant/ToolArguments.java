@@ -3,6 +3,7 @@ package com.finance.application.assistant;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
@@ -112,5 +113,69 @@ public final class ToolArguments {
         } catch (DateTimeParseException e) {
             throw new ToolArgumentException("'" + field + "' must be a real date written yyyy-mm-dd.");
         }
+    }
+
+    /** An optional date written yyyy-mm-dd, or null. */
+    public LocalDate optionalDate(String field) {
+        JsonNode value = node.get(field);
+        if (value == null || value.isNull()) {
+            return null;
+        }
+        return date(field);
+    }
+
+    /** An optional money amount: a JSON number from 0 up to a sane ceiling, or null. */
+    public BigDecimal optionalAmount(String field) {
+        JsonNode value = node.get(field);
+        if (value == null || value.isNull()) {
+            return null;
+        }
+        if (!value.isNumber() || value.decimalValue().signum() < 0 || value.decimalValue().compareTo(new BigDecimal("1000000000000")) > 0) {
+            throw new ToolArgumentException("'" + field + "' must be a number that is not negative.");
+        }
+        return value.decimalValue();
+    }
+
+    /** An optional value that must be one of the enum's names (case-insensitive), or null. */
+    public <E extends Enum<E>> E optionalEnum(String field, Class<E> type) {
+        String text = optionalText(field, 40);
+        if (text == null) {
+            return null;
+        }
+        for (E constant : type.getEnumConstants()) {
+            if (constant.name().equalsIgnoreCase(text)) {
+                return constant;
+            }
+        }
+        throw new ToolArgumentException("'" + field + "' must be one of: "
+                + java.util.Arrays.stream(type.getEnumConstants()).map(Enum::name).collect(java.util.stream.Collectors.joining(", ")) + ".");
+    }
+
+    /** Both ends of a period, with a default for whichever is missing, and the same bounds as period(). */
+    public LocalDate[] periodWithDefaults(LocalDate defaultFrom, LocalDate defaultTo) {
+        LocalDate from = optionalDate("from");
+        LocalDate to = optionalDate("to");
+        LocalDate effectiveTo = to != null ? to : defaultTo;
+        LocalDate effectiveFrom = from != null ? from : (to != null ? to.minusYears(5).plusDays(1) : defaultFrom);
+        if (effectiveFrom.isAfter(effectiveTo)) {
+            throw new ToolArgumentException("'from' must not be after 'to'.");
+        }
+        if (ChronoUnit.DAYS.between(effectiveFrom, effectiveTo) > MAX_PERIOD_DAYS) {
+            throw new ToolArgumentException("The period is too long; ask for at most five years at a time.");
+        }
+        return new LocalDate[] {effectiveFrom, effectiveTo};
+    }
+
+    /** A named period inside a multi-period request, e.g. prefix "first" reads firstFrom and firstTo. */
+    public LocalDate[] namedPeriod(String prefix) {
+        LocalDate from = date(prefix + "From");
+        LocalDate to = date(prefix + "To");
+        if (from.isAfter(to)) {
+            throw new ToolArgumentException("'" + prefix + "From' must not be after '" + prefix + "To'.");
+        }
+        if (ChronoUnit.DAYS.between(from, to) > MAX_PERIOD_DAYS) {
+            throw new ToolArgumentException("A period is too long; ask for at most five years at a time.");
+        }
+        return new LocalDate[] {from, to};
     }
 }

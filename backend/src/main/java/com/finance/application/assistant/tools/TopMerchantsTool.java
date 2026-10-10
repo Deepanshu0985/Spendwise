@@ -30,7 +30,7 @@ public class TopMerchantsTool implements AssistantTool {
     @Override
     public ToolSpec spec() {
         return new ToolSpec("top_merchants",
-                "The merchants the user spent the most with over a period, largest first.",
+                "Total spent per merchant over a period, largest total first. It is NOT for individual payments - for the biggest single expenses use search_transactions sorted by AMOUNT_DESC.",
                 ToolSchemas.object(ToolSchemas.props(
                         "from", ToolSchemas.date("First day of the period."), "to", ToolSchemas.date("Last day of the period."),
                         "limit", ToolSchemas.integer("How many merchants to return, 1 to 10. Default 5.")), "from", "to"));

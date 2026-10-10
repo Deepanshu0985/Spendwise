@@ -142,17 +142,29 @@ Estimates assume the decisions in `open-decisions.md` are used as scoped: three 
 
 **Exit gate:** grounding tests pass — every monetary claim in an AI answer maps to a value returned by a tool in that exchange.
 
-## Phase 13 — RAG Assistant (planned)
+## Phase 13a — Assistant Search Tools
+
+**Duration:** 3–5 days
+
+**Why.** The Phase 12 assistant answers only what its seven fixed tools can answer. Real questions go beyond them - "what was that payment to Sharma in March?", "show my Uber rides", "did I pay the electricity bill in June?". Most of these are filters over the user's own rows, so exact structured search answers them with no new infrastructure. Design and options: `docs/04-ai/rag-plan.md`.
+
+**Tasks:** `search_transactions` (date, amount, text, merchant, category and type filters; at most 20 rows; a typo-tolerant fallback when nothing matches exactly), `aggregate` (totals and counts grouped by category, merchant, month or type, computed in code), `compare_periods` (two periods with the difference and percentage computed in code so the model never does arithmetic); the transactions an answer looked at are shown under it; the grounding gate learns that digits inside a quoted description are legitimate text but amounts must still come from a tool; a golden set of search questions including injection rows.
+
+**Depends on:** Phase 12.
+
+**Exit gate:** the Phase 12 grounding tests still pass with the new tools, a payment added a moment ago is found immediately, and cross-tenant search is shown impossible by test.
+
+## Phase 13b — Semantic Search (embeddings, later)
 
 **Duration:** 1.5–2 weeks
 
-**Why.** The Phase 12 assistant answers only what its seven fixed tools can answer. Real questions go beyond them - "what was that payment to Sharma in March?", "show my Uber rides", "did I pay the electricity bill in June?". Full design, options and open decisions: `docs/04-ai/rag-plan.md`.
+**Why.** Structured search cannot know that "coffee" means Cafe Coffee Day. Embeddings add meaning-based matching. Build only once real use of 13a shows what it cannot find (the plan says to measure first).
 
-**Tasks:** (1) expand the tool set with structured retrieval first - `search_transactions` (date, amount, text, category, merchant and type filters), `aggregate` (group and total by category, merchant or month with filters) and `compare_periods` computed in code so the model never does arithmetic; (2) embeddings of the user's own transactions behind the same `AiModelClient` gateway, stored per user with row-level security, plus `semantic_search` for fuzzy matches ("coffee" finding Cafe Coffee Day); (3) cited answers, where each record the answer relies on is shown and linked; (4) extend the grounding gate so figures taken from retrieved records are verified and any total comes from code; (5) a scored golden dataset with injection rows.
+**Tasks:** embeddings of the user's own confirmed transactions behind the same `AiModelClient` gateway, stored per user with row-level security in pgvector; `semantic_search` combined with the structured filters and never used alone; background indexing with a backfill and a spend cap; embedding deletion with the transaction and the user.
 
-**Depends on:** Phase 12; decisions D-20 to D-23 in `open-decisions.md`.
+**Depends on:** Phase 13a; decisions D-20 to D-23 in `open-decisions.md`; best done after Phase 15 settles the privacy and deletion path.
 
-**Exit gate:** the grounding tests still pass with retrieval in the loop, cross-tenant retrieval is shown impossible by test, and recall and answer accuracy on the golden dataset meet the bar set in `rag-plan.md`.
+**Exit gate:** recall and answer accuracy on a scored golden dataset meet the bar set from the first baseline, grounding holds, and cross-tenant retrieval is shown impossible by test.
 
 ## Phase 14 — AI Insights
 
@@ -160,7 +172,7 @@ Estimates assume the decisions in `open-decisions.md` are used as scoped: three 
 
 **Tasks:** monthly-summary and unusual-spending explanation generation over verified metrics only; `ai_insights` rows record `model_name` and `prompt_version` for attribution.
 
-**Depends on:** Phase 13.
+**Depends on:** Phase 12.
 
 ## Phase 15 — Beta Readiness
 
@@ -168,7 +180,7 @@ Estimates assume the decisions in `open-decisions.md` are used as scoped: three 
 
 **Tasks:** rate limiting on auth, upload and AI endpoints; full metrics/alerting per `observability-monitoring.md`; privacy policy and DPDP-compliant deletion path reviewed by someone qualified; export endpoint; incident response plan; signed-off restore drill; uptime monitoring.
 
-**Depends on:** Phase 14.
+**Depends on:** Phase 14 (and 13a).
 
 **Exit gate:** the internal-to-beta checklist in `development-roadmap.md` is complete.
 

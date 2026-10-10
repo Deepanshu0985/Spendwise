@@ -279,8 +279,19 @@ DigitalOcean remains the actual V1 production target once beta-ready — see `DE
 - [ ] Scored golden-dataset evaluation (accuracy, hallucination rate, latency and cost per answer) per `docs/04-ai/ai-evaluation.md`
 - [ ] Optional streaming and saved history (would need D-07 retention decisions)
 
-## Phase 13 — RAG Assistant
-Planned, not started. Plan and open decisions: `docs/04-ai/rag-plan.md`. Order of work: structured retrieval tools first (`search_transactions`, `aggregate`, `compare_periods`), then embeddings and `semantic_search`, then cited answers and a scored evaluation.
+## Phase 13a — Assistant Search Tools
+
+**Done:**
+- [x] `search_transactions`, `aggregate` and `compare_periods`: read-only, computed in code, per-currency, live data (a just-added payment is found at once), typo-tolerant fallback done in the application
+- [x] "Transactions looked at" list under each answer; record ids stay server-side
+- [x] Grounding gate extended (quoted description digits, numbers the user typed) and a tidy fallback listing
+- [x] Verified on the real Mistral model, which found and fixed four prompt and tool-choice issues; 8 new unit + 15 new integration tests
+
+**Left:**
+- [ ] Link a listed transaction to its row on the Transactions page; scored golden-dataset evaluation; Phase 13b (embeddings) only if real use shows search is not enough
+
+## Phase 13b — Semantic Search (embeddings)
+Planned for later, only if real use of 13a shows structured search is not enough; needs decisions D-20 to D-23 and is best done after Phase 15.
 
 ## Phase 14 — AI Insights
 Not started.

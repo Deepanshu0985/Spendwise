@@ -132,9 +132,10 @@ class AssistantChatIT {
         assertThat(reply.data().get("toolsUsed").get(0).get("name").asText()).isEqualTo("monthly_summary");
         assertThat(reply.data().get("toolsUsed").get(0).get("context").asText()).contains(monthStart);
         assertThat(reply.data().get("remainingMessagesToday").asInt()).isEqualTo(3);
-        // the model was offered exactly the seven allowlisted tools, none of which takes a user identifier
+        // the model was offered exactly the ten allowlisted tools, none of which takes a user identifier
         assertThat(fakeAi.lastTools).extracting(t -> t.name()).containsExactlyInAnyOrder(
-                "monthly_summary", "category_spending", "top_merchants", "spending_trend", "recurring_expenses", "budget_status", "goal_status");
+                "monthly_summary", "category_spending", "top_merchants", "spending_trend", "recurring_expenses", "budget_status", "goal_status",
+                "search_transactions", "aggregate", "compare_periods");
         assertThat(fakeAi.lastTools.toString().toLowerCase()).doesNotContain("userid").doesNotContain("user_id");
     }
 

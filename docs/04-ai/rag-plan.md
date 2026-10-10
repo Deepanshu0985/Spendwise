@@ -1,6 +1,6 @@
-# RAG Plan (Phase 13)
+# RAG Plan (Phases 13a and 13b)
 
-Status: planned, not started. The Phase 12 assistant stays as it is until this phase.
+Status: 13a (structured search tools) is built; 13b (embeddings) is planned for later. Phase 13 was split because the two halves differ greatly in size and risk: 13a needs no new infrastructure and answers most open questions exactly, 13b needs a database extension, a provider, a spend cap and four open decisions.
 
 ## The problem
 
@@ -17,7 +17,7 @@ The Phase 12 assistant has seven fixed tools. Anything outside them gets "I can'
 
 ## Two kinds of retrieval, built in this order
 
-### 1. Structured retrieval (no embeddings, build first)
+### 1. Structured retrieval (Phase 13a - no embeddings)
 Most "ask anything" questions are really filters over the user's own rows. Adding a few tools covers a large share of them, with exact results and no new infrastructure:
 
 | Tool | Purpose |
@@ -25,18 +25,17 @@ Most "ask anything" questions are really filters over the user's own rows. Addin
 | `search_transactions` | Filters: date range, amount range, free text (description, merchant), category, merchant, type, account. Returns at most 20 rows with a stable result number each. |
 | `aggregate` | Total and count, grouped by category, merchant, month or account, with the same filters. Done in SQL, never by the model. |
 | `compare_periods` | Two periods side by side with the difference and percentage computed in code, so the model quotes them instead of calculating. |
-| `get_transaction` | One record in full, by result number. |
 
-Free text uses PostgreSQL full-text search plus trigram similarity, so "sharma" finds "UPI-SHARMA TRADERS" and a typo still matches.
+Free text matches every word of the query against the description, raw description and merchant name, so "sharma" finds "UPI-SHARMA TRADERS". When nothing matches exactly, a typo-tolerant pass over the most recent candidate rows suggests close matches (done in the application, so no database extension is needed). A `get_transaction` tool was dropped: each search row already carries every field.
 
-### 2. Semantic retrieval (embeddings)
+### 2. Semantic retrieval (Phase 13b - embeddings, later)
 Structured search cannot know that "coffee" means *Cafe Coffee Day*. For that:
 
 - Embed each transaction's cleaned, redacted text (description, merchant, category) and store the vector.
 - Add `semantic_search(query, optional filters)` returning the nearest 20 rows.
 - Always combine with the structured filters (dates, amounts), so "coffee last month" is a vector match inside a date filter.
 
-Measure before building part 2: if structured plus text search answers the golden questions well, semantic retrieval may only need to cover the remainder.
+Measure before building part 2 (Phase 13b): if structured plus text search answers the golden questions well, semantic retrieval may only need to cover the remainder.
 
 ## Freshness: a payment added a moment ago must be findable
 
@@ -48,7 +47,7 @@ A payment you add by hand is confirmed at once, so it is real data from that sec
 - **Edits and deletions follow the same path.** An edited description is re-embedded (the stored text hash changes); a deleted payment is excluded from every query at once and its vector is removed.
 - **Staged statement rows are not included** until the statement is confirmed, as everywhere else in the product.
 
-A test in this phase adds a payment and asks about it in the same breath, with indexing deliberately held back, and requires it to be found.
+A test in Phase 13a adds a payment and asks about it in the same breath, with indexing deliberately held back, and requires it to be found.
 
 ## Design decisions to make
 

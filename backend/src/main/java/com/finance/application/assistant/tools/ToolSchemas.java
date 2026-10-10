@@ -31,6 +31,10 @@ final class ToolSchemas {
         return Map.of("type", "boolean", "description", description);
     }
 
+    static Map<String, Object> number(String description) {
+        return Map.of("type", "number", "description", description);
+    }
+
     static Map<String, Object> integer(String description) {
         return Map.of("type", "integer", "description", description);
     }

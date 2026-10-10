@@ -3,11 +3,13 @@ import type { FormEvent } from 'react'
 import { useLocation } from 'react-router-dom'
 import { ApiRequestError } from '../api/client'
 import { assistantApi } from '../api/assistant'
-import type { AiStatus, AssistantTurn } from '../api/types'
+import type { AiStatus, AssistantSource, AssistantTurn } from '../api/types'
+import { formatCurrency, formatDate } from '../lib/format'
 import { CloseIcon, SendIcon } from './icons'
 
 interface Message extends AssistantTurn {
   basedOn?: { name: string; context: string }[]
+  sources?: AssistantSource[]
   fallback?: boolean
 }
 
@@ -27,7 +29,7 @@ const DEFAULT_SUGGESTIONS = [
 // What is most likely worth asking on the page you are looking at.
 const SUGGESTIONS_BY_PAGE: Record<string, string[]> = {
   '/': DEFAULT_SUGGESTIONS,
-  '/transactions': ['How much did I spend this month?', 'What did I spend on food last month?', 'What are my top merchants this month?'],
+  '/transactions': ['What were my five biggest expenses this month?', 'How much did I spend on food last month?', 'Find my payments to Uber this year'],
   '/accounts': ['How much did I spend this month?', 'How much did I save last month?'],
   '/statements': ['How much did I spend last month?', 'What are my top merchants over the last 3 months?'],
   '/recurring': ['Which recurring payments am I paying for?', 'How much do my recurring payments cost each month?'],
@@ -93,7 +95,7 @@ export function AssistantPanel({ open, onClose }: Props) {
     setSending(true)
     try {
       const reply = await assistantApi.chat(next.slice(-MAX_TURNS_SENT).map(({ role, content }) => ({ role, content })))
-      setMessages([...next, { role: 'assistant', content: reply.answer, basedOn: reply.toolsUsed, fallback: reply.fallback }])
+      setMessages([...next, { role: 'assistant', content: reply.answer, basedOn: reply.toolsUsed, sources: reply.sources, fallback: reply.fallback }])
       setStatus((current) => (current ? { ...current, remainingMessagesToday: reply.remainingMessagesToday } : current))
     } catch (err) {
       setError(err instanceof ApiRequestError ? err.message : 'Something went wrong. Please try again.')
@@ -156,6 +158,24 @@ export function AssistantPanel({ open, onClose }: Props) {
             <div className="assistant-bubble">{renderText(message.content)}</div>
             {message.role === 'assistant' && message.basedOn && message.basedOn.length > 0 && (
               <div className="assistant-note">Based on: {message.basedOn.map((t) => t.context).join(' · ')}</div>
+            )}
+            {message.sources && message.sources.length > 0 && (
+              <details className="assistant-sources">
+                <summary>Transactions looked at ({message.sources.length})</summary>
+                <ul>
+                  {message.sources.map((source, i) => (
+                    <li key={i}>
+                      <span className="assistant-source-main">
+                        {source.description}
+                        {source.merchant && source.merchant !== source.description ? ` · ${source.merchant}` : ''}
+                      </span>
+                      <span className="assistant-source-meta">
+                        {formatDate(source.date)} · {formatCurrency(source.amount, source.currency)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </details>
             )}
             {message.fallback && (
               <div className="assistant-note">Shown as plain figures because the assistant's wording couldn't be verified against your data.</div>

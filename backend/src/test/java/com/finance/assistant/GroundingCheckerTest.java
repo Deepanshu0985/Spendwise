@@ -97,6 +97,32 @@ class GroundingCheckerTest {
     }
 
     @Test
+    void aReferenceNumberQuotedFromADescriptionIsFineButItNeverAuthorisesAnAmount() throws Exception {
+        List<JsonNode> results = List.of(mapper.readTree("{\"description\":\"UPI 615023242614 Order 48213\",\"amount\":500.00}"));
+        Set<BigDecimal> allowed = GroundingChecker.numbersIn(results);
+        Set<String> quoted = GroundingChecker.textNumbersIn(results);
+
+        // quoting the reference as text passes...
+        assertThat(GroundingChecker.ungrounded("It was payment UPI 615023242614 (order 48213) for ₹500.00.", allowed, quoted)).isEmpty();
+        // ...but the same digits as money do not, and neither does a number that is in no tool result at all
+        assertThat(GroundingChecker.ungrounded("You paid ₹48,213.", allowed, quoted)).hasSize(1);
+        assertThat(GroundingChecker.ungrounded("You paid 48213 INR.", allowed, quoted)).hasSize(1);
+        assertThat(GroundingChecker.ungrounded("Reference 999888777666 was used.", allowed, quoted)).hasSize(1);
+    }
+
+    @Test
+    void aFigureTheUserTypedMayBeRepeatedBackButNothingElseGetsThrough() throws Exception {
+        Set<BigDecimal> allowed = new java.util.HashSet<>(allowedFrom("{\"amount\":2000.00}"));
+        allowed.addAll(GroundingChecker.numbersInText("List all payments over 1,500 INR, and anything above 75000"));
+
+        assertThat(GroundingChecker.ungrounded("Payments over ₹1,500: one for ₹2,000.00.", allowed)).isEmpty();
+        assertThat(GroundingChecker.ungrounded("Above 75000 there was nothing.", allowed)).isEmpty();
+        assertThat(GroundingChecker.ungrounded("Payments over ₹1,500: one for ₹2,100.00.", allowed)).hasSize(1);
+        assertThat(GroundingChecker.numbersInText("no numbers here")).isEmpty();
+        assertThat(GroundingChecker.numbersInText(null)).isEmpty();
+    }
+
+    @Test
     void negativeToolValuesGroundTheirAbsoluteFigure() throws Exception {
         Set<BigDecimal> allowed = allowedFrom("{\"remaining\":-1500.00}");
 

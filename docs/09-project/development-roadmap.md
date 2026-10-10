@@ -51,8 +51,11 @@ Tool registry, session-derived user identity, injection-resistant prompt structu
 
 **Gate:** grounding tests pass — every monetary claim maps to tool output.
 
-## Phase 13 — RAG Assistant (planned)
-Structured and text search over the user's own records, then embeddings for fuzzy matches, so the assistant can answer questions beyond its fixed tools. Cited answers; grounding and tenant isolation preserved. See `docs/04-ai/rag-plan.md`.
+## Phase 13a — Assistant Search Tools
+Structured and text search over the user's own records (`search_transactions`, `aggregate`, `compare_periods`) so the assistant can answer questions beyond its fixed tools. Cited answers; grounding and tenant isolation preserved. See `docs/04-ai/rag-plan.md`.
+
+## Phase 13b — Semantic Search (later)
+Embeddings in pgvector for meaning-based matches ("coffee" finding "Cafe Coffee Day"), combined with the structured filters. Built only if real use of 13a shows it is needed.
 
 ## Phase 14 — AI Insights
 Monthly summaries and unusual-spending explanations over verified metrics.

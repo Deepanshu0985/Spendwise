@@ -53,6 +53,28 @@ public class TransactionRepositoryImpl implements TransactionRepository {
     }
 
     @Override
+    public List<Transaction> lookup(UUID userId, com.finance.domain.transaction.TransactionLookup lookup,
+            com.finance.domain.transaction.TransactionLookup.Sort sort, int limit) {
+        org.springframework.data.domain.Sort order = switch (sort) {
+            case DATE_DESC -> org.springframework.data.domain.Sort.by(
+                    org.springframework.data.domain.Sort.Order.desc("transactionDate"), org.springframework.data.domain.Sort.Order.desc("createdAt"));
+            case DATE_ASC -> org.springframework.data.domain.Sort.by(
+                    org.springframework.data.domain.Sort.Order.asc("transactionDate"), org.springframework.data.domain.Sort.Order.asc("createdAt"));
+            case AMOUNT_DESC -> org.springframework.data.domain.Sort.by(
+                    org.springframework.data.domain.Sort.Order.desc("amount"), org.springframework.data.domain.Sort.Order.desc("transactionDate"));
+            case AMOUNT_ASC -> org.springframework.data.domain.Sort.by(
+                    org.springframework.data.domain.Sort.Order.asc("amount"), org.springframework.data.domain.Sort.Order.desc("transactionDate"));
+        };
+        return jpaRepository.findAll(TransactionSpecifications.forLookup(userId, lookup), org.springframework.data.domain.PageRequest.of(0, limit, order))
+                .stream().map(TransactionMapper::toDomain).toList();
+    }
+
+    @Override
+    public long countLookup(UUID userId, com.finance.domain.transaction.TransactionLookup lookup) {
+        return jpaRepository.count(TransactionSpecifications.forLookup(userId, lookup));
+    }
+
+    @Override
     public Page<Transaction> search(UUID userId, TransactionFilter filter, Pageable pageable) {
         return jpaRepository.findAll(TransactionSpecifications.forUserAndFilter(userId, filter), pageable).map(TransactionMapper::toDomain);
     }
