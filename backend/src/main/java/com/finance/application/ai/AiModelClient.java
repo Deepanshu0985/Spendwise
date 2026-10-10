@@ -7,6 +7,9 @@ package com.finance.application.ai;
  */
 public interface AiModelClient {
 
+    /** The model that answers, recorded on anything it writes so the text stays attributable. */
+    String modelName();
+
     /** False when AI is switched off or no credentials are configured - callers then skip the model entirely. */
     boolean isAvailable();
 

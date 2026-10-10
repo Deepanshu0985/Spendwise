@@ -3,6 +3,7 @@ package com.finance.application.assistant.tools;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.finance.application.ai.ToolSpec;
+import com.finance.application.ai.UntrustedText;
 import com.finance.application.analytics.AnalyticsService;
 import com.finance.application.analytics.CategoryBreakdownView;
 import com.finance.application.assistant.AssistantTool;

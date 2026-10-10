@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.finance.application.ai.ToolSpec;
+import com.finance.application.ai.UntrustedText;
 import com.finance.application.assistant.AssistantTool;
 import com.finance.application.assistant.ToolArguments;
 import com.finance.application.assistant.ToolResult;

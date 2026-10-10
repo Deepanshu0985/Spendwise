@@ -274,3 +274,54 @@ export interface AiStatus {
   remainingMessagesToday: number
   dailyMessageLimit: number
 }
+
+export interface InsightUnusual {
+  kind: 'CATEGORY_SPIKE' | 'LARGE_PAYMENT'
+  label: string
+  amount: number
+  typical: number
+  increase: number
+  timesTypical: number
+  date?: string
+}
+
+/** The figures an insight was written from (computed by the server); the charts are drawn from these. */
+export interface InsightMetrics {
+  month: string
+  currency: string
+  income: number
+  expenses: number
+  savings: number
+  savingsRate: number | null
+  previousMonth?: { month: string; income: number; expenses: number; savings: number }
+  expensesChange?: { difference: number; percent: number | null }
+  topCategories: { name: string; amount: number; sharePercent?: number }[]
+  topMerchants: { name: string; amount: number }[]
+  unusual: InsightUnusual[]
+  incomeChange?: { difference: number; percent: number | null }
+  savingsChange?: { difference: number }
+  budgets: {
+    name: string
+    limit: number
+    spent: number
+    percentUsed: number
+    status: 'ON_TRACK' | 'CLOSE_TO_LIMIT' | 'OVER_BUDGET'
+    remaining?: number
+    overBy?: number
+    percentOver?: number
+  }[]
+}
+
+export interface MonthlyInsight {
+  month: string
+  title: string
+  summary: string
+  highlights: string[]
+  metrics: InsightMetrics
+  writtenByAi: boolean
+  modelName: string
+  promptVersion: string
+  generatedAt: string | null
+  cached: boolean
+  note: string | null
+}

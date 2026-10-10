@@ -1,17 +1,17 @@
-package com.finance.application.assistant.tools;
+package com.finance.application.ai;
 
 import java.util.regex.Pattern;
 
 /**
- * Names in tool results (merchants, categories, budgets, goals) are text someone chose - a payee can pick any name. The
+ * Names that reach a model (merchants, categories, budgets, goals, descriptions) are text someone chose - a payee can pick any name. The
  * delimiter around tool data already tells the model not to obey it, but a model may still react by silently dropping the
  * row. So a name that reads like an instruction is replaced with a placeholder before the model sees it: the row and its
  * figure are still reported, and the instruction never reaches the model at all. This is a second layer, a heuristic -
  * the real controls are the read-only tools, the session-derived identity and the grounding gate.
  */
-final class UntrustedText {
+public final class UntrustedText {
 
-    static final String HIDDEN = "[name hidden: it reads like an instruction]";
+    public static final String HIDDEN = "[name hidden: it reads like an instruction]";
     private static final int MAX_LENGTH = 80;
 
     private static final Pattern CONTROL = Pattern.compile("\\p{Cntrl}");
@@ -25,7 +25,7 @@ final class UntrustedText {
     private UntrustedText() {
     }
 
-    static String of(String name) {
+    public static String of(String name) {
         if (name == null) {
             return "";
         }
