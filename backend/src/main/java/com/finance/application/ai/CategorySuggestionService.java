@@ -13,6 +13,6 @@ public interface CategorySuggestionService {
     /** Whether AI is available at all, and how many more rows this user may send today. */
     AiStatus status(UUID userId);
 
-    record AiStatus(boolean enabled, int remainingRowsToday, int dailyLimit) {
+    record AiStatus(boolean enabled, int remainingRowsToday, int dailyLimit, int remainingMessagesToday, int dailyMessageLimit) {
     }
 }

@@ -1,9 +1,14 @@
 package com.finance.infrastructure.ai;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.finance.application.ai.AiModelClient;
+import com.finance.application.ai.ChatMessage;
+import com.finance.application.ai.ChatResult;
 import com.finance.application.ai.ModelResult;
+import com.finance.application.ai.ToolCall;
+import com.finance.application.ai.ToolSpec;
 import com.finance.application.exception.AiUnavailableException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -11,10 +16,13 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 
 import java.net.http.HttpClient;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -28,6 +36,7 @@ public class MistralModelClient implements AiModelClient {
 
     private static final Logger log = LoggerFactory.getLogger(MistralModelClient.class);
     private static final int MAX_ATTEMPTS = 2;
+    private static final String UNAVAILABLE = "AI is not available right now.";
 
     private final boolean enabled;
     private final String apiKey;
@@ -59,27 +68,87 @@ public class MistralModelClient implements AiModelClient {
 
     @Override
     public ModelResult complete(String systemPrompt, String userContent) {
-        if (!isAvailable()) {
-            throw new AiUnavailableException("AI suggestions are not available right now.");
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("model", model);
+        body.put("temperature", 0);
+        body.put("max_tokens", 1800);
+        body.put("response_format", Map.of("type", "json_object"));
+        body.put("messages", List.of(
+                Map.of("role", "system", "content", systemPrompt),
+                Map.of("role", "user", "content", userContent)));
+        JsonNode root = post(body);
+        String text = root.path("choices").path(0).path("message").path("content").asText(null);
+        if (text == null || text.isBlank()) {
+            throw new AiUnavailableException(UNAVAILABLE);
         }
-        Map<String, Object> body = Map.of(
-                "model", model,
-                "temperature", 0,
-                "max_tokens", 1800,
-                "response_format", Map.of("type", "json_object"),
-                "messages", List.of(
-                        Map.of("role", "system", "content", systemPrompt),
-                        Map.of("role", "user", "content", userContent)));
+        return new ModelResult(text, tokens(root, "prompt_tokens"), tokens(root, "completion_tokens"));
+    }
 
+    @Override
+    public ChatResult chat(String systemPrompt, List<ChatMessage> messages, List<ToolSpec> tools) {
+        List<Map<String, Object>> wire = new ArrayList<>();
+        wire.add(Map.of("role", "system", "content", systemPrompt));
+        for (ChatMessage message : messages) {
+            wire.add(toWire(message));
+        }
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("model", model);
+        body.put("temperature", 0);
+        body.put("max_tokens", 1200);
+        body.put("messages", wire);
+        if (!tools.isEmpty()) {
+            body.put("tools", tools.stream().map(tool -> Map.of(
+                    "type", "function",
+                    "function", Map.of("name", tool.name(), "description", tool.description(), "parameters", tool.parameters()))).toList());
+            body.put("tool_choice", "auto");
+        }
+        JsonNode root = post(body);
+        JsonNode message = root.path("choices").path(0).path("message");
+        List<ToolCall> calls = new ArrayList<>();
+        for (JsonNode call : message.path("tool_calls")) {
+            String arguments = call.path("function").path("arguments").isTextual()
+                    ? call.path("function").path("arguments").asText() : call.path("function").path("arguments").toString();
+            calls.add(new ToolCall(call.path("id").asText(""), call.path("function").path("name").asText(""), arguments));
+        }
+        String content = message.path("content").isTextual() ? message.path("content").asText() : "";
+        if (calls.isEmpty() && content.isBlank()) {
+            throw new AiUnavailableException(UNAVAILABLE);
+        }
+        return new ChatResult(content, calls, tokens(root, "prompt_tokens"), tokens(root, "completion_tokens"));
+    }
+
+    private Map<String, Object> toWire(ChatMessage message) {
+        Map<String, Object> wire = new LinkedHashMap<>();
+        wire.put("role", message.role());
+        wire.put("content", message.content() == null ? "" : message.content());
+        if (!message.toolCalls().isEmpty()) {
+            wire.put("tool_calls", message.toolCalls().stream().map(call -> Map.of(
+                    "id", call.id(), "type", "function",
+                    "function", Map.of("name", call.name(), "arguments", call.argumentsJson()))).toList());
+        }
+        if ("tool".equals(message.role())) {
+            wire.put("tool_call_id", message.toolCallId());
+            wire.put("name", message.toolName());
+        }
+        return wire;
+    }
+
+    private static int tokens(JsonNode root, String field) {
+        return root.path("usage").path(field).asInt(0);
+    }
+
+    /** One request with a timeout and a single retry for a transient failure; the text of neither side is ever logged. */
+    private JsonNode post(Map<String, Object> body) {
+        if (!isAvailable()) {
+            throw new AiUnavailableException(UNAVAILABLE);
+        }
         // Serialised up front so the request carries a fixed Content-Length rather than being streamed chunked.
         byte[] payload;
         try {
             payload = objectMapper.writeValueAsBytes(body);
-        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
-            throw new AiUnavailableException("AI suggestions are not available right now.");
+        } catch (JsonProcessingException e) {
+            throw new AiUnavailableException(UNAVAILABLE);
         }
-
-        RuntimeException last = null;
         for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
             try {
                 String response = restClient.post()
@@ -89,38 +158,23 @@ public class MistralModelClient implements AiModelClient {
                         .body(payload)
                         .retrieve()
                         .body(String.class);
-                return parse(response);
-            } catch (org.springframework.web.client.HttpClientErrorException e) {
+                return objectMapper.readTree(response);
+            } catch (HttpClientErrorException e) {
                 // 4xx other than a rate limit will not improve by retrying (bad key, bad request).
                 log.warn("AI provider rejected the request: HTTP {}", e.getStatusCode().value());
                 if (e.getStatusCode().value() != 429) {
-                    throw new AiUnavailableException("AI suggestions are not available right now.");
+                    throw new AiUnavailableException(UNAVAILABLE);
                 }
-                last = e;
+            } catch (JsonProcessingException e) {
+                throw new AiUnavailableException(UNAVAILABLE);
             } catch (RuntimeException e) {
                 log.warn("AI provider call failed (attempt {}): {}", attempt, e.getClass().getSimpleName());
-                last = e;
             }
             if (attempt < MAX_ATTEMPTS) {
                 sleepBriefly();
             }
         }
-        throw new AiUnavailableException("AI suggestions are not available right now.");
-    }
-
-    private ModelResult parse(String response) {
-        try {
-            JsonNode root = objectMapper.readTree(response);
-            String text = root.path("choices").path(0).path("message").path("content").asText(null);
-            if (text == null || text.isBlank()) {
-                throw new AiUnavailableException("AI suggestions are not available right now.");
-            }
-            return new ModelResult(text, root.path("usage").path("prompt_tokens").asInt(0), root.path("usage").path("completion_tokens").asInt(0));
-        } catch (AiUnavailableException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new AiUnavailableException("AI suggestions are not available right now.");
-        }
+        throw new AiUnavailableException(UNAVAILABLE);
     }
 
     private static void sleepBriefly() {

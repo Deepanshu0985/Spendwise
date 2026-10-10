@@ -82,7 +82,7 @@ All analytics endpoints accept `currency`, defaulting to the user's default curr
 `GET /recurring-expenses?activeOnly=`, `POST /recurring-expenses/detect` (re-runs detection, returns the refreshed list), `PUT /recurring-expenses/{id}` (name, categoryId, confirmed - all optional), `POST /recurring-expenses/{id}/dismiss` (idempotent, 204)
 
 ## AI
-`POST /ai/chat`, `POST /ai/categorize`, `POST /ai/insights/monthly`
+`POST /ai/chat` (body: the conversation so far, at most ten turns, oldest first, ending with the user's question; stateless - nothing is stored; returns the answer, what it was based on and the remaining daily messages; 429 `AI_QUOTA_EXCEEDED` / 503 `AI_UNAVAILABLE`), `GET /ai/status`, `POST /statements/{id}/suggest-categories` (replaces `/ai/categorize`), `POST /ai/insights/monthly` (Phase 13)
 
 Subject to per-user and global quotas; `AI_QUOTA_EXCEEDED` is returned when a cap is reached.
 

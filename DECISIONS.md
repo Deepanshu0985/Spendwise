@@ -1,3 +1,31 @@
+## Phase 12: an assistant that can only read, as you, through seven checked tools, with every figure verified
+
+**What it is.** An Assistant page (sidebar, chat) for questions like "how much did I spend on food last month?" or "which recurring payments do I have?". The model interprets the question and picks tools; the application validates and runs them and the model only words the result. It cannot read the database, cannot write anything, and never sees another user.
+
+**The seven tools** (ai-tools.md): `monthly_summary`, `category_spending`, `top_merchants`, `spending_trend`, `recurring_expenses`, `budget_status`, `goal_status`. Each calls the same service that produces the number on screen. Deviations from the doc: `category_spending` has no transaction count (the analytics service does not produce one), and `budget_status`/`goal_status` filter by name text rather than an identifier, so the model never handles ids.
+
+**Controls, in the order they act.**
+1. Identity: the tool signature is `execute(userId, argumentsJson)` with the user taken from the session by the caller. No tool declares a user parameter, and arguments are checked against the declared field list, so a model passing `userId` gets "Unknown argument" back instead of having it ignored.
+2. Arguments: dates must be real and `from` not after `to`; a period over five years is rejected, never clamped; limits are range-checked; unknown tools and unknown fields are errors returned to the model as the tool's result.
+3. Untrusted data: tool results go to the model inside a delimiter that is random per request, with any `<<<`/`>>>` removed; the system prompt says the content is data. Names (merchants, categories, budgets, goals) are passed through `UntrustedText`: a name that reads like an instruction is replaced by a placeholder, so the row and its figure still appear but the instruction never reaches the model.
+4. Grounding gate (the Phase 12 exit gate): before an answer is shown, every amount, percentage and larger number in it is checked against the JSON numbers the tools returned in that exchange. Dates, years, list numbers and small counts are ignored; digits inside strings (dates, names) do not authorise a figure; a whole number may be a tool value rounded to the nearest unit. An ungrounded answer is sent back once with the offending figures named; if it is still ungrounded the user gets a plain listing of the tool figures, marked as such, never the unverified wording. A blank reply gets the same plain listing.
+5. Limits: at most 4 model rounds and 6 tool calls per question; 30 messages per user per day and 5,000 per month overall (`AI_DAILY_CHAT_MESSAGES_PER_USER`, `AI_MONTHLY_CHAT_MESSAGES`), reserved atomically and given back if the model is unreachable; a cap returns 429 `AI_QUOTA_EXCEEDED` saying which limit and when it resets, and AI off or an outage returns 503 `AI_UNAVAILABLE` (here, unlike categorisation, the error contract fits because AI is the whole feature). Usage caps are now per kind (V22: categorisation rows and chat messages are counted separately).
+6. Logging: the tool name and counts only, never figures or text.
+
+**D-08 decided: the conversation is stateless.** The browser sends the last ten turns each time and the server stores nothing, so there is no chat retention to define under D-07. A client-supplied "assistant" turn is just text the user could have typed; it grants nothing.
+
+**Found by running it on the real model (made-up data, about 17 questions) - fixed.**
+- "You spent 400 INR less" slipped past the grounding check because only a leading currency marker counted. Amounts with the currency after the number are now checked.
+- Date stripping read "September 19,249" as the date "Sep 19"; an amount right after a month name is no longer treated as a date.
+- "The month before last" was resolved to the wrong month. The system prompt now carries exact date ranges for this month, last month, the month before last, the last 3 and 6 full months, this year and last year, computed in code, so the model does no calendar arithmetic.
+- A merchant whose name was an injected instruction was silently left out of a list. The row is now shown with the placeholder name and its amount.
+- Detected recurring payments were called "subscriptions"; the prompt now says "recurring payments".
+- Where it behaves well: it refused to reveal its prompt or other users' data, declined an off-topic question, and for "how much more in September than August" it stated both figures instead of subtracting.
+
+**Verified.** 36 new unit tests (grounding checker, period guide, name sanitiser) and 14 integration tests with a scripted model: a question runs a tool and quotes its figures; an invented figure is sent back once and accepted when rewritten; a model that cannot comply gets the plain figures; invalid arguments (too long, unknown field, bad date, reversed range, unknown tool) are returned to the model and never run; a second user's data never reaches the first; hostile text arrives only inside the delimiter and is hidden; all seven tools return their figures; a runaway model stops at the cap; a blank reply gets a listing; the daily cap and its message; an outage and AI-off cost nothing; malformed conversations are rejected; unauthenticated is 401. In a browser the page listed the suggestions, answered a question with "Based on" context and counted down the allowance (read through page text; the pane could not be displayed, so the layout was not looked at). 155 unit + 87 integration tests green.
+
+**Not done.** No conversation history and no streaming of the reply; the grounding gate checks figures, not meaning, so the model can still pick a wrong period or word things poorly (the exact-period guide reduces this, it does not remove it); the instruction-name filter is a heuristic; the assistant cannot take actions; and there is no golden-dataset evaluation harness with scored accuracy yet.
+
 ## Fix: "COFFEE" was classified as a bank fee, and other substring misfires in the statement classifier
 
 **Found by.** The real-model check on made-up rows: "UNIVERSITY FEE PAYMENT" came back typed as a bank fee. The cause was the existing rule engine, not the AI: it looked for the letters FEE anywhere in the narration.

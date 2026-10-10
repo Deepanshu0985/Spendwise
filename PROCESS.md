@@ -268,7 +268,16 @@ DigitalOcean remains the actual V1 production target once beta-ready — see `DE
 - [ ] Optional: run automatically at import, merchant suggestions, assistant-style 429 for caps
 
 ## Phase 12 — AI Assistant
-Not started.
+
+**Done:**
+- [x] Tool-calling added to the single `AiModelClient` gateway; seven read-only tools over the existing services; session-derived identity (no tool takes a user id); validated, bounded arguments
+- [x] Grounding gate: every figure in an answer must have been returned by a tool, one rewrite attempt, then a plain listing of the figures; data delimited and instruction-like names hidden
+- [x] Usage caps per kind (V22): 30 chat messages per user per day, 5,000 per month; 429 / 503 with clear messages; D-08 decided (stateless chat)
+- [x] Assistant page with suggested questions, "based on" context and the daily allowance; verified on the real Mistral model with made-up data, which found and fixed five issues; 36 new unit + 14 new integration tests
+
+**Left:**
+- [ ] Scored golden-dataset evaluation (accuracy, hallucination rate, latency and cost per answer) per `docs/04-ai/ai-evaluation.md`
+- [ ] Look at the page layout in a browser with a visible pane; optional streaming and saved history (would need D-07 retention decisions)
 
 ## Phase 13 — AI Insights
 Not started.

@@ -1,5 +1,6 @@
 package com.finance.infrastructure.persistence.ai;
 
+import com.finance.domain.ai.AiUsageKind;
 import com.finance.domain.ai.AiUsageRepository;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
@@ -22,44 +23,48 @@ public class AiUsageRepositoryImpl implements AiUsageRepository {
     }
 
     @Override
-    public boolean tryReserveDaily(UUID userId, LocalDate day, int rows, int limit) {
-        jdbc.update("insert into ai_usage_daily (user_id, usage_date, rows_classified) values (?, ?, 0) on conflict do nothing",
-                userId, Date.valueOf(day));
-        return jdbc.update(
-                "update ai_usage_daily set rows_classified = rows_classified + ? where user_id = ? and usage_date = ? and rows_classified + ? <= ?",
-                rows, userId, Date.valueOf(day), rows, limit) == 1;
-    }
-
-    @Override
-    public boolean tryReserveMonthly(LocalDate firstOfMonth, int rows, int limit) {
-        jdbc.update("insert into ai_usage_monthly (usage_month, rows_classified) values (?, 0) on conflict do nothing", Date.valueOf(firstOfMonth));
-        return jdbc.update(
-                "update ai_usage_monthly set rows_classified = rows_classified + ? where usage_month = ? and rows_classified + ? <= ?",
-                rows, Date.valueOf(firstOfMonth), rows, limit) == 1;
-    }
-
-    @Override
-    public void releaseDaily(UUID userId, LocalDate day, int rows) {
+    public boolean tryReserveDaily(UUID userId, AiUsageKind kind, LocalDate day, int units, int limit) {
         jdbc.update(
-                "update ai_usage_daily set rows_classified = greatest(0, rows_classified - ?) where user_id = ? and usage_date = ?",
-                rows, userId, Date.valueOf(day));
+                "insert into ai_usage_daily (user_id, usage_date, usage_kind, rows_classified) values (?, ?, ?, 0) on conflict do nothing",
+                userId, Date.valueOf(day), kind.name());
+        return jdbc.update(
+                "update ai_usage_daily set rows_classified = rows_classified + ? where user_id = ? and usage_date = ? and usage_kind = ? "
+                        + "and rows_classified + ? <= ?",
+                units, userId, Date.valueOf(day), kind.name(), units, limit) == 1;
     }
 
     @Override
-    public void releaseMonthly(LocalDate firstOfMonth, int rows) {
-        jdbc.update("update ai_usage_monthly set rows_classified = greatest(0, rows_classified - ?) where usage_month = ?",
-                rows, Date.valueOf(firstOfMonth));
+    public boolean tryReserveMonthly(AiUsageKind kind, LocalDate firstOfMonth, int units, int limit) {
+        jdbc.update("insert into ai_usage_monthly (usage_month, usage_kind, rows_classified) values (?, ?, 0) on conflict do nothing",
+                Date.valueOf(firstOfMonth), kind.name());
+        return jdbc.update(
+                "update ai_usage_monthly set rows_classified = rows_classified + ? where usage_month = ? and usage_kind = ? and rows_classified + ? <= ?",
+                units, Date.valueOf(firstOfMonth), kind.name(), units, limit) == 1;
     }
 
     @Override
-    public int usedToday(UUID userId, LocalDate day) {
-        return jdbc.query("select rows_classified from ai_usage_daily where user_id = ? and usage_date = ?",
-                rs -> rs.next() ? rs.getInt(1) : 0, userId, Date.valueOf(day));
+    public void releaseDaily(UUID userId, AiUsageKind kind, LocalDate day, int units) {
+        jdbc.update(
+                "update ai_usage_daily set rows_classified = greatest(0, rows_classified - ?) where user_id = ? and usage_date = ? and usage_kind = ?",
+                units, userId, Date.valueOf(day), kind.name());
     }
 
     @Override
-    public int usedThisMonth(LocalDate firstOfMonth) {
-        return jdbc.query("select rows_classified from ai_usage_monthly where usage_month = ?",
-                rs -> rs.next() ? rs.getInt(1) : 0, Date.valueOf(firstOfMonth));
+    public void releaseMonthly(AiUsageKind kind, LocalDate firstOfMonth, int units) {
+        jdbc.update(
+                "update ai_usage_monthly set rows_classified = greatest(0, rows_classified - ?) where usage_month = ? and usage_kind = ?",
+                units, Date.valueOf(firstOfMonth), kind.name());
+    }
+
+    @Override
+    public int usedToday(UUID userId, AiUsageKind kind, LocalDate day) {
+        return jdbc.query("select rows_classified from ai_usage_daily where user_id = ? and usage_date = ? and usage_kind = ?",
+                rs -> rs.next() ? rs.getInt(1) : 0, userId, Date.valueOf(day), kind.name());
+    }
+
+    @Override
+    public int usedThisMonth(AiUsageKind kind, LocalDate firstOfMonth) {
+        return jdbc.query("select rows_classified from ai_usage_monthly where usage_month = ? and usage_kind = ?",
+                rs -> rs.next() ? rs.getInt(1) : 0, Date.valueOf(firstOfMonth), kind.name());
     }
 }
