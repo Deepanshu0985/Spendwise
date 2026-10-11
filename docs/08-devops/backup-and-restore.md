@@ -23,6 +23,16 @@ The database is Neon PostgreSQL. This replaces the VPS-era `nightly-backup.sh` /
 SOURCE_URL='postgresql://USER:PASSWORD@HOST/DB?sslmode=require' ./scripts/restore-drill-neon.sh
 ```
 
+### Run it on a schedule (no hands needed)
+
+`.github/workflows/restore-drill.yml` runs the drill on the 1st of every month (and on demand: repository, Actions tab, "Restore drill", "Run workflow"). A failed drill fails the run and GitHub emails the repository owner; if you also add the `ALERT_WEBHOOK_URL` secret it posts to your ntfy topic. One-time setup:
+
+1. In Neon, create a role just for this (SQL editor): `CREATE ROLE drill_reader WITH LOGIN PASSWORD '<long random>' BYPASSRLS; GRANT pg_read_all_data TO drill_reader;`. It must bypass row security or the dump would come back empty, and it can read but never write. Do not reuse the application or migration role.
+2. In the repository, Settings, Secrets and variables, Actions, add a secret named `DRILL_SOURCE_URL` with that role's connection string (`postgresql://drill_reader:<password>@<host>/<db>?sslmode=require`). Secrets are not exposed to pull requests from forks.
+3. Start it once by hand from the Actions tab to confirm it passes, then note the result in the drill log.
+
+The workflow dumps the live branch (proving a fresh dump restores). The point-in-time rehearsal still needs a Neon branch made from a past moment; run the script by hand against that once before the beta.
+
 It only reads the source. Run it:
 
 - **Monthly**, against the live branch (proves a fresh dump restores).
