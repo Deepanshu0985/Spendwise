@@ -30,8 +30,12 @@ import com.finance.infrastructure.pdf.TransactionNormalizer;
 import com.finance.infrastructure.storage.StorageService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -45,6 +49,8 @@ import java.util.UUID;
 
 @Service
 public class StatementServiceImpl implements StatementService {
+
+    private static final Logger log = LoggerFactory.getLogger(StatementServiceImpl.class);
 
     private final StatementRepository statementRepository;
     private final StatementTransactionRepository statementTransactionRepository;
@@ -263,7 +269,26 @@ public class StatementServiceImpl implements StatementService {
 
         statement.markImported(Instant.now());
         statement = statementRepository.save(statement);
+        deleteFileAfterCommit(statement.getStorageKey());
         return new ConfirmResult(statement, imported, skippedDuplicates);
+    }
+
+    /**
+     * D-06: the original PDF is the largest store of a person's financial detail and nothing needs it once its rows are
+     * imported (only a failed statement is ever re-read from it), so it is removed as soon as the import commits. Only after
+     * the commit, so an import that rolls back keeps its file; a file that cannot be removed is logged, never an error.
+     */
+    private void deleteFileAfterCommit(String storageKey) {
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                try {
+                    storageService.delete(storageKey);
+                } catch (RuntimeException e) {
+                    log.warn("An imported statement's file could not be removed from storage: {}", e.getClass().getSimpleName());
+                }
+            }
+        });
     }
 
     @Override

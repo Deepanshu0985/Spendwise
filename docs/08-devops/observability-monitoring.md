@@ -31,3 +31,19 @@ Sustained API errors, database failures, statement-processing failure spikes, ba
 
 ## Health
 Separate liveness and readiness checks, with dependency health reported on readiness. AI provider health never affects readiness, because the product is required to function without it.
+
+## What is implemented (free-tier setup)
+
+- **Request metrics in memory** (`RequestMetrics`, `RequestMetricsFilter`): requests, server errors, rate-limit refusals, failed sign-ins and a latency histogram per minute, never keyed by user. Every five minutes with traffic, one `ops-metrics` line goes to the log; there is no dashboard.
+- **Alerts** (`OpsMonitor`, `AlertService`): a sustained run of server errors (at least 5 and 20% of the last five minutes' requests), a burst of rate-limit refusals (100 in five minutes), and AI use reaching 50%, 80% and 100% of each monthly cap. One alert per condition per hour; AI levels once per month. Delivered to `ALERT_WEBHOOK_URL`: with no value they only appear in the log. ntfy.sh needs no account (`https://ntfy.sh/<a-long-random-topic>`, subscribe in the phone app); for Slack or Discord set `ALERT_WEBHOOK_FORMAT` to `slack` or `discord`. Alert text never contains personal or financial data.
+- **Health:** `GET /api/v1/health` (liveness, never touches the database) and `GET /api/v1/health/ready` (checks the database; 503 when it is down). AI is in neither.
+- **Not implemented, deliberately:** statement-processing failure rates, per-user AI cost views and tracing. At this scale the log lines and the database tables (`ai_usage_daily`, `ai_usage_monthly`) answer those questions on demand.
+
+## Uptime monitoring
+
+Use a free external monitor (UptimeRobot or similar) on the **liveness** URL, `https://<backend>/api/v1/health`, every 5 minutes, alerting to email or the same ntfy topic. Two cautions for the free tiers:
+
+- Do **not** point it at `/health/ready`: that queries the database and would keep a scale-to-zero Neon database awake around the clock and use up its free compute hours.
+- A 5-minute ping also keeps the free Render service from sleeping, which uses its monthly instance hours (750 hours is enough for exactly one always-on service). Monitor only the production backend, not staging, unless you accept staging sleeping.
+
+Backups and the restore drill are in `backup-and-restore.md`; record each drill there.

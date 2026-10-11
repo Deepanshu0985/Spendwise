@@ -41,6 +41,22 @@ class StatementFlowIT {
     }
 
     @Test
+    void theStoredPdfIsRemovedOnceItsRowsAreImportedButKeptWhileAwaitingReview() throws Exception {
+        byte[] pdf = PdfFixtures.statementPdf(
+                "HDFC BANK Statement of Account",
+                List.of("15/09/26 SWIGGY BANGALORE UPI123456 15/09/26 500.00 0.00 4500.00"));
+        String userId = client.get("/users/me").data().get("id").asText();
+        ApiResult upload = client.postMultipart("/statements/upload", Map.of("accountId", accountId), "file", "statement.pdf", pdf);
+        String statementId = upload.data().get("id").asText();
+        java.nio.file.Path stored = java.nio.file.Path.of(System.getProperty("java.io.tmpdir"), "spendwise-it-storage", userId, statementId + ".pdf");
+
+        assertThat(java.nio.file.Files.exists(stored)).as("kept while awaiting review").isTrue();
+        assertThat(client.post("/statements/" + statementId + "/confirm", Map.of()).status()).isEqualTo(200);
+        assertThat(java.nio.file.Files.exists(stored)).as("removed once imported (D-06)").isFalse();
+        assertThat(client.post("/statements/" + statementId + "/confirm", Map.of()).status()).as("a repeat confirm is still fine").isEqualTo(200);
+    }
+
+    @Test
     void uploadReviewConfirmPromotesStagedRowsIntoRealTransactions() {
         byte[] pdf = PdfFixtures.statementPdf(
                 "HDFC BANK Statement of Account",

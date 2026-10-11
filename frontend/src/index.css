@@ -2173,3 +2173,58 @@ tbody tr:last-child td {
   font-weight: 600;
   color: var(--positive);
 }
+
+/* ---------- Privacy policy ---------- */
+
+.auth-legal {
+  margin-top: 8px;
+  font-size: 12px;
+}
+
+.legal-shell {
+  min-height: 100vh;
+  background: #fdfcf9;
+  padding: 40px 20px 80px;
+}
+
+.legal-page {
+  max-width: 720px;
+  margin: 0 auto;
+  line-height: 1.65;
+  font-size: 15px;
+}
+
+.legal-page h1 {
+  font-size: 34px;
+  margin: 18px 0 4px;
+}
+
+.legal-page h2 {
+  font-size: 19px;
+  margin: 30px 0 8px;
+}
+
+.legal-page ul {
+  padding-left: 20px;
+  display: grid;
+  gap: 8px;
+}
+
+.legal-back {
+  font-size: 13px;
+}
+
+.legal-meta {
+  font-size: 13px;
+  color: var(--ink-muted);
+}
+
+.legal-draft {
+  margin: 18px 0 8px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #f1e6d6;
+  color: #6b4226;
+  font-size: 13px;
+  line-height: 1.5;
+}

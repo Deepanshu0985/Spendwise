@@ -10,6 +10,7 @@ import { GoalsPage } from './pages/GoalsPage'
 import { LoginPage } from './pages/LoginPage'
 import { RecurringPage } from './pages/RecurringPage'
 import { RegisterPage } from './pages/RegisterPage'
+import { PrivacyPage } from './pages/PrivacyPage'
 import { ResetPasswordPage } from './pages/ResetPasswordPage'
 import { SettingsPage } from './pages/SettingsPage'
 import { StatementsPage } from './pages/StatementsPage'
@@ -51,6 +52,8 @@ function App() {
             </RedirectIfAuthenticated>
           }
         />
+
+        <Route path="/privacy" element={<PrivacyPage />} />
 
         <Route element={<RequireAuth />}>
           <Route element={<Layout />}>

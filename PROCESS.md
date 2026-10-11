@@ -357,4 +357,22 @@ Built in slices, each committed on its own. Checklist (from `development-roadmap
 - [ ] Export is JSON only (no CSV), built in memory (fine for personal volumes, not for hundreds of thousands of rows)
 - [ ] Statement files on the free host live on its temporary disk; erasure removes what is there
 
-**Next slices:** metrics/alerts and uptime monitoring, then the written pieces (privacy policy page, breach plan, restore drill).
+**Slice 3 - monitoring, retention, privacy and the written plans: done**
+- [x] Request metrics in memory (requests, server errors, rate-limit refusals, failed sign-ins, latency histogram) and an `ops-metrics` log line every five minutes with traffic
+- [x] Alerts to a webhook of your choice (`ALERT_WEBHOOK_URL`; ntfy.sh needs no account; Slack and Discord supported): sustained server errors, a burst of rate-limit refusals, and AI use at 50%, 80% and 100% of each monthly cap; deduplicated, never carrying personal data; log-only when no URL is set
+- [x] Liveness (`/health`, no database) and readiness (`/health/ready`, checks the database) are separate; AI is in neither
+- [x] D-06 decided and built: the uploaded PDF is deleted as soon as its import commits (kept while awaiting review, since a failed statement is re-read from it); account deletion removes any file still held
+- [x] Found while writing the policy: transaction descriptions returned by the assistant's search tools went to the model unredacted (only categorisation redacted). Now every name and description the assistant or the insights send passes through `PiiRedactor` (long digit runs and the bank part of UPI ids removed) inside `UntrustedText`; test added
+- [x] Public privacy policy page (`/privacy`, linked from sign-in, sign-up and Settings), written to match what the code does and marked as a draft pending legal review; contact address in `lib/legal.ts` still to be set
+- [x] `docs/07-quality/incident-response.md` (breach plan) and `docs/08-devops/backup-and-restore.md` for the real Neon setup, plus `scripts/restore-drill-neon.sh`, which checks row counts and that RLS policies, forced RLS and foreign keys survive a restore; run once on local test data (passed)
+- [x] Full suite 226 unit + 142 integration green
+
+**Left before the beta opens (these need you):**
+- [ ] Set `RATE_LIMIT_PROXY_HOPS` on both Render services (probably 2) and confirm from the one-time `Rate limiting: first X-Forwarded-For had N entries` log line
+- [ ] Choose an alert channel: make an ntfy topic, set `ALERT_WEBHOOK_URL` on Render, and test it
+- [ ] Add a free uptime monitor on `/api/v1/health` (not `/health/ready`)
+- [ ] Run `restore-drill-neon.sh` against Neon (a past-point branch and the live branch) and record it in `backup-and-restore.md`; fill in Neon's restore window there
+- [ ] Set `PRIVACY_CONTACT_EMAIL` in `frontend/src/lib/legal.ts`, fill the contacts in `incident-response.md`, and have someone qualified review the privacy policy, the deletion path and the breach notification steps (the plan names this explicitly)
+- [ ] Walk the first-hour steps of the incident plan once on staging
+
+**Phase 15 exit gate:** the internal-to-beta checklist above is complete.

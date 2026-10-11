@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
+import { Link } from 'react-router-dom'
 import { ApiRequestError } from '../api/client'
 import { authApi } from '../api/auth'
 import { useAuth } from '../auth/AuthContext'
@@ -89,6 +90,13 @@ export function SettingsPage() {
           <Button variant="secondary" onClick={() => void downloadData()} disabled={exporting}>
             {exporting ? 'Preparing your file…' : 'Download my data'}
           </Button>
+        </div>
+
+        <div className="card">
+          <div className="card-title">Privacy</div>
+          <p className="settings-text">
+            What Spendwise holds, who handles it, and your rights are written up in the <Link to="/privacy">privacy policy</Link>.
+          </p>
         </div>
 
         <div className="card">

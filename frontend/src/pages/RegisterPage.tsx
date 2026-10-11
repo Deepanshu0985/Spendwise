@@ -113,6 +113,9 @@ export function RegisterPage() {
           </form>
           <div className="auth-form-footer">
             Already have an account? <Link to="/login">Log in</Link>
+            <div className="auth-legal">
+              By creating an account you agree to the <Link to="/privacy">privacy policy</Link>.
+            </div>
           </div>
         </div>
       </div>

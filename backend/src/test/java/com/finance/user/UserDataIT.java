@@ -96,6 +96,12 @@ class UserDataIT {
         ApiResult upload = c.postMultipart("/statements/upload", Map.of("accountId", accountId), "file", "statement.pdf", pdf);
         assertThat(upload.status()).isEqualTo(200);
         c.post("/statements/" + upload.data().get("id").asText() + "/confirm", Map.of());
+
+        // A second statement is left awaiting review, so its file is still held (the confirmed one's was removed on import).
+        byte[] second = PdfFixtures.statementPdf(
+                "HDFC BANK Statement of Account",
+                List.of("20/09/26 ZOMATO BANGALORE UPI777777 20/09/26 300.00 0.00 4200.00"));
+        assertThat(c.postMultipart("/statements/upload", Map.of("accountId", accountId), "file", "second.pdf", second).status()).isEqualTo(200);
     }
 
     private Map<String, String> deleteBody(String password, String confirmation) {
@@ -130,8 +136,8 @@ class UserDataIT {
         assertThat(data.get("transactions").size()).isGreaterThanOrEqualTo(2); // the typed one and the confirmed statement row
         assertThat(data.get("goals")).hasSize(1);
         assertThat(data.get("budgets")).hasSize(1);
-        assertThat(data.get("statements")).hasSize(1);
-        assertThat(data.get("statementRows")).hasSize(1);
+        assertThat(data.get("statements")).hasSize(2);
+        assertThat(data.get("statementRows")).hasSize(2);
         assertThat(data.get("categories").toString()).contains("My own category");
 
         String raw = MAPPER.writeValueAsString(data);
@@ -152,7 +158,7 @@ class UserDataIT {
         fillWithData(bystander);
         String bystanderId = bystander.get("/users/me").data().get("id").asText();
         long bystanderFiles = storedFilesOf(bystanderId);
-        assertThat(storedFilesOf(userId)).isEqualTo(1);
+        assertThat(storedFilesOf(userId)).as("the confirmed statement's file is already gone; the one awaiting review remains").isEqualTo(1);
 
         ApiResult deleted = client.post("/users/me/delete", deleteBody(PASSWORD, "DELETE"));
         assertThat(deleted.status()).isEqualTo(204);

@@ -1,5 +1,7 @@
 package com.finance.application.ai;
 
+import com.finance.domain.ai.PiiRedactor;
+
 import java.util.regex.Pattern;
 
 /**
@@ -8,6 +10,10 @@ import java.util.regex.Pattern;
  * row. So a name that reads like an instruction is replaced with a placeholder before the model sees it: the row and its
  * figure are still reported, and the instruction never reaches the model at all. This is a second layer, a heuristic -
  * the real controls are the read-only tools, the session-derived identity and the grounding gate.
+ *
+ * It is also where text is made safe to leave the application: long digit runs (phone, account, card and reference numbers)
+ * and the bank part of a UPI id are removed by PiiRedactor, the same as for categorisation (data-privacy-retention.md:
+ * "redact unnecessary PII before any external call"). Everything the assistant and the insights send passes through here.
  */
 public final class UntrustedText {
 
@@ -29,7 +35,7 @@ public final class UntrustedText {
         if (name == null) {
             return "";
         }
-        String text = CONTROL.matcher(name).replaceAll(" ").trim();
+        String text = CONTROL.matcher(PiiRedactor.redact(name)).replaceAll(" ").trim();
         if (LOOKS_LIKE_AN_INSTRUCTION.matcher(text).find()) {
             return HIDDEN;
         }

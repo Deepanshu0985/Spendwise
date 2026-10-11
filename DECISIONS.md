@@ -740,3 +740,15 @@ Implementation-level decisions made while building, with the reasoning behind ea
 **What is exported.** Their own rows as stored, minus the internal user id, the password hash and file storage paths. A person's custom categories are exported; the shared built-in ones are not theirs.
 
 **Limits.** Rate limited (5 an hour each) because a stolen session could otherwise guess the password through the delete form. Files that cannot be removed from storage are counted in a log line and do not undo the deletion.
+
+## Phase 15, slice 3: monitoring that cannot wake the database, deleting imported PDFs, redacting what the assistant sends
+
+**Monitoring.** Counters and the alert check live in memory and never query the database, because on the free tiers a database that sleeps when idle must be allowed to sleep; a monitor that polled it would burn the free compute hours. Alerts go to a webhook (ntfy.sh needs no account) and are deduplicated per hour; AI cap alerts fire from the AI usage limiter when usage grows, again with no extra polling. Uptime monitoring is external and must hit `/health` (liveness), never `/health/ready`.
+
+**D-06: raw PDFs are deleted once imported.** The uploaded statement is the largest store of a person's financial detail and nothing reads it after import (only a FAILED statement is re-read, for a retry). It is removed after the import transaction commits, so a rollback keeps the file; it stays while a statement awaits review. Rows already extracted stay until the person deletes them. This also lets the privacy policy make a short, true promise.
+
+**A real gap found by writing the policy.** Categorisation redacted descriptions before sending them to the model, but the assistant's transaction-search tool did not: reference and phone numbers went through. `UntrustedText.of`, the one function every model-bound name or description already passes through, now applies the same redaction. A privacy statement is only as honest as the code path it describes, so the policy was written after checking each path.
+
+**Backups.** The VPS-era scripts assumed a self-hosted database. The real setup is Neon plus Render, so `restore-drill-neon.sh` was added: it restores a dump into a scratch container and verifies row counts, migrations, and above all that row-level security survived, because a restore that loses the policies silently turns a multi-user database into a shared one. It passed on local test data; the signed-off drill against Neon is the owner's, recorded in `backup-and-restore.md`.
+
+**Breach plan and policy.** Both are drafts that say what the system does and what to do; neither is legal advice. The notification deadlines are left blank on purpose rather than quoted from memory, and the policy carries a visible "not yet reviewed" notice until a qualified person has read it.
