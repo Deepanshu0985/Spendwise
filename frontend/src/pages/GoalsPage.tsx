@@ -10,6 +10,7 @@ import { Field } from '../components/ui/Field'
 import { Modal } from '../components/ui/Modal'
 import { useReferenceData } from '../data/ReferenceDataContext'
 import { formatCurrency, formatDate } from '../lib/format'
+import { CardListSkeleton } from '../components/ui/Skeletons'
 
 function toRequest(goal: Goal, patch: Partial<SaveGoalRequest>): SaveGoalRequest {
   return {
@@ -69,9 +70,7 @@ export function GoalsPage() {
       {error && <div className="form-error-banner" style={{ marginBottom: 16 }}>{error}</div>}
 
       {loading ? (
-        <div className="loading-state">
-          <span className="spinner" /> Loading goals…
-        </div>
+        <CardListSkeleton label="Loading goals" />
       ) : goals.length === 0 ? (
         <div className="card">
           <div className="empty-state">No goals yet. Create one, then add money to it as you save.</div>

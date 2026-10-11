@@ -4,10 +4,11 @@ import { Link, useNavigate } from 'react-router-dom'
 import { ApiRequestError } from '../api/client'
 import { useAuth } from '../auth/AuthContext'
 import { Button } from '../components/ui/Button'
+import { GoogleSignIn } from '../components/auth/GoogleSignIn'
 import { Field } from '../components/ui/Field'
 
 export function RegisterPage() {
-  const { register } = useAuth()
+  const { register, loginWithGoogle } = useAuth()
   const navigate = useNavigate()
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
@@ -36,6 +37,16 @@ export function RegisterPage() {
     }
   }
 
+  async function handleGoogle(credential: string) {
+    setError(null)
+    try {
+      await loginWithGoogle(credential)
+      navigate('/', { replace: true })
+    } catch (err) {
+      setError(err instanceof ApiRequestError ? err.message : 'Something went wrong. Please try again.')
+    }
+  }
+
   return (
     <div className="auth-shell">
       <div className="auth-brand">
@@ -54,8 +65,9 @@ export function RegisterPage() {
             <h1>Create your account</h1>
             <p className="auth-form-subtitle">Takes less than a minute.</p>
           </div>
+          {error && <div className="form-error-banner">{error}</div>}
+          <GoogleSignIn onCredential={(credential) => void handleGoogle(credential)} />
           <form onSubmit={(e) => void handleSubmit(e)}>
-            {error && <div className="form-error-banner">{error}</div>}
             <Field
               label="Full name"
               type="text"

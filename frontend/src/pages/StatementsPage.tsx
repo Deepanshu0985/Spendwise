@@ -11,6 +11,7 @@ import { SelectField } from '../components/ui/SelectField'
 import { useReferenceData } from '../data/ReferenceDataContext'
 import { formatDate, formatSignedCurrency } from '../lib/format'
 import { isDebit, MANUALLY_ASSIGNABLE_TYPES, TRANSACTION_TYPE_LABELS } from '../lib/labels'
+import { TableSkeleton } from '../components/ui/Skeletons'
 
 const STATUS_LABELS: Record<StatementStatus, string> = {
   UPLOADED: 'Uploaded',
@@ -82,9 +83,7 @@ export function StatementsPage() {
 
       <div className="card" style={{ padding: 0, display: 'flex', flexDirection: 'column' }}>
         {loading ? (
-          <div className="loading-state">
-            <span className="spinner" /> Loading statements…
-          </div>
+          <TableSkeleton label="Loading statements" rows={5} columns={5} />
         ) : statements.length === 0 ? (
           <div className="empty-state">No statements uploaded yet. Upload a bank PDF to get started.</div>
         ) : (
@@ -460,8 +459,8 @@ function StatementReview({ statementId, onBack }: { statementId: string; onBack:
       )}
 
       {loading ? (
-        <div className="loading-state">
-          <span className="spinner" /> Loading…
+        <div className="card" style={{ padding: 0 }}>
+          <TableSkeleton label="Loading statement rows" rows={8} columns={5} />
         </div>
       ) : rows.length === 0 ? (
         <div className="card">

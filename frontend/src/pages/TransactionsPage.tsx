@@ -15,6 +15,7 @@ import { SelectField } from '../components/ui/SelectField'
 import { useReferenceData } from '../data/ReferenceDataContext'
 import { currentMonthRange, formatDate, formatDateRangeLabel, formatSignedCurrency, today } from '../lib/format'
 import { isDebit, MANUALLY_ASSIGNABLE_TYPES, TRANSACTION_TYPE_LABELS } from '../lib/labels'
+import { TableSkeleton } from '../components/ui/Skeletons'
 
 const NEW_MERCHANT = '__new__'
 const NONE = ''
@@ -275,9 +276,7 @@ export function TransactionsPage() {
 
       <div className="card" style={{ padding: 0, display: 'flex', flexDirection: 'column' }}>
         {loading ? (
-          <div className="loading-state">
-            <span className="spinner" /> Loading transactions&hellip;
-          </div>
+          <TableSkeleton label="Loading transactions" rows={9} columns={6} />
         ) : transactions.length === 0 ? (
           <div className="empty-state">No transactions in this range yet. Add your first one above.</div>
         ) : (

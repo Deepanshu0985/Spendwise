@@ -4,6 +4,7 @@ import { transactionsApi } from '../api/transactions'
 import type { CategoryBreakdownEntry, MerchantBreakdownEntry, Transaction, TrendPoint } from '../api/types'
 import { CalendarIcon } from '../components/icons'
 import { InsightCard } from '../components/InsightCard'
+import { DashboardSkeleton } from '../components/ui/Skeletons'
 import { MoneyTip } from '../components/MoneyTip'
 import { useReferenceData } from '../data/ReferenceDataContext'
 import {
@@ -130,10 +131,7 @@ export function DashboardPage() {
       {error && <div className="form-error-banner" style={{ marginBottom: 20 }}>{error}</div>}
 
       {loading && !data ? (
-        <div className="loading-state" style={{ flexDirection: 'column' }}>
-          <div><span className="spinner" /> Loading your dashboard&hellip;</div>
-          <MoneyTip variant="inline" />
-        </div>
+        <DashboardSkeleton />
       ) : data ? (
         <>
           {data.excludedTransactionCount > 0 && (

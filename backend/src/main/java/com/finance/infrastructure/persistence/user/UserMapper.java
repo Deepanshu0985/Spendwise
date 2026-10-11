@@ -13,6 +13,7 @@ final class UserMapper {
                 entity.getId(),
                 entity.getEmail(),
                 entity.getPasswordHash(),
+                entity.getGoogleSubject(),
                 entity.getFullName(),
                 entity.getDefaultCurrency(),
                 entity.getTimezone(),
@@ -23,12 +24,14 @@ final class UserMapper {
 
     static UserJpaEntity toNewEntity(User user) {
         return new UserJpaEntity(
-                user.getId(), user.getEmail(), user.getPasswordHash(), user.getFullName(), user.getDefaultCurrency(), user.getTimezone());
+                user.getId(), user.getEmail(), user.getPasswordHash(), user.getGoogleSubject(), user.getFullName(),
+                user.getDefaultCurrency(), user.getTimezone());
     }
 
     /** Mutates an existing managed entity in place so Hibernate's dirty checking (and @UpdateTimestamp) fires correctly. */
     static UserJpaEntity applyChanges(UserJpaEntity entity, User user) {
         entity.setPasswordHash(user.getPasswordHash());
+        entity.setGoogleSubject(user.getGoogleSubject());
         return entity;
     }
 }

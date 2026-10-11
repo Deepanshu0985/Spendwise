@@ -788,6 +788,7 @@ tbody tr:last-child td {
 
 .auth-form-panel {
   flex-grow: 1;
+  min-width: 0; /* without this the panel can't shrink below its 360px form, so a phone's right edge was cut off */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -813,6 +814,39 @@ tbody tr:last-child td {
   margin-top: 8px;
   font-size: 14px;
   color: var(--ink-muted);
+}
+
+/* Sign in with Google: Google draws the button itself; the divider separates it from the email form. */
+.google-signin {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.google-signin[hidden] {
+  display: none;
+}
+
+.google-signin-button {
+  display: flex;
+  justify-content: center;
+  min-height: 44px;
+}
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border, #e3e0d8);
 }
 
 .auth-form-footer {
@@ -1763,6 +1797,312 @@ tbody tr:last-child td {
 
 @media (prefers-reduced-motion: reduce) {
   .tip-strip {
+    animation: none;
+  }
+}
+
+/* ---------- Brand loader, splash and skeletons ---------- */
+
+.splash {
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: radial-gradient(120% 90% at 50% 0%, #1f3a2d 0%, var(--sidebar) 60%);
+  color: var(--sidebar-text);
+  animation: splash-in 0.22s ease-out both;
+}
+
+.splash-out {
+  animation: splash-out 0.32s ease-in both;
+  pointer-events: none;
+}
+
+@keyframes splash-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes splash-out {
+  to {
+    opacity: 0;
+    transform: scale(1.015);
+  }
+}
+
+.brand-loader {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 6px;
+  max-width: 360px;
+}
+
+.bl-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 7px;
+  height: 56px;
+  margin-bottom: 14px;
+}
+
+.bl-bars span {
+  width: 9px;
+  height: 100%;
+  border-radius: 5px;
+  background: linear-gradient(180deg, #e9d9a6 0%, #7fb08f 100%);
+  transform-origin: bottom;
+  transform: scaleY(0.3);
+  animation: bl-rise 1.15s ease-in-out infinite;
+}
+
+.bl-bars span:nth-child(2) {
+  animation-delay: 0.12s;
+}
+
+.bl-bars span:nth-child(3) {
+  animation-delay: 0.24s;
+}
+
+.bl-bars span:nth-child(4) {
+  animation-delay: 0.36s;
+}
+
+.bl-bars span:nth-child(5) {
+  animation-delay: 0.48s;
+}
+
+@keyframes bl-rise {
+  0%,
+  100% {
+    transform: scaleY(0.28);
+    opacity: 0.55;
+  }
+  50% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+.bl-word {
+  font-family: var(--font-display);
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.bl-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--sidebar-text);
+  margin-top: 6px;
+}
+
+.bl-detail {
+  font-size: 13px;
+  color: var(--sidebar-text-muted);
+}
+
+.bl-track {
+  width: 120px;
+  height: 3px;
+  margin-top: 18px;
+  border-radius: 2px;
+  background: rgba(247, 243, 234, 0.14);
+  overflow: hidden;
+}
+
+.bl-track span {
+  display: block;
+  width: 40%;
+  height: 100%;
+  border-radius: 2px;
+  background: #e9d9a6;
+  animation: bl-slide 1.3s ease-in-out infinite;
+}
+
+@keyframes bl-slide {
+  from {
+    transform: translateX(-110%);
+  }
+  to {
+    transform: translateX(300%);
+  }
+}
+
+.bl-slow {
+  margin-top: 18px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--sidebar-text-muted);
+  animation: splash-in 0.4s ease-out both;
+}
+
+/* Skeletons: shimmering stand-ins that keep the page's shape while data loads. */
+
+.skeleton {
+  display: block;
+  background: linear-gradient(90deg, #eeeadf 25%, #f8f5ed 45%, #eeeadf 65%);
+  background-size: 300% 100%;
+  animation: sk-shimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes sk-shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: 0 0;
+  }
+}
+
+@keyframes sk-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+.sk-card,
+.sk-row {
+  animation: sk-in 0.4s ease-out both;
+}
+
+.sk-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sk-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.sk-stack {
+  display: grid;
+  gap: 18px;
+}
+
+.sk-table {
+  display: flex;
+  flex-direction: column;
+}
+
+.sk-row {
+  display: grid;
+  align-items: center;
+  gap: 18px;
+  padding: 16px 22px;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.sk-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.sk-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.sk-columns {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  height: 150px;
+  margin-top: 18px;
+}
+
+.sk-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 18px;
+}
+
+.sk-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.typing {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.typing-dots {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.typing-dots span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: typing-bob 1s ease-in-out infinite;
+}
+
+.typing-dots span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.typing-dots span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes typing-bob {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.4;
+  }
+  30% {
+    transform: translateY(-5px);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .splash,
+  .splash-out,
+  .bl-slow,
+  .sk-card,
+  .sk-row {
+    animation: none;
+  }
+
+  .splash-out {
+    opacity: 0;
+  }
+
+  .bl-bars span {
+    animation: none;
+    transform: scaleY(0.7);
+  }
+
+  .bl-bars span:nth-child(odd) {
+    transform: scaleY(0.45);
+  }
+
+  .bl-track span,
+  .skeleton,
+  .typing-dots span {
     animation: none;
   }
 }
