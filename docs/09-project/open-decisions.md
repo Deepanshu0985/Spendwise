@@ -27,6 +27,7 @@ Decisions that are not yet made, and the phases they block. An undecided item th
 | D-21 | What the RAG index contains | Phase 13b | Open - recommendation: confirmed transactions only |
 | D-22 | Vector store | Phase 13b | Open - recommendation: pgvector in the existing PostgreSQL with row-level security |
 | D-23 | Embedding spend caps | Phase 13b | Open - recommendation: a third usage kind with per-user daily and global monthly caps |
+| D-24 | May the assistant change data | Phase 16b | Open - recommendation: never directly; it returns a proposal (preview of the exact rows and change) and only the person's Apply click writes, through the same server operation as manual bulk edit. Changes the Phase 12 "read-only tools" rule on purpose, so record it in `DECISIONS.md` when decided |
 
 ## Gating Decisions
 

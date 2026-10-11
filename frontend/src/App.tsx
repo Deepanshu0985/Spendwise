@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import { AuthProvider } from './auth/AuthContext'
 import { RedirectIfAuthenticated, RequireAuth } from './auth/guards'
 import { Layout } from './components/Layout'
+import { TopProgressBar } from './components/ui/TopProgressBar'
 import { AccountsPage } from './pages/AccountsPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { BudgetsPage } from './pages/BudgetsPage'
@@ -19,6 +20,7 @@ import { TransactionsPage } from './pages/TransactionsPage'
 function App() {
   return (
     <AuthProvider>
+      <TopProgressBar />
       <Routes>
         <Route
           path="/login"

@@ -376,3 +376,18 @@ Built in slices, each committed on its own. Checklist (from `development-roadmap
 - [ ] Walk the first-hour steps of the incident plan once on staging
 
 **Phase 15 exit gate:** the internal-to-beta checklist above is complete.
+
+## Progress while saving (after Phase 15)
+
+**Done:**
+- [x] A thin progress bar across the top of the page whenever any call to the server is in flight (saving, deleting, loading), so every action shows it is working with no per-button code; it appears only if the call takes more than a moment
+- [x] Every button whose label says it is working ("Saving…", "Uploading…", "Confirming…") now shows a spinner and cannot be clicked twice
+- [x] A dimmed overlay with a message for the slow actions that change things: reading an uploaded statement, suggesting categories, importing, retrying a failed statement
+- [x] Per-row feedback on the review screen ("Import anyway", "Skip this row", "Undo") and a spinner beside the "Paid from" choice while it saves
+- [x] Verified in a browser with the network slowed on purpose; motion is off for people who ask for less
+
+## Phase 16a — Bulk Categorization
+Not started. Plan in `docs/09-project/phase-plan.md`: select several rows, set a category or merchant for all, optional "remember this payee", undo; deterministic, no AI.
+
+## Phase 16b — Assistant Proposals
+Not started. The assistant proposes (preview card of exact rows and change), the person's Apply click writes via the 16a operation; the assistant itself stays read-only (D-24).

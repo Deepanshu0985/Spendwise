@@ -2228,3 +2228,111 @@ tbody tr:last-child td {
   font-size: 13px;
   line-height: 1.5;
 }
+
+/* ---------- Progress while saving ---------- */
+
+.btn-spinner {
+  width: 14px;
+  height: 14px;
+  border-color: currentColor;
+  border-top-color: transparent;
+  opacity: 0.8;
+}
+
+.spinner-sm {
+  width: 12px;
+  height: 12px;
+  vertical-align: -1px;
+}
+
+/* Thin bar across the top while any call to the server is in flight. The 0.25s delay is in the animation, so a quick call
+   never shows it. */
+.top-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  z-index: 500;
+  overflow: hidden;
+  background: rgba(31, 77, 58, 0.12);
+  opacity: 0;
+  animation: tp-appear 0.2s ease-out 0.25s forwards;
+  pointer-events: none;
+}
+
+.top-progress span {
+  display: block;
+  width: 35%;
+  height: 100%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--accent), #7fb08f);
+  animation: bl-slide 1.1s ease-in-out infinite;
+}
+
+@keyframes tp-appear {
+  to {
+    opacity: 1;
+  }
+}
+
+/* Over a dimmed page for work that takes a few seconds. Same delay trick: instant work never shows it. */
+.busy-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(20, 26, 22, 0.42);
+  opacity: 0;
+  animation: tp-appear 0.2s ease-out 0.3s forwards;
+}
+
+.busy-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 6px;
+  max-width: 340px;
+  padding: 26px 30px;
+  border-radius: 14px;
+  background: var(--card);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
+}
+
+.busy-bars {
+  height: 38px;
+  margin-bottom: 8px;
+}
+
+.busy-bars span {
+  background: linear-gradient(180deg, #c9b46a 0%, var(--accent) 100%);
+}
+
+.busy-title {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.busy-detail {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink-muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .top-progress,
+  .busy-overlay {
+    animation: none;
+    opacity: 1;
+  }
+
+  .top-progress span {
+    animation: none;
+    width: 100%;
+    opacity: 0.6;
+  }
+}

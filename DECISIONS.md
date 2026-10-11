@@ -752,3 +752,11 @@ Implementation-level decisions made while building, with the reasoning behind ea
 **Backups.** The VPS-era scripts assumed a self-hosted database. The real setup is Neon plus Render, so `restore-drill-neon.sh` was added: it restores a dump into a scratch container and verifies row counts, migrations, and above all that row-level security survived, because a restore that loses the policies silently turns a multi-user database into a shared one. It passed on local test data; the signed-off drill against Neon is the owner's, recorded in `backup-and-restore.md`.
 
 **Breach plan and policy.** Both are drafts that say what the system does and what to do; neither is legal advice. The notification deadlines are left blank on purpose rather than quoted from memory, and the policy carries a visible "not yet reviewed" notice until a qualified person has read it.
+
+## Progress while saving: one global bar, plus spinners where a person is waiting on a click
+
+**Decision.** Instead of adding an indicator to every save, delete and load by hand (and missing some, as happened: icon-button deletes and row actions had none), the API client counts calls in flight and one thin bar at the top of the page shows whenever any are. On top of that: `Button` shows a spinner whenever its label ends in an ellipsis (the app's existing convention for "in progress"), so about twenty existing buttons gained one with no per-site change; a dimmed overlay covers the few slow, state-changing actions (statement reading, AI suggestions, import, retry); and the review screen's per-row actions and the "Paid from" choice show their own small spinners.
+
+**Why delays live in CSS.** The bar and overlay fade in after 0.25-0.3 seconds through an animation delay, so a quick save never flashes them and no timer or state is needed.
+
+**Limit.** The bar says "something is happening", not which thing; the button or overlay of the action the person took says that.
