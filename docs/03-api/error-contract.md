@@ -23,6 +23,7 @@
 - `RATE_LIMITED` 429
 - `AI_QUOTA_EXCEEDED` 429
 - `AI_UNAVAILABLE` 503
+- `FEATURE_UNAVAILABLE` 503 (an optional feature such as Sign in with Google is not set up on this server)
 - `INTERNAL_ERROR` 500
 
 ## Ownership Failures Return 404

@@ -11,6 +11,7 @@ interface AuthContextValue {
   status: AuthStatus
   login: (body: LoginRequest) => Promise<void>
   register: (body: RegisterRequest) => Promise<void>
+  loginWithGoogle: (credential: string) => Promise<void>
   logout: () => Promise<void>
 }
 
@@ -53,6 +54,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setStatus('authenticated')
   }, [])
 
+  const loginWithGoogle = useCallback(async (credential: string) => {
+    const profile = await authApi.loginWithGoogle(credential)
+    setUser(profile)
+    setStatus('authenticated')
+  }, [])
+
   const logout = useCallback(async () => {
     // Always end up logged out client-side, even if the network call itself fails.
     try {
@@ -63,7 +70,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  return <AuthContext.Provider value={{ user, status, login, register, logout }}>{children}</AuthContext.Provider>
+  return <AuthContext.Provider value={{ user, status, login, register, loginWithGoogle, logout }}>{children}</AuthContext.Provider>
 }
 
 export function useAuth(): AuthContextValue {

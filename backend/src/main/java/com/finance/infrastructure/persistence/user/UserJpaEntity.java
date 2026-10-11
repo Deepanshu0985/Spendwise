@@ -20,8 +20,11 @@ public class UserJpaEntity {
     @Column(nullable = false, unique = true)
     private String email;
 
-    @Column(name = "password_hash", nullable = false)
+    @Column(name = "password_hash")
     private String passwordHash;
+
+    @Column(name = "google_subject")
+    private String googleSubject;
 
     @Column(name = "full_name", nullable = false)
     private String fullName;
@@ -47,10 +50,11 @@ public class UserJpaEntity {
         // JPA
     }
 
-    UserJpaEntity(UUID id, String email, String passwordHash, String fullName, String defaultCurrency, String timezone) {
+    UserJpaEntity(UUID id, String email, String passwordHash, String googleSubject, String fullName, String defaultCurrency, String timezone) {
         this.id = id;
         this.email = email;
         this.passwordHash = passwordHash;
+        this.googleSubject = googleSubject;
         this.fullName = fullName;
         this.defaultCurrency = defaultCurrency;
         this.timezone = timezone;
@@ -70,6 +74,14 @@ public class UserJpaEntity {
 
     void setPasswordHash(String passwordHash) {
         this.passwordHash = passwordHash;
+    }
+
+    String getGoogleSubject() {
+        return googleSubject;
+    }
+
+    void setGoogleSubject(String googleSubject) {
+        this.googleSubject = googleSubject;
     }
 
     String getFullName() {

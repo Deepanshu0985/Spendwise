@@ -12,9 +12,16 @@ export interface RegisterRequest {
   fullName: string
 }
 
+export interface GoogleConfig {
+  enabled: boolean
+  clientId: string | null
+}
+
 export const authApi = {
   register: (body: RegisterRequest) => apiClient.post<UserProfile>('/auth/register', body),
   login: (body: LoginRequest) => apiClient.post<UserProfile>('/auth/login', body),
+  googleConfig: () => apiClient.get<GoogleConfig>('/auth/google/config'),
+  loginWithGoogle: (credential: string) => apiClient.post<UserProfile>('/auth/google', { credential }),
   logout: () => apiClient.post<void>('/auth/logout'),
   me: () => apiClient.get<UserProfile>('/users/me'),
   requestPasswordReset: (email: string) => apiClient.post<void>('/auth/password-reset', { email }),

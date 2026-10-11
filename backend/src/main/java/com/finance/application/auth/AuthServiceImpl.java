@@ -38,6 +38,7 @@ public class AuthServiceImpl implements AuthService {
     private final TokenHasher tokenHasher;
     private final PasswordEncoder passwordEncoder;
     private final EmailSender emailSender;
+    private final GoogleIdentityVerifier googleVerifier;
     private final Duration passwordResetTtl;
     private final String appBaseUrl;
 
@@ -50,6 +51,7 @@ public class AuthServiceImpl implements AuthService {
             TokenHasher tokenHasher,
             PasswordEncoder passwordEncoder,
             EmailSender emailSender,
+            GoogleIdentityVerifier googleVerifier,
             @Value("${password-reset.ttl}") Duration passwordResetTtl,
             @Value("${APP_BASE_URL:http://localhost:5173}") String appBaseUrl) {
         this.userRepository = userRepository;
@@ -60,6 +62,7 @@ public class AuthServiceImpl implements AuthService {
         this.tokenHasher = tokenHasher;
         this.passwordEncoder = passwordEncoder;
         this.emailSender = emailSender;
+        this.googleVerifier = googleVerifier;
         this.passwordResetTtl = passwordResetTtl;
         this.appBaseUrl = appBaseUrl;
     }
@@ -81,8 +84,42 @@ public class AuthServiceImpl implements AuthService {
         User user = userRepository.findByEmail(email.strip().toLowerCase())
                 .orElseThrow(() -> new UnauthorizedException(GENERIC_LOGIN_FAILURE));
 
-        if (!passwordEncoder.matches(rawPassword, user.getPasswordHash())) {
+        // An account made through Google has no password, so password login can never succeed for it.
+        if (!user.hasPassword() || !passwordEncoder.matches(rawPassword, user.getPasswordHash())) {
             throw new UnauthorizedException(GENERIC_LOGIN_FAILURE);
+        }
+
+        CreatedSession created = sessionStore.create(user.getId(), userAgent);
+        return new LoginResult(user, created.rawToken(), created.session().getExpiresAt());
+    }
+
+    @Override
+    public java.util.Optional<String> googleClientId() {
+        return googleVerifier.isConfigured() ? java.util.Optional.of(googleVerifier.clientId()) : java.util.Optional.empty();
+    }
+
+    @Override
+    @Transactional
+    public LoginResult loginWithGoogle(String idToken, String userAgent) {
+        GoogleIdentity identity = googleVerifier.verify(idToken);
+
+        User user = userRepository.findByGoogleSubject(identity.subject()).orElse(null);
+        if (user == null) {
+            user = userRepository.findByEmail(identity.email()).orElse(null);
+            if (user != null && user.getGoogleSubject() != null) {
+                // The address belongs to an account tied to a different Google account; never hand it over.
+                throw new UnauthorizedException("Google sign-in could not be verified. Please try again.");
+            }
+            if (user != null) {
+                // First Google sign-in on an existing email account: Google has verified the address, so this is its owner.
+                // linkGoogle drops any password and every earlier session is ended (see User.linkGoogle for why).
+                user.linkGoogle(identity.subject());
+                user = userRepository.save(user);
+                revokeAllSessions(user.getId());
+            } else {
+                String name = identity.name().isBlank() ? identity.email().substring(0, identity.email().indexOf('@')) : identity.name();
+                user = userRepository.save(User.fromGoogle(identity.email(), identity.subject(), name, "INR", "Asia/Kolkata"));
+            }
         }
 
         CreatedSession created = sessionStore.create(user.getId(), userAgent);

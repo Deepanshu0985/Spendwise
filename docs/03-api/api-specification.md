@@ -3,7 +3,7 @@
 Base path: `/api/v1`
 
 ## Auth
-`POST /auth/register`, `POST /auth/login`, `POST /auth/logout`, `GET /auth/sessions`, `DELETE /auth/sessions`, `POST /auth/password-reset`, `POST /auth/password-reset/confirm`, `GET /users/me`
+`POST /auth/register`, `POST /auth/login`, `GET /auth/google/config` (public; `{enabled, clientId}` so the login page knows whether to draw the Google button), `POST /auth/google` (body `{credential}`, the ID token from the Sign in with Google button; signs in or creates the account, 401 for an invalid token, 503 `FEATURE_UNAVAILABLE` when not configured), `POST /auth/logout`, `GET /auth/sessions`, `DELETE /auth/sessions`, `POST /auth/password-reset`, `POST /auth/password-reset/confirm`, `GET /users/me`
 
 See `authentication-api.md`.
 

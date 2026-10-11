@@ -788,6 +788,7 @@ tbody tr:last-child td {
 
 .auth-form-panel {
   flex-grow: 1;
+  min-width: 0; /* without this the panel can't shrink below its 360px form, so a phone's right edge was cut off */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -813,6 +814,39 @@ tbody tr:last-child td {
   margin-top: 8px;
   font-size: 14px;
   color: var(--ink-muted);
+}
+
+/* Sign in with Google: Google draws the button itself; the divider separates it from the email form. */
+.google-signin {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.google-signin[hidden] {
+  display: none;
+}
+
+.google-signin-button {
+  display: flex;
+  justify-content: center;
+  min-height: 44px;
+}
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border, #e3e0d8);
 }
 
 .auth-form-footer {

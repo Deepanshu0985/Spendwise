@@ -1,6 +1,7 @@
 package com.finance.infrastructure.web.auth;
 
 import com.finance.application.auth.AuthService;
+import com.finance.application.exception.FeatureUnavailableException;
 import com.finance.infrastructure.tenancy.TenantContext;
 import com.finance.infrastructure.web.common.ApiResponse;
 import com.finance.infrastructure.web.common.CurrentUserGuard;
@@ -49,6 +50,28 @@ public class AuthController {
             @Valid @RequestBody LoginRequest request, HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
         AuthService.LoginResult result =
                 authService.login(request.email(), request.password(), httpRequest.getHeader(HttpHeaders.USER_AGENT));
+        httpResponse.addHeader(
+                HttpHeaders.SET_COOKIE,
+                cookieFactory.create(result.rawSessionToken(), result.expiresAt()).toString());
+        return ApiResponse.of(UserProfileResponse.from(result.user()));
+    }
+
+    /** Tells the login page whether to draw the Google button, and with which (public) client id. */
+    @GetMapping("/google/config")
+    public ApiResponse<GoogleConfigResponse> googleConfig() {
+        return ApiResponse.of(authService.googleClientId()
+                .map(id -> new GoogleConfigResponse(true, id))
+                .orElse(new GoogleConfigResponse(false, null)));
+    }
+
+    @PostMapping("/google")
+    public ApiResponse<UserProfileResponse> loginWithGoogle(
+            @Valid @RequestBody GoogleLoginRequest request, HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
+        if (authService.googleClientId().isEmpty()) {
+            throw new FeatureUnavailableException("Sign in with Google isn't set up on this server.");
+        }
+        AuthService.LoginResult result =
+                authService.loginWithGoogle(request.credential(), httpRequest.getHeader(HttpHeaders.USER_AGENT));
         httpResponse.addHeader(
                 HttpHeaders.SET_COOKIE,
                 cookieFactory.create(result.rawSessionToken(), result.expiresAt()).toString());

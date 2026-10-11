@@ -66,7 +66,7 @@ DigitalOcean remains the actual V1 production target once beta-ready — see `DE
 - [ ] Real `ResendEmailSender` once a Resend API key exists (D-04) — `LoggingEmailSender` stands in for now
 - [ ] Rate limiting on auth endpoints — deliberately deferred to Phase 15 per `development-roadmap.md`'s own sequencing, not forgotten
 - [ ] Session-listing/revoke-all could use direct JUnit coverage of `AuthServiceImpl` beyond the manual curl pass
-- [ ] Google OAuth ("Sign in with Google") as an additional login method — user explicitly wants this, but later, not now (D-19 in `docs/09-project/open-decisions.md`)
+- [x] Google OAuth ("Sign in with Google") as an additional login method — built after Phase 14, before Phase 15 (D-19; see "Sign in with Google" below)
 
 ## Phase 2 — Accounts and Categories
 
@@ -304,6 +304,22 @@ Planned for later, only if real use of 13a shows structured search is not enough
 
 **Left:**
 - [ ] Weekly or yearly insights; a scored golden-dataset evaluation of insight quality
+
+## Sign in with Google (D-19)
+
+**Done:**
+- [x] "Continue with Google" button on the login and sign-up pages (Google's own button, script loaded only on those pages); the page asks `GET /auth/google/config` whether to draw it, so the client id lives in one place (`GOOGLE_CLIENT_ID` on the backend) and nothing is shown when it is not set
+- [x] `POST /auth/google`: the backend verifies the ID token itself (RS256 signature against Google's published keys, issuer, audience = this app's client id, expiry, verified email), then signs the person in or creates the account and sets the same session cookie as email login
+- [x] `V24`: `users.password_hash` optional, `users.google_subject` (unique) - Google accounts are matched on Google's stable account id, not the email
+- [x] A first Google sign-in on an existing email account links it, drops its password and ends its earlier sessions (see DECISIONS.md for why); a Google-only account cannot use password login but can set a password through "Forgot password"
+- [x] Fixed on the way: the login/sign-up form was wider than a phone screen (right edge cut off)
+- [x] 13 verifier + 4 key-source unit tests, 8 integration tests (new account, return visit, linking, takeover refused, forged token, not configured, Google-only account and password reset, config endpoint); full suite 123 integration tests green
+
+**Left:**
+- [ ] You: add the staging and production site addresses (and `http://localhost:5173`) as "Authorized JavaScript origins" on the Google client, and set `GOOGLE_CLIENT_ID` on both Render services
+- [ ] Real Google sign-in round trip in a browser (needs those origins); the token check itself is covered by tests with generated keys
+- [ ] Two simultaneous first-time sign-ins for one new Google account could hit the unique index and return a 500 for one of them (rare; the retry works)
+- [ ] Rate limiting for the new endpoint comes with Phase 15
 
 ## Phase 15 — Beta Readiness
 Not started.

@@ -13,6 +13,12 @@ public interface AuthService {
 
     LoginResult login(String email, String rawPassword, String userAgent);
 
+    /** Signs in (or signs up) with a Google ID token. Throws UnauthorizedException for an invalid token. */
+    LoginResult loginWithGoogle(String idToken, String userAgent);
+
+    /** The Google client id when Google sign-in has been set up on this server, otherwise empty. */
+    java.util.Optional<String> googleClientId();
+
     void logout(UUID sessionId);
 
     List<Session> listActiveSessions(UUID userId);

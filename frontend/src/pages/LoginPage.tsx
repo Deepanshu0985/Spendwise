@@ -4,10 +4,11 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { ApiRequestError } from '../api/client'
 import { useAuth } from '../auth/AuthContext'
 import { Button } from '../components/ui/Button'
+import { GoogleSignIn } from '../components/auth/GoogleSignIn'
 import { Field } from '../components/ui/Field'
 
 export function LoginPage() {
-  const { login } = useAuth()
+  const { login, loginWithGoogle } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const [email, setEmail] = useState('')
@@ -30,6 +31,17 @@ export function LoginPage() {
     }
   }
 
+  async function handleGoogle(credential: string) {
+    setError(null)
+    try {
+      await loginWithGoogle(credential)
+      const from = (location.state as { from?: { pathname: string } } | null)?.from
+      navigate(from?.pathname ?? '/', { replace: true })
+    } catch (err) {
+      setError(err instanceof ApiRequestError ? err.message : 'Something went wrong. Please try again.')
+    }
+  }
+
   return (
     <div className="auth-shell">
       <div className="auth-brand">
@@ -48,8 +60,9 @@ export function LoginPage() {
             <h1>Welcome back</h1>
             <p className="auth-form-subtitle">Log in to see where your money went.</p>
           </div>
+          {error && <div className="form-error-banner">{error}</div>}
+          <GoogleSignIn onCredential={(credential) => void handleGoogle(credential)} />
           <form onSubmit={(e) => void handleSubmit(e)}>
-            {error && <div className="form-error-banner">{error}</div>}
             <Field
               label="Email"
               type="email"
