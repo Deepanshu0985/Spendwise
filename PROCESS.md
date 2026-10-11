@@ -321,5 +321,13 @@ Planned for later, only if real use of 13a shows structured search is not enough
 - [ ] Two simultaneous first-time sign-ins for one new Google account could hit the unique index and return a 500 for one of them (rare; the retry works)
 - [ ] Rate limiting for the new endpoint comes with Phase 15
 
+## Loading states (after Google sign-in)
+
+**Done:**
+- [x] Signing in (email, Google or sign-up) and signing out now show a full-screen branded splash (the Spendwise bars rising like a chart, the wordmark, a short message) instead of a frozen page; it appears the moment the button is pressed, stays at least a moment on success so it never flashes, fades out, and clears at once on a failed login so the error shows. After a few seconds it explains that the free server may be waking up
+- [x] The first-load screen uses the same loader
+- [x] Every page's spinner is replaced by a shimmering skeleton in the shape of the real page: dashboard (figures, charts, lists), transactions and statements (table rows), accounts (cards), budgets, goals and recurring (stacked cards); the assistant's "looking at your data" uses bobbing dots
+- [x] Motion is switched off for people who ask their system for less motion; skeletons carry a hidden "Loading ..." label for screen readers
+
 ## Phase 15 — Beta Readiness
 Not started.

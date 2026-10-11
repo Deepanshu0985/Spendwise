@@ -11,6 +11,7 @@ import { Modal } from '../components/ui/Modal'
 import { SelectField } from '../components/ui/SelectField'
 import { useReferenceData } from '../data/ReferenceDataContext'
 import { formatCurrency, formatDate } from '../lib/format'
+import { CardListSkeleton } from '../components/ui/Skeletons'
 
 const STATUS_LABELS: Record<BudgetStatus, string> = {
   ON_TRACK: 'On track',
@@ -86,9 +87,7 @@ export function BudgetsPage() {
       {error && <div className="form-error-banner" style={{ marginBottom: 16 }}>{error}</div>}
 
       {loading ? (
-        <div className="loading-state">
-          <span className="spinner" /> Loading budgets…
-        </div>
+        <CardListSkeleton label="Loading budgets" />
       ) : budgets.length === 0 ? (
         <div className="card">
           <div className="empty-state">No budgets yet. Create one to track your spending against a limit.</div>

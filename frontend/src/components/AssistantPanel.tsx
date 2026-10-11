@@ -6,6 +6,7 @@ import { assistantApi } from '../api/assistant'
 import type { AiStatus, AssistantSource, AssistantTurn } from '../api/types'
 import { formatCurrency, formatDate } from '../lib/format'
 import { CloseIcon, SendIcon } from './icons'
+import { TypingDots } from './ui/Skeletons'
 
 interface Message extends AssistantTurn {
   basedOn?: { name: string; context: string }[]
@@ -185,7 +186,7 @@ export function AssistantPanel({ open, onClose }: Props) {
 
         {sending && (
           <div className="assistant-note">
-            <span className="spinner" /> Looking at your data…
+            <TypingDots label="Looking at your data…" />
           </div>
         )}
         <div ref={bottomRef} />

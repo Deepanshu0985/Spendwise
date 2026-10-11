@@ -8,6 +8,7 @@ import { Button } from '../components/ui/Button'
 import { Field } from '../components/ui/Field'
 import { Modal } from '../components/ui/Modal'
 import { formatCurrency, formatDate, today } from '../lib/format'
+import { CardListSkeleton } from '../components/ui/Skeletons'
 
 const FREQUENCY_LABELS: Record<RecurrenceFrequency, string> = {
   WEEKLY: 'Weekly',
@@ -153,9 +154,7 @@ export function RecurringPage() {
       </div>
 
       {loading && items.length === 0 ? (
-        <div className="loading-state">
-          <span className="spinner" /> Looking for recurring payments…
-        </div>
+        <CardListSkeleton label="Looking for recurring payments" />
       ) : items.length === 0 ? (
         <div className="card">
           <div className="empty-state">

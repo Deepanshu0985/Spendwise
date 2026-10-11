@@ -705,3 +705,12 @@ Implementation-level decisions made while building, with the reasoning behind ea
 **Testing.** The token check has unit tests with generated RSA keys (forged claims, wrong audience, expired, future-dated, `none`/HS256, unknown key id, unverified email, garbage), the key fetch is tested against a local stand-in for Google, and the flow is tested end to end with a fake verifier. The real round trip with Google needs the site addresses added as authorised JavaScript origins on the client, which only the owner of the Google project can do. Real Google's certificate format was confirmed against the live endpoint.
 
 **Also fixed.** On a phone the login/sign-up panel could not shrink below its 360px form, so the right edge was cut off (`min-width: 0` on the panel).
+
+
+## Loading states: a splash for sign-in/out, skeletons for pages
+
+**Decision.** Waiting on the server now looks intentional. Sign-in, sign-up, Google sign-in and sign-out run inside one `withSplash` helper in `AuthContext`: it shows a full-screen branded loader immediately, keeps it for at least 900ms on success (a faster splash would just flash), fades it for 320ms, and removes it at once on failure so the error message is visible. Pages show skeletons (placeholder shapes that match the real layout) instead of a spinner and "Loading...".
+
+**Why.** The free server can take up to a minute to wake, and a frozen page after pressing "Log in" reads as broken. Skeletons also keep the page from jumping when data arrives.
+
+**Notes.** Pure CSS, no animation library; reduced-motion users get static versions. The dashboard no longer shows the inline tip under its skeleton (the tip strip above already shows one). The app's own layout is still not built for phone-width screens (a fixed sidebar), which this did not change.

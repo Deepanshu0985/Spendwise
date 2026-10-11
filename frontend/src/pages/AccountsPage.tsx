@@ -10,6 +10,7 @@ import { Modal } from '../components/ui/Modal'
 import { SelectField } from '../components/ui/SelectField'
 import { useReferenceData } from '../data/ReferenceDataContext'
 import { ACCOUNT_TYPE_LABELS, colorForKey } from '../lib/labels'
+import { AccountGridSkeleton } from '../components/ui/Skeletons'
 
 const ACCOUNT_TYPES: AccountType[] = ['BANK', 'CREDIT_CARD', 'CASH', 'WALLET', 'OTHER']
 const CURRENCIES = ['INR', 'USD', 'EUR', 'GBP']
@@ -110,9 +111,7 @@ export function AccountsPage() {
       </div>
 
       {loading ? (
-        <div className="loading-state">
-          <span className="spinner" /> Loading accounts&hellip;
-        </div>
+        <AccountGridSkeleton label="Loading accounts" />
       ) : (
         <div className="accounts-grid">
           {accounts.map((account) => (
