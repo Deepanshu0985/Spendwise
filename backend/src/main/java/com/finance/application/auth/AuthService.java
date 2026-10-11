@@ -11,7 +11,8 @@ public interface AuthService {
 
     User register(String email, String rawPassword, String fullName);
 
-    LoginResult login(String email, String rawPassword, String userAgent);
+    /** @param clientIp the caller's address, used only to count failed guesses; never stored or logged */
+    LoginResult login(String email, String rawPassword, String userAgent, String clientIp);
 
     /** Signs in (or signs up) with a Google ID token. Throws UnauthorizedException for an invalid token. */
     LoginResult loginWithGoogle(String idToken, String userAgent);

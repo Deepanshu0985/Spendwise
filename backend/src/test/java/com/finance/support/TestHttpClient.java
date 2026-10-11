@@ -43,9 +43,16 @@ public final class TestHttpClient {
     private final HttpClient client = HttpClient.newHttpClient();
     private final Map<String, String> cookies = new LinkedHashMap<>();
     private final String baseUrl;
+    private final Map<String, String> fixedHeaders = new LinkedHashMap<>();
 
     public TestHttpClient(int port) {
         this.baseUrl = "http://localhost:" + port + "/api/v1";
+    }
+
+    /** A header sent on every request this client makes, e.g. X-Forwarded-For or Origin. Replaces any earlier value. */
+    public TestHttpClient withHeader(String name, String value) {
+        fixedHeaders.put(name, value);
+        return this;
     }
 
     /** Every session must call this once before any mutating call, to mint the CSRF cookie - mirrors real frontend behavior. */
@@ -148,6 +155,7 @@ public final class TestHttpClient {
     private ApiResult send(HttpRequest.Builder builder) {
         try {
             withCookiesOnly(builder);
+            fixedHeaders.forEach(builder::setHeader);
             HttpResponse<String> response = client.send(builder.build(), HttpResponse.BodyHandlers.ofString());
             captureCookies(response.headers().allValues("Set-Cookie"));
             String raw = response.body();

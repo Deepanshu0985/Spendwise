@@ -4,6 +4,8 @@ import com.finance.application.exception.ApiError;
 import com.finance.application.exception.ApiException;
 import com.finance.application.exception.DomainValidationException;
 import com.finance.application.exception.ErrorCode;
+import com.finance.application.exception.RateLimitedException;
+import org.springframework.http.HttpHeaders;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -26,6 +28,14 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiError.Envelope> handleDomainValidation(DomainValidationException ex) {
         ApiError error = new ApiError(ex.code().name(), ex.getMessage(), ex.details(), newRequestId());
         return ResponseEntity.status(ex.status()).body(new ApiError.Envelope(error));
+    }
+
+    @ExceptionHandler(RateLimitedException.class)
+    public ResponseEntity<ApiError.Envelope> handleRateLimited(RateLimitedException ex) {
+        ApiError error = new ApiError(ex.code().name(), ex.getMessage(), List.of(), newRequestId());
+        return ResponseEntity.status(ex.status())
+                .header(HttpHeaders.RETRY_AFTER, String.valueOf(ex.retryAfterSeconds()))
+                .body(new ApiError.Envelope(error));
     }
 
     @ExceptionHandler(ApiException.class)

@@ -330,4 +330,20 @@ Planned for later, only if real use of 13a shows structured search is not enough
 - [x] Motion is switched off for people who ask their system for less motion; skeletons carry a hidden "Loading ..." label for screen readers
 
 ## Phase 15 — Beta Readiness
-Not started.
+
+Built in slices, each committed on its own. Checklist (from `development-roadmap.md`): rate limiting, quota enforcement, observability and alerting, privacy policy, export and deletion, breach response plan, restore drill, uptime monitoring.
+
+**Slice 1 - rate limiting and constant-time login: done**
+- [x] Per address: a general ceiling (300/min), a tighter one for sign-in, Google sign-in and password reset (20 per 5 min), and one for registration (10/hour)
+- [x] Per signed-in user: statement uploads (10/hour), the assistant (20/min), insight writing and category suggestions (10/min), on top of the existing daily and monthly AI caps
+- [x] Failed password guesses: 5 per 15 minutes per address and account, and 25 per hour per account across all addresses; the lockout applies to unknown emails exactly as to known ones, and a successful login clears it
+- [x] A login always runs one password check (against a decoy hash when the account is unknown or Google-only), so an unknown email no longer answers faster than a known one
+- [x] 429 responses carry `Retry-After`, a readable message, and the CORS headers (so the browser can show the message); only the rule name is logged, never an address or account
+- [x] Caller address read from `X-Forwarded-For` by counting trusted proxy hops from the right (`RATE_LIMIT_PROXY_HOPS`), so a forged header cannot pick its own address
+- [x] 9 unit + 10 integration tests (lockout, unknown email, owner not locked out by a stranger, spoofed header, per-user upload limit, CORS on a refusal); full suite 210 unit + 133 integration green
+
+**Left in this slice:**
+- [ ] Set `RATE_LIMIT_PROXY_HOPS` for Render (likely 2: Cloudflare then Render's proxy) and confirm from the one-time log line that the entry count matches; without it every visitor would share one address
+- [ ] The counters are in memory per instance and reset on restart (fine for one free-tier instance)
+
+**Next slices:** account deletion and data export, then metrics/alerts and uptime monitoring, then the written pieces (privacy policy, breach plan, restore drill).

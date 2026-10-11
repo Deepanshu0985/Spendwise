@@ -714,3 +714,17 @@ Implementation-level decisions made while building, with the reasoning behind ea
 **Why.** The free server can take up to a minute to wake, and a frozen page after pressing "Log in" reads as broken. Skeletons also keep the page from jumping when data arrives.
 
 **Notes.** Pure CSS, no animation library; reduced-motion users get static versions. The dashboard no longer shows the inline tip under its skeleton (the tip strip above already shows one). The app's own layout is still not built for phone-width screens (a fixed sidebar), which this did not change.
+
+## Phase 15, slice 1: rate limiting and constant-time login
+
+**Decision.** Request limits live in one MVC interceptor over `/api/**` (not a servlet filter), counters in an in-memory fixed-window `RateLimiter` behind a port. Per address: general, sign-in/Google/password-reset, registration. Per user: upload, assistant, insight writing, category suggestions. Failed password guesses are counted inside the login itself.
+
+**Why an interceptor.** The browser can only read a 429's message when the CORS headers are on it, and Spring MVC adds those before interceptors run; a filter would have needed its own copy of the CORS logic (the CSRF filter's 403 has this gap today). It also sees unknown `/api` paths, so probing is counted.
+
+**Why the lockout is per address and account, plus a wider per-account ceiling.** A lockout keyed only on the email would let a stranger lock the real owner out by typing wrong passwords. Keyed on address and email, the stranger only blocks their own address; the per-account ceiling (25 an hour across all addresses) slows a guesser spread over many addresses without letting one person lock an account for long. Unknown emails are locked identically, so lockout does not reveal which accounts exist.
+
+**Constant-time login.** Every login runs one BCrypt check, against a decoy hash made at startup when the account is missing or Google-only, so response time does not reveal whether an email is registered.
+
+**Caller address.** `X-Forwarded-For` entries are appended on the right by each proxy and anything on the left is whatever the caller sent, so only the entry the trusted proxies added is believed: the Nth from the right (`RATE_LIMIT_PROXY_HOPS`, default 1). Too high trusts forgeable data; too low makes all visitors share the proxy's address, so the first request logs the entry count (no addresses) to confirm the setting on the real host.
+
+**Accepted limits.** Counters reset on restart and are per instance. A flood large enough to hurt before reaching this code can only be stopped at the edge (a CDN or firewall in front of the host).
