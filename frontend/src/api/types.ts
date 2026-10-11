@@ -7,6 +7,8 @@ export interface UserProfile {
   fullName: string
   defaultCurrency: string
   timezone: string
+  hasPassword: boolean
+  googleLinked: boolean
 }
 
 export type AccountType = 'BANK' | 'CREDIT_CARD' | 'CASH' | 'WALLET' | 'OTHER'

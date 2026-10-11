@@ -728,3 +728,15 @@ Implementation-level decisions made while building, with the reasoning behind ea
 **Caller address.** `X-Forwarded-For` entries are appended on the right by each proxy and anything on the left is whatever the caller sent, so only the entry the trusted proxies added is believed: the Nth from the right (`RATE_LIMIT_PROXY_HOPS`, default 1). Too high trusts forgeable data; too low makes all visitors share the proxy's address, so the first request logs the entry count (no addresses) to confirm the setting on the real host.
 
 **Accepted limits.** Counters reset on restart and are per instance. A flood large enough to hurt before reaching this code can only be stopped at the edge (a CDN or firewall in front of the host).
+
+## Phase 15, slice 2: export and erasure of a person's data
+
+**Decision.** Deletion is immediate and complete, not a "deactivated for 30 days" state: one transaction deletes the person's rows table by table (children before parents, the account last), then the stored statement files. It needs the word DELETE and fresh proof of identity: the password, or for an account that only signs in with Google, a fresh Google credential that must belong to the same Google account. Export is one JSON document built from the same table list.
+
+**Why immediate.** Erasure on request is the point of the DPDP deletion path, and a grace period would mean holding financial data the person asked us to remove. The cost is that a mistaken deletion cannot be undone, so the dialog says so, offers the export first, and asks for the typed word and the password.
+
+**Why plain SQL and a database-enforced check.** Every table that holds a person's data must be covered, and the models are spread across many features. The foreign keys already refuse to delete a user row while another row points at it, so `UserDataIT` deleting a populated account is a complete test: a table someone adds later and forgets here makes that test fail (checked by removing a table on purpose). Row-level security stays in force: the delete runs as the signed-in person.
+
+**What is exported.** Their own rows as stored, minus the internal user id, the password hash and file storage paths. A person's custom categories are exported; the shared built-in ones are not theirs.
+
+**Limits.** Rate limited (5 an hour each) because a stolen session could otherwise guess the password through the delete form. Files that cannot be removed from storage are counted in a log line and do not undo the deletion.

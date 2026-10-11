@@ -3,7 +3,7 @@ import { NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { ReferenceDataProvider } from '../data/ReferenceDataContext'
 import { AssistantPanel } from './AssistantPanel'
-import { BankIcon, ChatIcon, FileTextIcon, GridIcon, ListIcon, LogoutIcon, PiggyIcon, RepeatIcon, TargetIcon } from './icons'
+import { BankIcon, ChatIcon, FileTextIcon, GridIcon, ListIcon, LogoutIcon, PiggyIcon, RepeatIcon, SettingsIcon, TargetIcon } from './icons'
 
 const NAV_ITEMS = [
   { to: '/', label: 'Dashboard', Icon: GridIcon, end: true },
@@ -13,10 +13,10 @@ const NAV_ITEMS = [
   { to: '/recurring', label: 'Recurring', Icon: RepeatIcon, end: false },
   { to: '/budgets', label: 'Budgets', Icon: TargetIcon, end: false },
   { to: '/goals', label: 'Goals', Icon: PiggyIcon, end: false },
+  { to: '/settings', label: 'Settings', Icon: SettingsIcon, end: false },
 ] as const
 
-// Navigation is scoped to what's actually built - the remaining docs/06-frontend/ui-ux-specification.md sections
-// (Settings) get their link in their own phases. A page and its link ship together. The assistant is not a page: it is a
+// Navigation is scoped to what's actually built. A page and its link ship together. The assistant is not a page: it is a
 // panel docked on the right of every page, opened from the round button.
 const PANEL_KEY = 'assistantPanelOpen'
 

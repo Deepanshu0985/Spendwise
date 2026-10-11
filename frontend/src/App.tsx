@@ -3,7 +3,6 @@ import { AuthProvider } from './auth/AuthContext'
 import { RedirectIfAuthenticated, RequireAuth } from './auth/guards'
 import { Layout } from './components/Layout'
 import { AccountsPage } from './pages/AccountsPage'
-import { ComingSoonPage } from './pages/ComingSoonPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { BudgetsPage } from './pages/BudgetsPage'
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage'
@@ -12,6 +11,7 @@ import { LoginPage } from './pages/LoginPage'
 import { RecurringPage } from './pages/RecurringPage'
 import { RegisterPage } from './pages/RegisterPage'
 import { ResetPasswordPage } from './pages/ResetPasswordPage'
+import { SettingsPage } from './pages/SettingsPage'
 import { StatementsPage } from './pages/StatementsPage'
 import { TransactionsPage } from './pages/TransactionsPage'
 
@@ -61,7 +61,7 @@ function App() {
             <Route path="budgets" element={<BudgetsPage />} />
             <Route path="goals" element={<GoalsPage />} />
             <Route path="recurring" element={<RecurringPage />} />
-            <Route path="settings" element={<ComingSoonPage title="Settings" phase="Phase 15" />} />
+            <Route path="settings" element={<SettingsPage />} />
           </Route>
         </Route>
 

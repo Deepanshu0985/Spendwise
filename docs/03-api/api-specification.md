@@ -3,7 +3,7 @@
 Base path: `/api/v1`
 
 ## Auth
-`POST /auth/register`, `POST /auth/login`, `GET /auth/google/config` (public; `{enabled, clientId}` so the login page knows whether to draw the Google button), `POST /auth/google` (body `{credential}`, the ID token from the Sign in with Google button; signs in or creates the account, 401 for an invalid token, 503 `FEATURE_UNAVAILABLE` when not configured), `POST /auth/logout`, `GET /auth/sessions`, `DELETE /auth/sessions`, `POST /auth/password-reset`, `POST /auth/password-reset/confirm`, `GET /users/me`
+`POST /auth/register`, `POST /auth/login`, `GET /auth/google/config` (public; `{enabled, clientId}` so the login page knows whether to draw the Google button), `POST /auth/google` (body `{credential}`, the ID token from the Sign in with Google button; signs in or creates the account, 401 for an invalid token, 503 `FEATURE_UNAVAILABLE` when not configured), `POST /auth/logout`, `GET /auth/sessions`, `DELETE /auth/sessions`, `POST /auth/password-reset`, `POST /auth/password-reset/confirm`, `GET /users/me` (also `hasPassword` and `googleLinked`), `GET /users/me/export` (the person's data as one downloadable JSON file; never the password hash, internal user id or storage paths; 5 an hour), `POST /users/me/delete` (body `{confirmation: "DELETE", password}` or, for a Google-only account, `{confirmation, googleCredential}` from a fresh Google sign-in; erases the account and every row and stored file immediately, ends the session, 204; 400 and nothing deleted when the proof is wrong; 5 an hour)
 
 See `authentication-api.md`.
 

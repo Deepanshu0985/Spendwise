@@ -40,6 +40,8 @@ public class RateLimitInterceptor implements HandlerInterceptor {
     private final int uploadsPerHour;
     private final int chatPerMinute;
     private final int aiWritesPerMinute;
+    private final int exportsPerHour;
+    private final int deletesPerHour;
 
     public RateLimitInterceptor(
             RateLimiter limiter,
@@ -51,7 +53,9 @@ public class RateLimitInterceptor implements HandlerInterceptor {
             @Value("${ratelimit.register-per-hour:10}") int registerPerHour,
             @Value("${ratelimit.uploads-per-hour:10}") int uploadsPerHour,
             @Value("${ratelimit.chat-per-minute:20}") int chatPerMinute,
-            @Value("${ratelimit.ai-writes-per-minute:10}") int aiWritesPerMinute) {
+            @Value("${ratelimit.ai-writes-per-minute:10}") int aiWritesPerMinute,
+            @Value("${ratelimit.exports-per-hour:5}") int exportsPerHour,
+            @Value("${ratelimit.deletes-per-hour:5}") int deletesPerHour) {
         this.limiter = limiter;
         this.ipResolver = ipResolver;
         this.tenantContext = tenantContext;
@@ -62,6 +66,8 @@ public class RateLimitInterceptor implements HandlerInterceptor {
         this.uploadsPerHour = uploadsPerHour;
         this.chatPerMinute = chatPerMinute;
         this.aiWritesPerMinute = aiWritesPerMinute;
+        this.exportsPerHour = exportsPerHour;
+        this.deletesPerHour = deletesPerHour;
     }
 
     @Override
@@ -72,12 +78,16 @@ public class RateLimitInterceptor implements HandlerInterceptor {
         String ip = ipResolver.resolve(request);
         enforce("ip-general:" + ip, generalPerMinute, Duration.ofMinutes(1));
 
+        if ("GET".equals(request.getMethod()) && request.getRequestURI().equals(API + "/users/me/export")) {
+            enforceForUser("export", exportsPerHour, Duration.ofHours(1));
+        }
         if ("POST".equals(request.getMethod())) {
             String path = request.getRequestURI();
             switch (path) {
                 case API + "/auth/login", API + "/auth/google", API + "/auth/password-reset", API + "/auth/password-reset/confirm" ->
                         enforce("ip-auth:" + ip, authPerFiveMinutes, Duration.ofMinutes(5));
                 case API + "/auth/register" -> enforce("ip-register:" + ip, registerPerHour, Duration.ofHours(1));
+                case API + "/users/me/delete" -> enforceForUser("delete", deletesPerHour, Duration.ofHours(1));
                 case API + "/statements/upload" -> enforceForUser("upload", uploadsPerHour, Duration.ofHours(1));
                 case API + "/ai/chat" -> enforceForUser("chat", chatPerMinute, Duration.ofMinutes(1));
                 case API + "/ai/insights/monthly" -> enforceForUser("ai-write", aiWritesPerMinute, Duration.ofMinutes(1));

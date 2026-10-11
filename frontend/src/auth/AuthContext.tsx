@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { authApi } from '../api/auth'
-import type { LoginRequest, RegisterRequest } from '../api/auth'
+import type { DeleteAccountRequest, LoginRequest, RegisterRequest } from '../api/auth'
 import type { UserProfile } from '../api/types'
 import { SplashScreen } from '../components/ui/BrandLoader'
 import type { SplashPhase } from '../components/ui/BrandLoader'
@@ -15,6 +15,8 @@ interface AuthContextValue {
   register: (body: RegisterRequest) => Promise<void>
   loginWithGoogle: (credential: string) => Promise<void>
   logout: () => Promise<void>
+  signOutEverywhere: () => Promise<void>
+  deleteAccount: (body: DeleteAccountRequest) => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -116,8 +118,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [withSplash],
   )
 
+  const signOutEverywhere = useCallback(
+    () =>
+      withSplash('Signing you out everywhere', 'Ending every session', async () => {
+        try {
+          await authApi.revokeAllSessions()
+        } finally {
+          setUser(null)
+          setStatus('anonymous')
+        }
+      }),
+    [withSplash],
+  )
+
+  // Only after the server has confirmed the erasure does the app forget the person; a wrong password leaves everything as it was.
+  const deleteAccount = useCallback(
+    (body: DeleteAccountRequest) =>
+      withSplash('Deleting your account', 'Removing your data for good', async () => {
+        await authApi.deleteAccount(body)
+        setUser(null)
+        setStatus('anonymous')
+      }),
+    [withSplash],
+  )
+
   return (
-    <AuthContext.Provider value={{ user, status, login, register, loginWithGoogle, logout }}>
+    <AuthContext.Provider value={{ user, status, login, register, loginWithGoogle, logout, signOutEverywhere, deleteAccount }}>
       {children}
       <SplashScreen phase={splash.phase} title={splash.title} detail={splash.detail} />
     </AuthContext.Provider>

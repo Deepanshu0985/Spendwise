@@ -346,4 +346,15 @@ Built in slices, each committed on its own. Checklist (from `development-roadmap
 - [ ] Set `RATE_LIMIT_PROXY_HOPS` for Render (likely 2: Cloudflare then Render's proxy) and confirm from the one-time log line that the entry count matches; without it every visitor would share one address
 - [ ] The counters are in memory per instance and reset on restart (fine for one free-tier instance)
 
-**Next slices:** account deletion and data export, then metrics/alerts and uptime monitoring, then the written pieces (privacy policy, breach plan, restore drill).
+**Slice 2 - data export and account deletion, with a Settings page: done**
+- [x] `GET /users/me/export`: one JSON file with the profile (sign-in methods, never the password hash) and every table of the person's data; internal ids and storage paths left out; rate limited
+- [x] `POST /users/me/delete`: needs the word DELETE plus proof it is them (their password, or for a Google-only account a fresh Google credential for the same Google account); erases every row in foreign-key order, the account last, in one transaction, then removes the uploaded statement files; ends the session; rate limited
+- [x] Deletion is checked by the database itself: the user row cannot be deleted while any row still points at it, so a table added later and forgotten here fails `UserDataIT` (confirmed by removing one table on purpose and watching the test fail)
+- [x] Settings page (replaces the "coming soon" placeholder, sidebar link added): account facts, Download my data, Sign out everywhere, and a Delete account dialog; a wrong password leaves everything untouched
+- [x] 7 new integration tests (export content and exclusions, bystander untouched, files removed, email reusable, wrong proof deletes nothing, CSRF and session required, Google-only proof); full suite 210 unit + 140 integration green
+
+**Left in this slice:**
+- [ ] Export is JSON only (no CSV), built in memory (fine for personal volumes, not for hundreds of thousands of rows)
+- [ ] Statement files on the free host live on its temporary disk; erasure removes what is there
+
+**Next slices:** metrics/alerts and uptime monitoring, then the written pieces (privacy policy page, breach plan, restore drill).

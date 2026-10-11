@@ -105,7 +105,20 @@ function query(params?: Record<string, string | number | undefined>): string {
   return `?${search.toString()}`
 }
 
+/** A file the server sends back (the data export): the raw bytes, with the same cookie and error handling as every call. */
+async function download(path: string): Promise<Blob> {
+  const response = await fetch(`${BASE_PATH}${path}`, { method: 'GET', credentials: 'include', headers: csrfHeaders() })
+  const freshToken = response.headers.get('X-CSRF-Token')
+  if (freshToken) cachedCsrfToken = freshToken
+  if (!response.ok) {
+    const body = (await response.json()) as { error: ApiErrorBody }
+    throw new ApiRequestError(body.error)
+  }
+  return response.blob()
+}
+
 export const apiClient = {
+  download,
   get: <T>(path: string, params?: Record<string, string | number | undefined>) =>
     request<T>(`${path}${query(params)}`, { method: 'GET' }).then((e) => e.data),
   getWithMeta: <T, M>(path: string, params?: Record<string, string | number | undefined>) =>
