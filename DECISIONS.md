@@ -779,3 +779,15 @@ Implementation-level decisions made while building, with the reasoning behind ea
 
 **Fixed on the way.** The dashboard's grid columns used `1fr`, which lets a wide child stretch the column past the screen; `minmax(0, 1fr)` and `min-width: 0` let the cards shrink and the tables inside scroll instead.
 
+## iPhone login: same-origin through Vercel rewrites (and what it cost the rate limiter)
+
+**Decision.** The website forwards `/api/*` to the backend (Vercel rewrites in `frontend/vercel.json`, chosen by host: the staging alias to the staging backend, `spendwise-frontend-sand.vercel.app` to the live one, anything else to nothing). The app always calls a relative `/api/v1`. The backend's cookies are then first-party, which iPhone browsers accept.
+
+**Why not just fix the CORS message.** The cause was not CORS: the cookie was dropped, the CSRF check failed, and that 403 was written by a servlet filter, outside Spring's CORS handling, so it had no CORS headers and surfaced as a network error. Making the 403 readable would have shown a clear message but still not let anyone log in. Same-origin removes the cause.
+
+**Alternatives.** A custom domain shared by the site and the backend (`app.` and `api.` on one registrable domain) is the cleaner long-term answer and keeps one proxy fewer, but costs a domain. Token authentication in the browser instead of cookies would be a rewrite of the session design. Rewrites are free and a config change.
+
+**What the extra proxy broke, and the repair.** Rate limiting trusts `X-Forwarded-For` by counting proxies from the right. Behind two proxies the real visitor is the second from the right, so hops became 2. But someone who calls the backend directly can then forge that second entry. So there are two limits: the strict ones on the claimed visitor address, and a ten-times-higher ceiling on the address that actually connected (the last entry, which a caller cannot forge). Visitors behind the website's shared address are limited separately; a direct forger runs into the outer ceiling.
+
+**Unknowns, to be settled on staging before production.** How large a request Vercel's forwarding accepts (statement uploads reach 15MB), and behaviour while the free backend wakes (Vercel waits up to 120 seconds for the first byte, longer than a cold start).
+

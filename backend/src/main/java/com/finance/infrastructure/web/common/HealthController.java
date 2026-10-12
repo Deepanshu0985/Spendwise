@@ -1,5 +1,7 @@
 package com.finance.infrastructure.web.common;
 
+import com.finance.infrastructure.ratelimit.ClientIpResolver;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -17,9 +19,20 @@ import java.util.Map;
 public class HealthController {
 
     private final JdbcTemplate jdbcTemplate;
+    private final ClientIpResolver ipResolver;
 
-    public HealthController(JdbcTemplate jdbcTemplate) {
+    public HealthController(JdbcTemplate jdbcTemplate, ClientIpResolver ipResolver) {
         this.jdbcTemplate = jdbcTemplate;
+        this.ipResolver = ipResolver;
+    }
+
+    /**
+     * Tells a caller what address the server takes them to be, so the proxy setting (RATE_LIMIT_PROXY_HOPS) can be checked on
+     * the real host: call it through the website and compare with your own address. It reveals nothing but the caller's own.
+     */
+    @GetMapping("/api/v1/health/client")
+    public ApiResponse<Map<String, String>> client(HttpServletRequest request) {
+        return ApiResponse.of(Map.of("seenAs", ipResolver.resolve(request), "connectedFrom", ipResolver.peerAddress(request)));
     }
 
     @GetMapping("/api/v1/health")

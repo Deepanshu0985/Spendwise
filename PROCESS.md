@@ -417,3 +417,17 @@ Not started. The assistant proposes (preview card of exact rows and change), the
 - [ ] Tables are scrolled sideways rather than rearranged as cards, which is usable but not as comfortable as a purpose-built phone list
 - [ ] Tested in a desktop browser at phone size, not on a physical phone
 
+## iPhone login fix: the site calls its own address
+
+**Why.** Login failed on phones ("Something went wrong") while working on a laptop. The site (vercel.app) called the backend on another domain (onrender.com); iPhone browsers, Safari and Chrome both (they share one engine), refuse that backend's cookies as "third-party", so the login's security check failed, and that refusal carried none of the headers a browser needs to read it, so it showed as the generic message.
+
+**Done (on `staging`, not yet verified on the live Vercel site):**
+- [x] The app always calls `/api/v1` on its own address; `frontend/vercel.json` forwards `/api` to the staging backend from the staging site and to the live backend from `spendwise-frontend-sand.vercel.app` (any other address gets nothing, so it can never reach live data by accident). The cookie is now first-party
+- [x] Rate limiting made safe behind that second proxy: the claimed client address (two trusted hops) keeps the strict limits, and the address that actually connected has a 10x outer limit, so someone calling the backend directly and forging the address still hits a wall (2 new integration tests)
+- [x] `GET /api/v1/health/client` says what address the server takes you to be, to check the proxy setting on the real host
+
+**To finish (needs you):**
+- [ ] `RATE_LIMIT_PROXY_HOPS=2` on **both** Render services (staging is set; production when this is merged, together with the code, never before), then on the phone and the laptop: open `<site>/api/v1/health/client` and check `seenAs` is that device's own address
+- [ ] Try login on the iPhone on the staging site; a statement upload of several MB (the limit of Vercel's forwarding is not documented); a cold start after the backend has slept
+- [ ] After merging: delete `VITE_API_BASE_URL` from the Vercel project (no longer used)
+

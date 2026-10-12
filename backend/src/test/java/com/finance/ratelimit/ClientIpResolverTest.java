@@ -38,4 +38,12 @@ class ClientIpResolverTest {
         assertThat(new ClientIpResolver(0).resolve(request("203.0.113.7"))).isEqualTo("10.0.0.9");
         assertThat(new ClientIpResolver(1).resolve(request("  "))).isEqualTo("10.0.0.9");
     }
+
+    @Test
+    void thePeerAddressIsTheLastEntryTheProxyAddedWhateverTheCallerClaimed() {
+        ClientIpResolver twoHops = new ClientIpResolver(2);
+        assertThat(twoHops.peerAddress(request("6.6.6.6, 203.0.113.7, 172.16.0.1"))).isEqualTo("172.16.0.1");
+        assertThat(twoHops.peerAddress(request("203.0.113.7"))).isEqualTo("203.0.113.7");
+        assertThat(twoHops.peerAddress(request(null))).isEqualTo("10.0.0.9");
+    }
 }
