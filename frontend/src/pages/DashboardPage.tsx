@@ -263,7 +263,7 @@ export function DashboardPage() {
                         const categoryName = tx.categoryId ? categoryNameById.get(tx.categoryId) : null
                         return (
                           <tr key={tx.id}>
-                            <td>{formatDate(tx.transactionDate)}</td>
+                            <td className="nowrap">{formatDate(tx.transactionDate)}</td>
                             <td>{tx.description || <span style={{ color: 'var(--ink-faint)' }}>No description</span>}</td>
                             <td>{categoryName ?? '—'}</td>
                             <td className={`align-right ${negative ? 'amount-negative' : 'amount-positive'}`}>

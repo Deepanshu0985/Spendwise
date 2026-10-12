@@ -321,8 +321,13 @@ button {
 @media (max-width: 1100px) {
   .dashboard-grid,
   .dashboard-grid-secondary {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr); /* not 1fr: a wide table inside would stretch the whole column past the screen */
   }
+}
+
+.dashboard-grid > *,
+.dashboard-grid-secondary > * {
+  min-width: 0;
 }
 
 .bar-row {
@@ -2415,5 +2420,180 @@ tbody tr:last-child td {
     left: 12px;
     right: 12px;
     max-width: calc(100vw - 24px);
+  }
+}
+
+/* ---------- Phones and small tablets ---------- */
+
+.mobile-topbar,
+.sidebar-backdrop {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .app-shell {
+    display: block;
+  }
+
+  .mobile-topbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    height: 56px;
+    padding: 0 10px;
+    background: var(--sidebar);
+    color: var(--sidebar-text);
+  }
+
+  .mobile-menu {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+  }
+
+  .mobile-menu:hover {
+    background: rgba(247, 243, 234, 0.08);
+  }
+
+  .mobile-brand {
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 700;
+  }
+
+  /* The sidebar becomes a drawer. */
+  .sidebar {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    height: 100dvh;
+    width: min(280px, 86vw);
+    z-index: 200;
+    overflow-y: auto;
+    transform: translateX(-100%);
+    transition: transform 0.22s ease;
+    visibility: hidden;
+  }
+
+  .sidebar.sidebar-open {
+    transform: none;
+    visibility: visible;
+    box-shadow: 12px 0 32px rgba(0, 0, 0, 0.3);
+  }
+
+  .sidebar-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 190;
+    background: rgba(20, 26, 22, 0.5);
+  }
+
+  .main-content {
+    padding: 18px 14px 110px;
+  }
+
+  .page-header h1 {
+    font-size: 22px;
+  }
+
+  /* Tables keep their columns and scroll sideways inside their card, rather than squeezing every cell. */
+  .table-wrap table {
+    min-width: 680px;
+  }
+
+  .assistant-panel {
+    width: 100vw;
+  }
+
+  .modal-overlay {
+    padding: 10px;
+  }
+
+  .modal-box {
+    padding: 20px;
+    max-height: calc(100dvh - 20px);
+  }
+
+  .field-row {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .toolbar-search {
+    min-width: 0;
+  }
+
+  .bulk-bar,
+  .undo-notice {
+    bottom: 88px; /* above the round assistant button */
+  }
+
+  .pagination-bar {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+}
+
+@media (max-width: 520px) {
+  .summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .accounts-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .auth-form-panel {
+    padding: 20px 16px;
+  }
+
+  .busy-card {
+    padding: 22px 20px;
+  }
+
+  .legal-shell {
+    padding: 24px 16px 60px;
+  }
+
+  .legal-page h1 {
+    font-size: 28px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar {
+    transition: none;
+  }
+}
+
+.nowrap,
+.align-right {
+  white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  /* Buttons in a page header wrap onto a second line instead of running off the edge. */
+  .page-header > div:last-child {
+    flex-wrap: wrap;
+  }
+
+  .page-header > h1 + div {
+    flex-wrap: wrap;
+  }
+
+  .table-wrap td {
+    vertical-align: top;
   }
 }

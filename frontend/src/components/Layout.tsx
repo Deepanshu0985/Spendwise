@@ -1,9 +1,9 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { ReferenceDataProvider } from '../data/ReferenceDataContext'
 import { AssistantPanel } from './AssistantPanel'
-import { BankIcon, ChatIcon, FileTextIcon, GridIcon, ListIcon, LogoutIcon, PiggyIcon, RepeatIcon, SettingsIcon, TargetIcon } from './icons'
+import { BankIcon, ChatIcon, FileTextIcon, GridIcon, ListIcon, LogoutIcon, MenuIcon, PiggyIcon, RepeatIcon, SettingsIcon, TargetIcon } from './icons'
 
 const NAV_ITEMS = [
   { to: '/', label: 'Dashboard', Icon: GridIcon, end: true },
@@ -31,6 +31,18 @@ function readPanelOpen(): boolean {
 export function Layout() {
   const { user, logout } = useAuth()
   const [assistantOpen, setAssistantOpen] = useState(readPanelOpen)
+  // On a phone the sidebar is a drawer behind a menu button; on a wide screen it is always shown and this does nothing.
+  const [navOpen, setNavOpen] = useState(false)
+  const closeNav = useCallback(() => setNavOpen(false), [])
+
+  useEffect(() => {
+    if (!navOpen) return
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setNavOpen(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [navOpen])
 
   const setOpen = useCallback((open: boolean) => {
     setAssistantOpen(open)
@@ -49,14 +61,21 @@ export function Layout() {
   return (
     <ReferenceDataProvider>
       <div className="app-shell">
-        <aside className="sidebar">
+        <header className="mobile-topbar">
+          <button type="button" className="mobile-menu" aria-label="Open menu" aria-expanded={navOpen} onClick={() => setNavOpen(true)}>
+            <MenuIcon />
+          </button>
+          <span className="mobile-brand">Spendwise</span>
+        </header>
+        {navOpen && <div className="sidebar-backdrop" onClick={closeNav} aria-hidden="true" />}
+        <aside className={`sidebar${navOpen ? ' sidebar-open' : ''}`}>
           <div className="sidebar-brand">
             <div className="sidebar-brand-name">Spendwise</div>
             <div className="sidebar-brand-tag">Personal Finance</div>
           </div>
           <nav className="sidebar-nav">
             {NAV_ITEMS.map(({ to, label, Icon, end }) => (
-              <NavLink key={to} to={to} end={end} className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}>
+              <NavLink key={to} to={to} end={end} onClick={closeNav} className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}>
                 <Icon />
                 {label}
               </NavLink>
@@ -71,7 +90,10 @@ export function Layout() {
                 <div className="sidebar-user-email">{user?.email}</div>
               </div>
             </div>
-            <button type="button" className="sidebar-logout" onClick={() => void handleLogout()}>
+            <button type="button" className="sidebar-logout" onClick={() => {
+                closeNav()
+                void handleLogout()
+              }}>
               <LogoutIcon />
               Log out
             </button>

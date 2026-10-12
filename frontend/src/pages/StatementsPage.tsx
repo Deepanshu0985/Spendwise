@@ -576,7 +576,7 @@ function StatementReview({ statementId, onBack }: { statementId: string; onBack:
                           />
                         </td>
                       )}
-                      <td style={{ paddingLeft: editable ? 4 : 22 }}>{formatDate(row.transactionDate)}</td>
+                      <td className="nowrap" style={{ paddingLeft: editable ? 4 : 22 }}>{formatDate(row.transactionDate)}</td>
                       <td>
                         {row.normalizedDescription ?? row.rawDescription}
                         {editable && <EditIcon size={13} />}

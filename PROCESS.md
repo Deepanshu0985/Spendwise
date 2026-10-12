@@ -403,3 +403,17 @@ Built in slices, each committed on its own. Checklist (from `development-roadmap
 
 ## Phase 16b — Assistant Proposals
 Not started. The assistant proposes (preview card of exact rows and change), the person's Apply click writes via the 16a operation; the assistant itself stays read-only (D-24).
+
+## Phone layout (after Phase 16a)
+
+**Done:**
+- [x] Below 900px wide the sidebar becomes a drawer opened from a menu button in a top bar (closes on choosing a page, on tapping outside, and on Escape); above it nothing changed
+- [x] Tables keep their columns and scroll sideways inside their card, with dates and amounts kept on one line; page header buttons wrap instead of running off the edge
+- [x] The assistant opens full screen, dialogs fit the screen, the bulk bar and undo notice sit above the assistant button, summary cards and account cards go to one column on small phones
+- [x] Fixed on the way: dashboard cards could be stretched past the screen by the wide tables inside them
+- [x] Checked in a browser at 375px on the dashboard, transactions, statement review, the add dialog, the assistant and every sidebar page (no element beyond the screen), and again at desktop width
+
+**Left:**
+- [ ] Tables are scrolled sideways rather than rearranged as cards, which is usable but not as comfortable as a purpose-built phone list
+- [ ] Tested in a desktop browser at phone size, not on a physical phone
+

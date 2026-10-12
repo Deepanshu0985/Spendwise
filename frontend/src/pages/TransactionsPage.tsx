@@ -399,7 +399,7 @@ export function TransactionsPage() {
                           onChange={() => selection.toggle(tx.id)}
                         />
                       </td>
-                      <td style={{ paddingLeft: 4 }}>{formatDate(tx.transactionDate)}</td>
+                      <td className="nowrap" style={{ paddingLeft: 4 }}>{formatDate(tx.transactionDate)}</td>
                       <td>{tx.description || <span style={{ color: 'var(--ink-faint)' }}>No description</span>}</td>
                       <td>{tx.merchantId ? (merchantById.get(tx.merchantId)?.canonicalName ?? '—') : '—'}</td>
                       <td>

@@ -770,3 +770,12 @@ Implementation-level decisions made while building, with the reasoning behind ea
 **Remembering payees.** Merging, not overwriting: a payee rule that already holds a merchant keeps it when a bulk change only sets a category. The undo restores the rule's earlier values and deletes rules the change created.
 
 **Deliberately the base for 16b.** The assistant will propose bulk changes and the Apply click will call this same operation, so there is one write path to secure.
+
+## Phone layout: a drawer and sideways-scrolling tables, not a second set of screens
+
+**Decision.** One layout that adapts: under 900px the fixed sidebar becomes an off-canvas drawer behind a top bar, and tables scroll sideways inside their cards. Nothing is rebuilt per page.
+
+**Why.** The app's tables hold many columns (a statement row has seven); turning each into a stack of cards would mean a second design for every screen and more code to keep in step. Sideways scroll keeps every column reachable now and can be improved screen by screen (the Transactions list is the first candidate for a card layout) once real use shows which screens matter on a phone.
+
+**Fixed on the way.** The dashboard's grid columns used `1fr`, which lets a wide child stretch the column past the screen; `minmax(0, 1fr)` and `min-width: 0` let the cards shrink and the tables inside scroll instead.
+
