@@ -343,7 +343,7 @@ Built in slices, each committed on its own. Checklist (from `development-roadmap
 - [x] 9 unit + 10 integration tests (lockout, unknown email, owner not locked out by a stranger, spoofed header, per-user upload limit, CORS on a refusal); full suite 210 unit + 133 integration green
 
 **Left in this slice:**
-- [ ] Set `RATE_LIMIT_PROXY_HOPS` for Render (likely 2: Cloudflare then Render's proxy) and confirm from the one-time log line that the entry count matches; without it every visitor would share one address
+- [x] `RATE_LIMIT_PROXY_HOPS=1` on both Render services (Render adds one entry, confirmed from the one-time log line on staging and production and proven on staging with forged headers; 2 would have made every visitor share one address)
 - [ ] The counters are in memory per instance and reset on restart (fine for one free-tier instance)
 
 **Slice 2 - data export and account deletion, with a Settings page: done**
@@ -368,7 +368,7 @@ Built in slices, each committed on its own. Checklist (from `development-roadmap
 - [x] Full suite 226 unit + 142 integration green
 
 **Left before the beta opens (these need you):**
-- [ ] Set `RATE_LIMIT_PROXY_HOPS` on both Render services (probably 2) and confirm from the one-time `Rate limiting: first X-Forwarded-For had N entries` log line
+- [x] `RATE_LIMIT_PROXY_HOPS` set to 1 and confirmed (see above)
 - [x] Alert channel: ntfy topic set as `ALERT_WEBHOOK_URL` on both Render services and as a GitHub secret; a test message was sent (13 October 2026) - confirm it reached your phone
 - [ ] Uptime monitoring: `.github/workflows/uptime.yml` checks `/api/v1/health` every five minutes once merged into `main` (not `/health/ready`); add the `ALERT_WEBHOOK_URL` repository secret to be pushed a message
 - [x] Restore drill against Neon ran through GitHub Actions and passed (recorded in `backup-and-restore.md`); the monthly schedule is live on `main`
