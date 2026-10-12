@@ -327,3 +327,36 @@ export interface MonthlyInsight {
   cached: boolean
   note: string | null
 }
+
+/** What a bulk change replaced, sent back unchanged to undo it. Opaque to the screens. */
+export interface StagedUndo {
+  rows: { id: string; merchantId: string | null; categoryId: string | null; reviewStatus: string; aiSuggested: boolean; aiReason: string | null }[]
+  rules: {
+    createdRuleIds: string[]
+    previousRules: { id: string; merchantId: string | null; categoryId: string | null }[]
+  }
+}
+
+export interface BulkStagedResult {
+  rows: StatementTransaction[]
+  changedCount: number
+  undo: StagedUndo
+}
+
+export interface LedgerUndo {
+  rows: { id: string; merchantId: string | null; categoryId: string | null }[]
+}
+
+export interface BulkLedgerResult {
+  changed: Transaction[]
+  skippedWithSplits: number
+  undo: LedgerUndo
+}
+
+/** The choice a bulk bar applies: a category and/or a merchant, and whether to remember it for the payee. */
+export interface BulkChoice {
+  categoryId?: string
+  merchantId?: string
+  rememberPayee: boolean
+}
+

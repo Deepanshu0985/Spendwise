@@ -60,6 +60,7 @@ export function AssistantPanel({ open, onClose }: Props) {
   const [statusLoaded, setStatusLoaded] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  const panelRef = useRef<HTMLElement>(null)
 
   // Looked up the first time the panel is opened, not on every page load.
   useEffect(() => {
@@ -69,8 +70,34 @@ export function AssistantPanel({ open, onClose }: Props) {
     }
   }, [open, statusLoaded])
 
+  // Focus the question box on a computer. On a phone that would raise the keyboard at once and cover the suggestions.
   useEffect(() => {
-    if (open) inputRef.current?.focus()
+    if (open && !window.matchMedia('(pointer: coarse)').matches) inputRef.current?.focus()
+  }, [open])
+
+  // On a phone the panel fills the screen. Its height follows the part of the screen actually visible (the browser's own bars
+  // and the on-screen keyboard take some), or the question box would sit hidden underneath them; and the page behind it
+  // stops scrolling while it is open.
+  useEffect(() => {
+    if (!open) return
+    const panel = panelRef.current
+    const viewport = window.visualViewport
+    document.body.classList.add('assistant-open')
+    const update = () => {
+      if (!panel || !viewport) return
+      panel.style.setProperty('--assistant-vh', `${viewport.height}px`)
+      panel.style.setProperty('--assistant-top', `${viewport.offsetTop}px`)
+    }
+    update()
+    viewport?.addEventListener('resize', update)
+    viewport?.addEventListener('scroll', update)
+    return () => {
+      document.body.classList.remove('assistant-open')
+      viewport?.removeEventListener('resize', update)
+      viewport?.removeEventListener('scroll', update)
+      panel?.style.removeProperty('--assistant-vh')
+      panel?.style.removeProperty('--assistant-top')
+    }
   }, [open])
 
   useEffect(() => {
@@ -120,7 +147,7 @@ export function AssistantPanel({ open, onClose }: Props) {
   const suggestions = SUGGESTIONS_BY_PAGE[page] ?? DEFAULT_SUGGESTIONS
 
   return (
-    <aside className="assistant-panel" hidden={!open} aria-label="Assistant">
+    <aside ref={panelRef} className="assistant-panel" hidden={!open} aria-label="Assistant">
       <div className="assistant-header">
         <div>
           <div className="assistant-title">Assistant</div>

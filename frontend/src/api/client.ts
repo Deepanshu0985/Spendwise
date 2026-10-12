@@ -37,17 +37,11 @@ interface ApiEnvelope<T> {
   meta: unknown
 }
 
-// Relative '/api/v1' works whenever the frontend and backend share one origin (the
-// Vite dev proxy locally, or a single edge reverse proxy in production). A split-origin
-// deployment (frontend and backend on different domains, e.g. Vercel + Render) bakes in
-// the backend's absolute URL at build time via VITE_API_BASE_URL.
-//
-// The staging site (Vercel's stable branch address for `staging`) must never talk to the live
-// backend, whatever VITE_API_BASE_URL was baked in for production, so that address always uses
-// the staging backend. Remove this once VITE_API_BASE_URL is scoped per environment in Vercel.
-const STAGING_API_BASE_URL = 'https://spendwise-backend-staging.onrender.com/api/v1'
-const isStagingSite = typeof window !== 'undefined' && window.location.hostname.includes('-git-staging-')
-const BASE_PATH = isStagingSite ? STAGING_API_BASE_URL : (import.meta.env.VITE_API_BASE_URL ?? '/api/v1')
+// The app always calls its own address (/api/v1): the Vite dev proxy does the forwarding locally and, on Vercel, the rewrite
+// rules in vercel.json forward /api to the right backend (live or staging, by which site you are on). Keeping the browser on one
+// origin is deliberate: with the backend on a different domain (onrender.com) its login cookie is a "third-party" cookie, and
+// iPhone browsers (Safari and Chrome both) refuse it, so login quietly failed on phones while working on laptops.
+const BASE_PATH = '/api/v1'
 
 // Double-submit CSRF (ADR-009): the backend mints a non-httpOnly csrf_token cookie on
 // the first GET and rejects any mutating request whose X-CSRF-Token header doesn't

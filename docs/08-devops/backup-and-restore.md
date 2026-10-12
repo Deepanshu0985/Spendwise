@@ -51,7 +51,8 @@ Write each run in the log below. A drill that has not been run recently is a fai
 | Date | Source | Result | By |
 |---|---|---|---|
 | 2026-10-11 | Local PostgreSQL with test data from the integration suite (24 migrations, 21 tables, 19 RLS policies, 16 tables with forced row security, 38 foreign keys) | Passed; counts and safety properties identical | Claude, to prove the script works |
-| _next_ | **Neon production or a point-in-time branch** | _to be run and signed off by the owner before beta_ | |
+| 2026-10-12 | The Neon database behind the `DRILL_SOURCE_URL` secret, run by the GitHub Actions workflow (24 migrations, 21 tables, 5 users, 297 transactions, 577 statement rows, 19 RLS policies, 16 tables with forced row security, 38 foreign keys) | Passed; every table's count and every safety property identical | GitHub Actions run, started by Claude at the owner's request |
+| _next_ | **A Neon branch made from a past point in time** (rehearses a real point-in-time recovery); the monthly schedule runs on the 1st from now on | _owner to run by hand once and record here; also fill in Neon's restore window above_ | |
 
 The first row shows the script works; it is **not** the sign-off. The roadmap's "restore drill signed off" means a run against Neon, recorded above.
 

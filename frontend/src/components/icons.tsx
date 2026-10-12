@@ -209,3 +209,13 @@ export function SettingsIcon({ size = 17 }: IconProps) {
     </svg>
   )
 }
+
+export function MenuIcon({ size = 22 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" {...base}>
+      <line x1="4" y1="7" x2="20" y2="7" />
+      <line x1="4" y1="12" x2="20" y2="12" />
+      <line x1="4" y1="17" x2="20" y2="17" />
+    </svg>
+  )
+}

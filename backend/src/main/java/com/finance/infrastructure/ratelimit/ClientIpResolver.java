@@ -26,6 +26,24 @@ public class ClientIpResolver {
         this.trustedProxyHops = trustedProxyHops;
     }
 
+    /**
+     * The address that actually connected to us as our own platform proxy saw it: the last X-Forwarded-For entry, which the
+     * proxy adds itself and a caller cannot forge. With one proxy this is the client; behind a second one (the website's own
+     * address forwarding calls to us) it is that second proxy, shared by every visitor. Used only for a generous outer limit
+     * that stops someone who calls us directly and forges the claimed address on the left.
+     */
+    public String peerAddress(HttpServletRequest request) {
+        String header = request.getHeader("X-Forwarded-For");
+        if (header != null && !header.isBlank()) {
+            String[] entries = header.split(",");
+            String last = entries[entries.length - 1].strip();
+            if (!last.isEmpty() && last.length() <= 45) {
+                return last;
+            }
+        }
+        return request.getRemoteAddr();
+    }
+
     public String resolve(HttpServletRequest request) {
         if (trustedProxyHops > 0) {
             String header = request.getHeader("X-Forwarded-For");

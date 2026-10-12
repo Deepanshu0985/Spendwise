@@ -760,3 +760,34 @@ Implementation-level decisions made while building, with the reasoning behind ea
 **Why delays live in CSS.** The bar and overlay fade in after 0.25-0.3 seconds through an animation delay, so a quick save never flashes them and no timer or state is needed.
 
 **Limit.** The bar says "something is happening", not which thing; the button or overlay of the action the person took says that.
+
+## Phase 16a: one bulk operation, all or nothing, with the undo carried by the client
+
+**Decision.** Setting one category on many rows is one server operation for both the review screen and the ledger. It checks that every id is the person's own (and that the statement is still awaiting review) before changing anything, runs as one transaction, and refuses the whole batch with a 404 if any id fails, so a bulk call can never be used to probe or touch another person's rows. Rows the person skipped stay skipped; transactions divided across categories are skipped and reported, since their category is on the splits.
+
+**Undo without storing anything.** The response includes a snapshot of exactly what was replaced (rows, plus the payee rules created or updated), and the undo endpoint takes it back. Nothing new is stored on the server, and sending a crafted snapshot gives the person no power they lack: the restore re-checks that every row is theirs and every category and merchant is visible to them, and a person can already edit their own rows to any values.
+
+**Remembering payees.** Merging, not overwriting: a payee rule that already holds a merchant keeps it when a bulk change only sets a category. The undo restores the rule's earlier values and deletes rules the change created.
+
+**Deliberately the base for 16b.** The assistant will propose bulk changes and the Apply click will call this same operation, so there is one write path to secure.
+
+## Phone layout: a drawer and sideways-scrolling tables, not a second set of screens
+
+**Decision.** One layout that adapts: under 900px the fixed sidebar becomes an off-canvas drawer behind a top bar, and tables scroll sideways inside their cards. Nothing is rebuilt per page.
+
+**Why.** The app's tables hold many columns (a statement row has seven); turning each into a stack of cards would mean a second design for every screen and more code to keep in step. Sideways scroll keeps every column reachable now and can be improved screen by screen (the Transactions list is the first candidate for a card layout) once real use shows which screens matter on a phone.
+
+**Fixed on the way.** The dashboard's grid columns used `1fr`, which lets a wide child stretch the column past the screen; `minmax(0, 1fr)` and `min-width: 0` let the cards shrink and the tables inside scroll instead.
+
+## iPhone login: same-origin through Vercel rewrites (and what it cost the rate limiter)
+
+**Decision.** The website forwards `/api/*` to the backend (Vercel rewrites in `frontend/vercel.json`, chosen by host: the staging alias to the staging backend, `spendwise-frontend-sand.vercel.app` to the live one, anything else to nothing). The app always calls a relative `/api/v1`. The backend's cookies are then first-party, which iPhone browsers accept.
+
+**Why not just fix the CORS message.** The cause was not CORS: the cookie was dropped, the CSRF check failed, and that 403 was written by a servlet filter, outside Spring's CORS handling, so it had no CORS headers and surfaced as a network error. Making the 403 readable would have shown a clear message but still not let anyone log in. Same-origin removes the cause.
+
+**Alternatives.** A custom domain shared by the site and the backend (`app.` and `api.` on one registrable domain) is the cleaner long-term answer and keeps one proxy fewer, but costs a domain. Token authentication in the browser instead of cookies would be a rewrite of the session design. Rewrites are free and a config change.
+
+**What the extra proxy broke, and the repair.** Rate limiting trusts `X-Forwarded-For` by counting proxies from the right. Behind two proxies the real visitor is the second from the right, so hops became 2. But someone who calls the backend directly can then forge that second entry. So there are two limits: the strict ones on the claimed visitor address, and a ten-times-higher ceiling on the address that actually connected (the last entry, which a caller cannot forge). Visitors behind the website's shared address are limited separately; a direct forger runs into the outer ceiling.
+
+**Unknowns, to be settled on staging before production.** How large a request Vercel's forwarding accepts (statement uploads reach 15MB), and behaviour while the free backend wakes (Vercel waits up to 120 seconds for the first byte, longer than a cold start).
+

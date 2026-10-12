@@ -343,7 +343,7 @@ Built in slices, each committed on its own. Checklist (from `development-roadmap
 - [x] 9 unit + 10 integration tests (lockout, unknown email, owner not locked out by a stranger, spoofed header, per-user upload limit, CORS on a refusal); full suite 210 unit + 133 integration green
 
 **Left in this slice:**
-- [ ] Set `RATE_LIMIT_PROXY_HOPS` for Render (likely 2: Cloudflare then Render's proxy) and confirm from the one-time log line that the entry count matches; without it every visitor would share one address
+- [x] `RATE_LIMIT_PROXY_HOPS=1` on both Render services (Render adds one entry, confirmed from the one-time log line on staging and production and proven on staging with forged headers; 2 would have made every visitor share one address)
 - [ ] The counters are in memory per instance and reset on restart (fine for one free-tier instance)
 
 **Slice 2 - data export and account deletion, with a Settings page: done**
@@ -368,10 +368,11 @@ Built in slices, each committed on its own. Checklist (from `development-roadmap
 - [x] Full suite 226 unit + 142 integration green
 
 **Left before the beta opens (these need you):**
-- [ ] Set `RATE_LIMIT_PROXY_HOPS` on both Render services (probably 2) and confirm from the one-time `Rate limiting: first X-Forwarded-For had N entries` log line
-- [ ] Choose an alert channel: make an ntfy topic, set `ALERT_WEBHOOK_URL` on Render, and test it
+- [x] `RATE_LIMIT_PROXY_HOPS` set to 1 and confirmed (see above)
+- [x] Alert channel: ntfy topic set as `ALERT_WEBHOOK_URL` on both Render services and as a GitHub secret; a test message was sent (13 October 2026) - confirm it reached your phone
 - [ ] Uptime monitoring: `.github/workflows/uptime.yml` checks `/api/v1/health` every five minutes once merged into `main` (not `/health/ready`); add the `ALERT_WEBHOOK_URL` repository secret to be pushed a message
-- [ ] Run `restore-drill-neon.sh` against Neon (a past-point branch and the live branch) and record it in `backup-and-restore.md`; fill in Neon's restore window there
+- [x] Restore drill against Neon ran through GitHub Actions and passed (recorded in `backup-and-restore.md`); the monthly schedule is live on `main`
+- [ ] Still to do by hand: one rehearsal from a Neon branch made from a past point in time, and fill in Neon's restore window
 - [x] `PRIVACY_CONTACT_EMAIL` set (Deepanshu.dev.ai098@gmail.com); policy re-read against the code on 13 October 2026 and four inaccuracies fixed. Still open: the other contacts in `incident-response.md`, and a review by someone qualified of the privacy policy, the deletion path and the breach notification steps (the plan names this explicitly)
 - [ ] Walk the first-hour steps of the incident plan once on staging
 
@@ -387,7 +388,56 @@ Built in slices, each committed on its own. Checklist (from `development-roadmap
 - [x] Verified in a browser with the network slowed on purpose; motion is off for people who ask for less
 
 ## Phase 16a — Bulk Categorization
-Not started. Plan in `docs/09-project/phase-plan.md`: select several rows, set a category or merchant for all, optional "remember this payee", undo; deterministic, no AI.
+
+**Done:**
+- [x] Tick rows on the statement review screen and on the Transactions page (a header box selects all; on Transactions "Select all N matching" selects every transaction matching the filters, up to 500), then a bar at the bottom sets a category and/or merchant on all of them
+- [x] "Remember these payees" (on by default on the review screen) stores the choice per payee and fills the other untouched rows of the same payees, as editing a single row already did
+- [x] One server operation (`BulkCategorizationService`) for both screens: every row must be the person's own (and the statement still awaiting review) or nothing changes; one database transaction; at most 500 rows
+- [x] Undo for the last bulk change: the response carries what was replaced and sending it back restores the rows, and forgets or restores any payee rules the change touched; a skipped row stays skipped
+- [x] On Transactions, transactions divided across categories are left alone and counted in the message (their category lives on the splits)
+- [x] 12 new integration tests (own rows only, whole batch refused for a stranger's row, another statement's row, deleted transactions, imported statements, undo exactness, remembering and un-remembering a payee, splits); full suite 226 unit + 154 integration green; used in a browser end to end
+
+**Left:**
+- [ ] A bulk change is not recorded anywhere beyond the undo notice (no history list)
+- [ ] The category list in the bar is one flat alphabetical list
 
 ## Phase 16b — Assistant Proposals
 Not started. The assistant proposes (preview card of exact rows and change), the person's Apply click writes via the 16a operation; the assistant itself stays read-only (D-24).
+
+## Phone layout (after Phase 16a)
+
+**Done:**
+- [x] Below 900px wide the sidebar becomes a drawer opened from a menu button in a top bar (closes on choosing a page, on tapping outside, and on Escape); above it nothing changed
+- [x] Tables keep their columns and scroll sideways inside their card, with dates and amounts kept on one line; page header buttons wrap instead of running off the edge
+- [x] The assistant opens full screen, dialogs fit the screen, the bulk bar and undo notice sit above the assistant button, summary cards and account cards go to one column on small phones
+- [x] Fixed on the way: dashboard cards could be stretched past the screen by the wide tables inside them
+- [x] Checked in a browser at 375px on the dashboard, transactions, statement review, the add dialog, the assistant and every sidebar page (no element beyond the screen), and again at desktop width
+
+**Left:**
+- [ ] Tables are scrolled sideways rather than rearranged as cards, which is usable but not as comfortable as a purpose-built phone list
+- [ ] Tested in a desktop browser at phone size, not on a physical phone
+
+## iPhone login fix: the site calls its own address
+
+**Why.** Login failed on phones ("Something went wrong") while working on a laptop. The site (vercel.app) called the backend on another domain (onrender.com); iPhone browsers, Safari and Chrome both (they share one engine), refuse that backend's cookies as "third-party", so the login's security check failed, and that refusal carried none of the headers a browser needs to read it, so it showed as the generic message.
+
+**Done (on `staging`, not yet verified on the live Vercel site):**
+- [x] The app always calls `/api/v1` on its own address; `frontend/vercel.json` forwards `/api` to the staging backend from the staging site and to the live backend from `spendwise-frontend-sand.vercel.app` (any other address gets nothing, so it can never reach live data by accident). The cookie is now first-party
+- [x] Rate limiting made safe behind that second proxy: the claimed client address (two trusted hops) keeps the strict limits, and the address that actually connected has a 10x outer limit, so someone calling the backend directly and forging the address still hits a wall (2 new integration tests)
+- [x] `GET /api/v1/health/client` says what address the server takes you to be, to check the proxy setting on the real host
+
+**To finish (needs you):**
+- [ ] `RATE_LIMIT_PROXY_HOPS=2` on **both** Render services (staging is set; production when this is merged, together with the code, never before), then on the phone and the laptop: open `<site>/api/v1/health/client` and check `seenAs` is that device's own address
+- [ ] Try login on the iPhone on the staging site; a statement upload of several MB (the limit of Vercel's forwarding is not documented); a cold start after the backend has slept
+- [ ] After merging: delete `VITE_API_BASE_URL` from the Vercel project (no longer used)
+
+## Assistant on a phone
+
+**Done:**
+- [x] The panel's height follows the part of the screen actually visible (the browser's own bars and the on-screen keyboard take some), so the question box is no longer hidden underneath them; it also keeps clear of the notch and home bar
+- [x] On a phone the question box is not focused on opening (that raised the keyboard and covered the suggestions), the page behind stops scrolling while the assistant is open, and the buttons and suggestion chips are bigger
+- [x] Every form field is at least 16px on phones; below that iPhones zoom the page in when a field is tapped and leave it zoomed (this affects all forms, not only the assistant)
+
+**Left:**
+- [ ] Checked at phone size in a desktop browser; the on-screen keyboard behaviour can only be confirmed on a real iPhone and Android phone
+

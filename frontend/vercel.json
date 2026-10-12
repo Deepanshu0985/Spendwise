@@ -1,3 +1,15 @@
 {
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "has": [{ "type": "host", "value": "spendwise-frontend-git-staging-.*\\.vercel\\.app" }],
+      "destination": "https://spendwise-backend-staging.onrender.com/api/:path*"
+    },
+    {
+      "source": "/api/:path*",
+      "has": [{ "type": "host", "value": "spendwise-frontend-sand\\.vercel\\.app" }],
+      "destination": "https://spendwise-backend-6e3g.onrender.com/api/:path*"
+    },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
 }

@@ -151,6 +151,33 @@ public class StatementTransaction {
     }
 
     /**
+     * Bulk edit: sets the merchant and/or category (only those given) on a row the person selected. Like a single edit it is
+     * now the person's decision, not the model's, but a row they skipped stays skipped.
+     */
+    public void applyBulkChange(UUID merchantId, UUID categoryId) {
+        if (merchantId != null) {
+            this.suggestedMerchantId = merchantId;
+        }
+        if (categoryId != null) {
+            this.suggestedCategoryId = categoryId;
+        }
+        if (this.reviewStatus == ReviewStatus.PENDING) {
+            this.reviewStatus = ReviewStatus.EDITED;
+        }
+        this.aiSuggested = false;
+        this.aiReason = null;
+    }
+
+    /** Puts back exactly what a bulk edit changed (the undo). */
+    public void restoreReviewState(UUID merchantId, UUID categoryId, ReviewStatus status, boolean aiSuggested, String aiReason) {
+        this.suggestedMerchantId = merchantId;
+        this.suggestedCategoryId = categoryId;
+        this.reviewStatus = status;
+        this.aiSuggested = aiSuggested;
+        this.aiReason = aiReason;
+    }
+
+    /**
      * Applies a model's suggestion, but only to a row nobody has reviewed and that has no category yet. The type is
      * taken only when the row's own type is still unknown - the statement's own signals outrank a guess.
      */

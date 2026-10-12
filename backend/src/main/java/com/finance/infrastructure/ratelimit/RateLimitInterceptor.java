@@ -42,6 +42,7 @@ public class RateLimitInterceptor implements HandlerInterceptor {
     private final int aiWritesPerMinute;
     private final int exportsPerHour;
     private final int deletesPerHour;
+    private final int peerMultiplier;
 
     public RateLimitInterceptor(
             RateLimiter limiter,
@@ -55,7 +56,8 @@ public class RateLimitInterceptor implements HandlerInterceptor {
             @Value("${ratelimit.chat-per-minute:20}") int chatPerMinute,
             @Value("${ratelimit.ai-writes-per-minute:10}") int aiWritesPerMinute,
             @Value("${ratelimit.exports-per-hour:5}") int exportsPerHour,
-            @Value("${ratelimit.deletes-per-hour:5}") int deletesPerHour) {
+            @Value("${ratelimit.deletes-per-hour:5}") int deletesPerHour,
+            @Value("${ratelimit.peer-multiplier:10}") int peerMultiplier) {
         this.limiter = limiter;
         this.ipResolver = ipResolver;
         this.tenantContext = tenantContext;
@@ -68,6 +70,7 @@ public class RateLimitInterceptor implements HandlerInterceptor {
         this.aiWritesPerMinute = aiWritesPerMinute;
         this.exportsPerHour = exportsPerHour;
         this.deletesPerHour = deletesPerHour;
+        this.peerMultiplier = peerMultiplier;
     }
 
     @Override
@@ -76,7 +79,8 @@ public class RateLimitInterceptor implements HandlerInterceptor {
             return true;
         }
         String ip = ipResolver.resolve(request);
-        enforce("ip-general:" + ip, generalPerMinute, Duration.ofMinutes(1));
+        String peer = ipResolver.peerAddress(request);
+        enforceAddress("general", ip, peer, generalPerMinute, Duration.ofMinutes(1));
 
         if ("GET".equals(request.getMethod()) && request.getRequestURI().equals(API + "/users/me/export")) {
             enforceForUser("export", exportsPerHour, Duration.ofHours(1));
@@ -85,8 +89,8 @@ public class RateLimitInterceptor implements HandlerInterceptor {
             String path = request.getRequestURI();
             switch (path) {
                 case API + "/auth/login", API + "/auth/google", API + "/auth/password-reset", API + "/auth/password-reset/confirm" ->
-                        enforce("ip-auth:" + ip, authPerFiveMinutes, Duration.ofMinutes(5));
-                case API + "/auth/register" -> enforce("ip-register:" + ip, registerPerHour, Duration.ofHours(1));
+                        enforceAddress("auth", ip, peer, authPerFiveMinutes, Duration.ofMinutes(5));
+                case API + "/auth/register" -> enforceAddress("register", ip, peer, registerPerHour, Duration.ofHours(1));
                 case API + "/users/me/delete" -> enforceForUser("delete", deletesPerHour, Duration.ofHours(1));
                 case API + "/statements/upload" -> enforceForUser("upload", uploadsPerHour, Duration.ofHours(1));
                 case API + "/ai/chat" -> enforceForUser("chat", chatPerMinute, Duration.ofMinutes(1));
@@ -99,6 +103,19 @@ public class RateLimitInterceptor implements HandlerInterceptor {
             }
         }
         return true;
+    }
+
+    /**
+     * The strict limit is on the claimed client address. When a second proxy sits in front of us (the website forwarding calls
+     * here) that claim is only as good as that proxy; a caller who skips it and talks to us directly can write anything into
+     * it. So the address that actually connected to us also has a limit, {@code peerMultiplier} times higher because every
+     * visitor behind the proxy shares it. With a single proxy the two addresses are the same and only the strict limit applies.
+     */
+    private void enforceAddress(String rule, String ip, String peer, int limit, Duration window) {
+        enforce("ip-" + rule + ":" + ip, limit, window);
+        if (!peer.equals(ip)) {
+            enforce("peer-" + rule + ":" + peer, limit * peerMultiplier, window);
+        }
     }
 
     private void enforceForUser(String rule, int limit, Duration window) {

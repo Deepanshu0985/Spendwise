@@ -5,7 +5,7 @@ import { merchantsApi } from '../api/merchants'
 import { transactionsApi } from '../api/transactions'
 import type { CreateTransactionRequest, UpdateTransactionRequest } from '../api/transactions'
 import { transferApi } from '../api/transfers'
-import type { PageMeta, Transaction, TransferKind } from '../api/types'
+import type { LedgerUndo, PageMeta, Transaction, TransferKind } from '../api/types'
 import { AddMultipleTransactionsModal } from '../components/AddMultipleTransactionsModal'
 import { CalendarIcon, EditIcon, PlusIcon, TrashIcon } from '../components/icons'
 import { Button } from '../components/ui/Button'
@@ -16,6 +16,9 @@ import { useReferenceData } from '../data/ReferenceDataContext'
 import { currentMonthRange, formatDate, formatDateRangeLabel, formatSignedCurrency, today } from '../lib/format'
 import { isDebit, MANUALLY_ASSIGNABLE_TYPES, TRANSACTION_TYPE_LABELS } from '../lib/labels'
 import { TableSkeleton } from '../components/ui/Skeletons'
+import { BulkActionBar } from '../components/BulkActionBar'
+import { UndoNotice } from '../components/UndoNotice'
+import { useSelection } from '../lib/useSelection'
 
 const NEW_MERCHANT = '__new__'
 const NONE = ''
@@ -71,6 +74,11 @@ export function TransactionsPage() {
   const [transferOpen, setTransferOpen] = useState(false)
   const [multiOpen, setMultiOpen] = useState(false)
 
+  const selection = useSelection()
+  const [bulkBusy, setBulkBusy] = useState(false)
+  const [bulkError, setBulkError] = useState<string | null>(null)
+  const [lastBulk, setLastBulk] = useState<{ message: string; undo: LedgerUndo } | null>(null)
+
   const categoryById = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories])
   const merchantById = useMemo(() => new Map(merchants.map((m) => [m.id, m])), [merchants])
   const accountById = useMemo(() => new Map(accounts.map((a) => [a.id, a])), [accounts])
@@ -105,6 +113,80 @@ export function TransactionsPage() {
       cancelled = true
     }
   }, [filters])
+
+  // Ticks follow the page and filters they were made on: a different page or filter starts a fresh selection.
+  useEffect(() => {
+    selection.clear()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters])
+
+  /** Selects every transaction matching the current filters, up to the most the server will change in one go. */
+  async function selectAllMatching() {
+    setBulkError(null)
+    const ids: string[] = []
+    try {
+      for (let page = 0; ids.length < 500; page++) {
+        const result = await transactionsApi.list({
+          from: filters.from,
+          to: filters.to,
+          accountId: filters.accountId || undefined,
+          categoryId: filters.categoryId || undefined,
+          type: filters.type || undefined,
+          page,
+          size: 200,
+          sort: 'transactionDate,desc',
+        })
+        ids.push(...result.data.map((t) => t.id))
+        if (page + 1 >= result.meta.totalPages) break
+      }
+      selection.replaceWith(ids.slice(0, 500))
+      if (ids.length > 500) setBulkError('Selected the first 500 matches - that is the most that can be changed at once.')
+    } catch {
+      setBulkError('Could not select them all. Please try again.')
+    }
+  }
+
+  async function handleBulkApply(choice: { categoryId?: string; merchantId?: string }) {
+    setBulkError(null)
+    setBulkBusy(true)
+    try {
+      const result = await transactionsApi.bulkChange([...selection.selected], choice)
+      const changedById = new Map(result.changed.map((t) => [t.id, t]))
+      setTransactions((current) => current.map((t) => changedById.get(t.id) ?? t))
+      selection.clear()
+      const what = [
+        choice.categoryId ? `set to ${categoryById.get(choice.categoryId)?.name ?? 'the chosen category'}` : null,
+        choice.merchantId ? `merchant set to ${merchantById.get(choice.merchantId)?.canonicalName ?? 'the chosen merchant'}` : null,
+      ]
+        .filter(Boolean)
+        .join(', ')
+      const skipped = result.skippedWithSplits > 0 ? ` ${result.skippedWithSplits} split across categories ${result.skippedWithSplits === 1 ? 'was' : 'were'} left alone.` : ''
+      setLastBulk({
+        message: `${result.changed.length} transaction${result.changed.length === 1 ? '' : 's'} ${what}.${skipped}`,
+        undo: result.undo,
+      })
+    } catch (err) {
+      setBulkError(err instanceof ApiRequestError ? err.message : 'Something went wrong. Nothing was changed - please try again.')
+    } finally {
+      setBulkBusy(false)
+    }
+  }
+
+  async function handleBulkUndo() {
+    if (!lastBulk) return
+    setBulkError(null)
+    setBulkBusy(true)
+    try {
+      const restored = await transactionsApi.bulkRestore(lastBulk.undo)
+      const byId = new Map(restored.map((t) => [t.id, t]))
+      setTransactions((current) => current.map((t) => byId.get(t.id) ?? t))
+      setLastBulk(null)
+    } catch (err) {
+      setBulkError(err instanceof ApiRequestError ? err.message : 'Could not undo - please try again.')
+    } finally {
+      setBulkBusy(false)
+    }
+  }
 
   function openCreate() {
     setForm(emptyForm(accounts.find((a) => a.active)?.id ?? accounts[0]?.id ?? NONE))
@@ -273,6 +355,7 @@ export function TransactionsPage() {
       </div>
 
       {listError && <div className="form-error-banner" style={{ marginBottom: 16 }}>{listError}</div>}
+      {bulkError && <div className="form-error-banner" style={{ marginBottom: 16 }}>{bulkError}</div>}
 
       <div className="card" style={{ padding: 0, display: 'flex', flexDirection: 'column' }}>
         {loading ? (
@@ -284,7 +367,15 @@ export function TransactionsPage() {
             <table>
               <thead>
                 <tr>
-                  <th style={{ paddingLeft: 22 }}>Date</th>
+                  <th className="select-col">
+                    <input
+                      type="checkbox"
+                      aria-label="Select all on this page"
+                      checked={transactions.length > 0 && transactions.every((t) => selection.selected.has(t.id))}
+                      onChange={(e) => selection.replaceWith(e.target.checked ? transactions.map((t) => t.id) : [])}
+                    />
+                  </th>
+                  <th style={{ paddingLeft: 4 }}>Date</th>
                   <th>Description</th>
                   <th>Merchant</th>
                   <th>Category</th>
@@ -300,7 +391,15 @@ export function TransactionsPage() {
                   const negative = isDebit(tx.transactionType)
                   return (
                     <tr key={tx.id}>
-                      <td style={{ paddingLeft: 22 }}>{formatDate(tx.transactionDate)}</td>
+                      <td className="select-col">
+                        <input
+                          type="checkbox"
+                          aria-label={`Select ${tx.description || 'transaction'}`}
+                          checked={selection.selected.has(tx.id)}
+                          onChange={() => selection.toggle(tx.id)}
+                        />
+                      </td>
+                      <td className="nowrap" style={{ paddingLeft: 4 }}>{formatDate(tx.transactionDate)}</td>
                       <td>{tx.description || <span style={{ color: 'var(--ink-faint)' }}>No description</span>}</td>
                       <td>{tx.merchantId ? (merchantById.get(tx.merchantId)?.canonicalName ?? '—') : '—'}</td>
                       <td>
@@ -364,6 +463,31 @@ export function TransactionsPage() {
           </div>
         )}
       </div>
+
+      <BulkActionBar
+        count={selection.count}
+        categories={categories}
+        merchants={merchants}
+        busy={bulkBusy}
+        extra={
+          meta && meta.totalElements > selection.count ? (
+            <button type="button" onClick={() => void selectAllMatching()} disabled={bulkBusy}>
+              Select all {Math.min(meta.totalElements, 500)} matching
+            </button>
+          ) : null
+        }
+        onApply={(choice) => void handleBulkApply(choice)}
+        onClear={selection.clear}
+      />
+      {lastBulk && (
+        <UndoNotice
+          message={lastBulk.message}
+          busy={bulkBusy}
+          lifted={selection.count > 0}
+          onUndo={() => void handleBulkUndo()}
+          onDismiss={() => setLastBulk(null)}
+        />
+      )}
 
       {modal && (
         <Modal title={modal === 'create' ? 'Add transaction' : 'Edit transaction'} onClose={() => setModal(null)}>

@@ -1,5 +1,15 @@
 import { apiClient } from './client'
-import type { ConfirmStatementResult, PageMeta, Statement, StatementTransaction, SuggestCategoriesResult, TransactionType } from './types'
+import type {
+  BulkChoice,
+  BulkStagedResult,
+  ConfirmStatementResult,
+  PageMeta,
+  Statement,
+  StagedUndo,
+  StatementTransaction,
+  SuggestCategoriesResult,
+  TransactionType,
+} from './types'
 
 export interface UpdateStagedTransactionRequest {
   transactionDate: string
@@ -10,6 +20,10 @@ export interface UpdateStagedTransactionRequest {
 }
 
 export const statementsApi = {
+  bulkChange: (statementId: string, rowIds: string[], choice: BulkChoice) =>
+    apiClient.post<BulkStagedResult>(`/statements/${statementId}/transactions/bulk`, { rowIds, ...choice }),
+  bulkRestore: (statementId: string, undo: StagedUndo) =>
+    apiClient.post<StatementTransaction[]>(`/statements/${statementId}/transactions/bulk-restore`, undo),
   upload: (accountId: string, file: File, password?: string) => {
     const form = new FormData()
     form.append('accountId', accountId)

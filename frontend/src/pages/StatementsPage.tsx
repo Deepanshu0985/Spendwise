@@ -13,6 +13,10 @@ import { formatDate, formatSignedCurrency } from '../lib/format'
 import { isDebit, MANUALLY_ASSIGNABLE_TYPES, TRANSACTION_TYPE_LABELS } from '../lib/labels'
 import { TableSkeleton } from '../components/ui/Skeletons'
 import { BusyOverlay } from '../components/ui/BusyOverlay'
+import { BulkActionBar } from '../components/BulkActionBar'
+import { UndoNotice } from '../components/UndoNotice'
+import { useSelection } from '../lib/useSelection'
+import type { BulkChoice, StagedUndo } from '../api/types'
 
 const STATUS_LABELS: Record<StatementStatus, string> = {
   UPLOADED: 'Uploaded',
@@ -240,6 +244,9 @@ function StatementReview({ statementId, onBack }: { statementId: string; onBack:
   const [suggesting, setSuggesting] = useState(false)
   const [suggestNote, setSuggestNote] = useState<string | null>(null)
   const [rowBusy, setRowBusy] = useState<string | null>(null)
+  const selection = useSelection()
+  const [bulkBusy, setBulkBusy] = useState(false)
+  const [lastBulk, setLastBulk] = useState<{ message: string; undo: StagedUndo } | null>(null)
 
   async function reload() {
     setLoading(true)
@@ -301,6 +308,41 @@ function StatementReview({ statementId, onBack }: { statementId: string; onBack:
       setActionError(err instanceof ApiRequestError ? err.message : 'Something went wrong. Please try again.')
     } finally {
       setSuggesting(false)
+    }
+  }
+
+  async function handleBulkApply(choice: BulkChoice) {
+    setActionError(null)
+    setBulkBusy(true)
+    try {
+      const result = await statementsApi.bulkChange(statementId, [...selection.selected], choice)
+      setRows(result.rows)
+      selection.clear()
+      const what = [
+        choice.categoryId ? `set to ${categories.find((c) => c.id === choice.categoryId)?.name ?? 'the chosen category'}` : null,
+        choice.merchantId ? `merchant set to ${merchants.find((m) => m.id === choice.merchantId)?.canonicalName ?? 'the chosen merchant'}` : null,
+      ]
+        .filter(Boolean)
+        .join(', ')
+      setLastBulk({ message: `${result.changedCount} row${result.changedCount === 1 ? '' : 's'} ${what}.`, undo: result.undo })
+    } catch (err) {
+      setActionError(err instanceof ApiRequestError ? err.message : 'Something went wrong. Nothing was changed - please try again.')
+    } finally {
+      setBulkBusy(false)
+    }
+  }
+
+  async function handleBulkUndo() {
+    if (!lastBulk) return
+    setActionError(null)
+    setBulkBusy(true)
+    try {
+      setRows(await statementsApi.bulkRestore(statementId, lastBulk.undo))
+      setLastBulk(null)
+    } catch (err) {
+      setActionError(err instanceof ApiRequestError ? err.message : 'Could not undo - please try again.')
+    } finally {
+      setBulkBusy(false)
     }
   }
 
@@ -493,6 +535,16 @@ function StatementReview({ statementId, onBack }: { statementId: string; onBack:
             <table>
               <thead>
                 <tr>
+                  {statement?.status === 'READY_FOR_REVIEW' && (
+                    <th className="select-col">
+                      <input
+                        type="checkbox"
+                        aria-label="Select all rows"
+                        checked={rows.length > 0 && selection.count === rows.length}
+                        onChange={(e) => selection.replaceWith(e.target.checked ? rows.map((r) => r.id) : [])}
+                      />
+                    </th>
+                  )}
                   <th style={{ paddingLeft: 22 }}>Date</th>
                   <th>Description</th>
                   <th>Category</th>
@@ -514,7 +566,17 @@ function StatementReview({ statementId, onBack }: { statementId: string; onBack:
                       onClick={() => editable && setEditingRow(row)}
                       style={{ ...(editable ? { cursor: 'pointer' } : {}), ...(row.reviewStatus === 'REJECTED' ? { opacity: 0.5 } : {}) }}
                     >
-                      <td style={{ paddingLeft: 22 }}>{formatDate(row.transactionDate)}</td>
+                      {editable && (
+                        <td className="select-col" onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            aria-label={`Select ${row.normalizedDescription ?? row.rawDescription}`}
+                            checked={selection.selected.has(row.id)}
+                            onChange={() => selection.toggle(row.id)}
+                          />
+                        </td>
+                      )}
+                      <td className="nowrap" style={{ paddingLeft: editable ? 4 : 22 }}>{formatDate(row.transactionDate)}</td>
                       <td>
                         {row.normalizedDescription ?? row.rawDescription}
                         {editable && <EditIcon size={13} />}
@@ -607,6 +669,27 @@ function StatementReview({ statementId, onBack }: { statementId: string; onBack:
             </table>
           </div>
         </div>
+      )}
+
+      {statement?.status === 'READY_FOR_REVIEW' && (
+        <BulkActionBar
+          count={selection.count}
+          categories={categories}
+          merchants={merchants}
+          offerRemember
+          busy={bulkBusy}
+          onApply={(choice) => void handleBulkApply(choice)}
+          onClear={selection.clear}
+        />
+      )}
+      {lastBulk && (
+        <UndoNotice
+          message={lastBulk.message}
+          busy={bulkBusy}
+          lifted={selection.count > 0}
+          onUndo={() => void handleBulkUndo()}
+          onDismiss={() => setLastBulk(null)}
+        />
       )}
 
       {editingRow && (

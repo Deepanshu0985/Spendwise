@@ -41,6 +41,16 @@ public class PayeeRuleRepositoryImpl implements PayeeRuleRepository {
         return jpaRepository.findByUserIdAndMatchKeyIn(userId, matchKeys).stream().map(PayeeRuleRepositoryImpl::toDomain).toList();
     }
 
+    @Override
+    public List<PayeeRule> findByUserIdAndIdIn(UUID userId, Collection<UUID> ids) {
+        return jpaRepository.findByUserIdAndIdIn(userId, ids).stream().map(PayeeRuleRepositoryImpl::toDomain).toList();
+    }
+
+    @Override
+    public void deleteByUserIdAndIdIn(UUID userId, Collection<UUID> ids) {
+        jpaRepository.deleteByUserIdAndIdIn(userId, ids);
+    }
+
     private static PayeeRule toDomain(PayeeRuleJpaEntity entity) {
         return new PayeeRule(
                 entity.getId(), entity.getUserId(), entity.getMatchKey(), entity.getMerchantId(), entity.getCategoryId(),
