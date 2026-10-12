@@ -13,4 +13,8 @@ public interface PayeeRuleJpaRepository extends JpaRepository<PayeeRuleJpaEntity
     Optional<PayeeRuleJpaEntity> findByUserIdAndMatchKey(UUID userId, String matchKey);
 
     List<PayeeRuleJpaEntity> findByUserIdAndMatchKeyIn(UUID userId, Collection<String> matchKeys);
+
+    List<PayeeRuleJpaEntity> findByUserIdAndIdIn(UUID userId, Collection<UUID> ids);
+
+    void deleteByUserIdAndIdIn(UUID userId, Collection<UUID> ids);
 }

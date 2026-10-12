@@ -1,5 +1,5 @@
 import { apiClient } from './client'
-import type { PageMeta, Transaction, TransactionType } from './types'
+import type { BulkLedgerResult, LedgerUndo, PageMeta, Transaction, TransactionType } from './types'
 
 export interface TransactionFilters {
   from?: string
@@ -44,6 +44,9 @@ export interface UpdateTransactionRequest {
 }
 
 export const transactionsApi = {
+  bulkChange: (transactionIds: string[], choice: { categoryId?: string; merchantId?: string }) =>
+    apiClient.post<BulkLedgerResult>('/transactions/bulk', { transactionIds, ...choice }),
+  bulkRestore: (undo: LedgerUndo) => apiClient.post<Transaction[]>('/transactions/bulk-restore', undo),
   list: (filters: TransactionFilters) =>
     apiClient.getWithMeta<Transaction[], PageMeta>('/transactions', filters),
   create: (body: CreateTransactionRequest, idempotencyKey?: string) =>

@@ -760,3 +760,13 @@ Implementation-level decisions made while building, with the reasoning behind ea
 **Why delays live in CSS.** The bar and overlay fade in after 0.25-0.3 seconds through an animation delay, so a quick save never flashes them and no timer or state is needed.
 
 **Limit.** The bar says "something is happening", not which thing; the button or overlay of the action the person took says that.
+
+## Phase 16a: one bulk operation, all or nothing, with the undo carried by the client
+
+**Decision.** Setting one category on many rows is one server operation for both the review screen and the ledger. It checks that every id is the person's own (and that the statement is still awaiting review) before changing anything, runs as one transaction, and refuses the whole batch with a 404 if any id fails, so a bulk call can never be used to probe or touch another person's rows. Rows the person skipped stay skipped; transactions divided across categories are skipped and reported, since their category is on the splits.
+
+**Undo without storing anything.** The response includes a snapshot of exactly what was replaced (rows, plus the payee rules created or updated), and the undo endpoint takes it back. Nothing new is stored on the server, and sending a crafted snapshot gives the person no power they lack: the restore re-checks that every row is theirs and every category and merchant is visible to them, and a person can already edit their own rows to any values.
+
+**Remembering payees.** Merging, not overwriting: a payee rule that already holds a merchant keeps it when a bulk change only sets a category. The undo restores the rule's earlier values and deletes rules the change created.
+
+**Deliberately the base for 16b.** The assistant will propose bulk changes and the Apply click will call this same operation, so there is one write path to secure.

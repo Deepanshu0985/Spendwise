@@ -388,7 +388,18 @@ Built in slices, each committed on its own. Checklist (from `development-roadmap
 - [x] Verified in a browser with the network slowed on purpose; motion is off for people who ask for less
 
 ## Phase 16a — Bulk Categorization
-Not started. Plan in `docs/09-project/phase-plan.md`: select several rows, set a category or merchant for all, optional "remember this payee", undo; deterministic, no AI.
+
+**Done:**
+- [x] Tick rows on the statement review screen and on the Transactions page (a header box selects all; on Transactions "Select all N matching" selects every transaction matching the filters, up to 500), then a bar at the bottom sets a category and/or merchant on all of them
+- [x] "Remember these payees" (on by default on the review screen) stores the choice per payee and fills the other untouched rows of the same payees, as editing a single row already did
+- [x] One server operation (`BulkCategorizationService`) for both screens: every row must be the person's own (and the statement still awaiting review) or nothing changes; one database transaction; at most 500 rows
+- [x] Undo for the last bulk change: the response carries what was replaced and sending it back restores the rows, and forgets or restores any payee rules the change touched; a skipped row stays skipped
+- [x] On Transactions, transactions divided across categories are left alone and counted in the message (their category lives on the splits)
+- [x] 12 new integration tests (own rows only, whole batch refused for a stranger's row, another statement's row, deleted transactions, imported statements, undo exactness, remembering and un-remembering a payee, splits); full suite 226 unit + 154 integration green; used in a browser end to end
+
+**Left:**
+- [ ] A bulk change is not recorded anywhere beyond the undo notice (no history list)
+- [ ] The category list in the bar is one flat alphabetical list
 
 ## Phase 16b — Assistant Proposals
 Not started. The assistant proposes (preview card of exact rows and change), the person's Apply click writes via the 16a operation; the assistant itself stays read-only (D-24).

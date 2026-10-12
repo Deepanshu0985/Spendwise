@@ -2336,3 +2336,84 @@ tbody tr:last-child td {
     opacity: 0.6;
   }
 }
+
+/* ---------- Bulk edit ---------- */
+
+.bulk-bar,
+.undo-notice {
+  position: fixed;
+  left: 240px; /* clear of the sidebar, centred in the rest */
+  right: 0;
+  margin: 0 auto;
+  width: max-content;
+  z-index: 150;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  max-width: calc(100vw - 280px);
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--sidebar);
+  color: var(--sidebar-text);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+  font-size: 13px;
+}
+
+.bulk-bar {
+  bottom: 22px;
+}
+
+.undo-notice {
+  bottom: 22px;
+}
+
+.bulk-bar select {
+  height: 34px;
+  max-width: 190px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  padding: 0 8px;
+  font-size: 13px;
+}
+
+.bulk-remember {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.bulk-count a,
+.bulk-count button {
+  color: #e9d9a6;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-size: 13px;
+  text-decoration: underline;
+}
+
+.undo-dismiss {
+  background: none;
+  border: none;
+  color: var(--sidebar-text-muted);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.select-col {
+  width: 38px;
+  padding-left: 16px !important;
+}
+
+@media (max-width: 900px) {
+  .bulk-bar,
+  .undo-notice {
+    left: 12px;
+    right: 12px;
+    max-width: calc(100vw - 24px);
+  }
+}
