@@ -1,0 +1,46 @@
+name: Restore drill
+
+# A restore drill on a schedule instead of by hand: on the 1st of every month (and whenever started from the Actions tab) it
+# dumps the Neon database, restores it into a throwaway PostgreSQL, and checks row counts and that row-level security
+# survived (scripts/restore-drill-neon.sh). A failed drill fails the run, and GitHub emails the repository owner about a
+# failed scheduled run; if the ALERT_WEBHOOK_URL secret is set it is also posted there. Results: docs/08-devops/backup-and-restore.md.
+on:
+  schedule:
+    - cron: "17 3 1 * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  drill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check the source is configured
+        env:
+          DRILL_SOURCE_URL: ${{ secrets.DRILL_SOURCE_URL }}
+        run: |
+          if [ -z "$DRILL_SOURCE_URL" ]; then
+            echo "The DRILL_SOURCE_URL secret is not set. See docs/08-devops/backup-and-restore.md." >&2
+            exit 1
+          fi
+
+      - name: Run the restore drill
+        env:
+          SOURCE_URL: ${{ secrets.DRILL_SOURCE_URL }}
+          # The dump tool must not be older than the server; a newer one is fine.
+          PG_IMAGE: postgres:17-alpine
+        run: ./scripts/restore-drill-neon.sh
+
+      - name: Tell the operator it failed
+        if: failure()
+        env:
+          ALERT_WEBHOOK_URL: ${{ secrets.ALERT_WEBHOOK_URL }}
+        run: |
+          if [ -n "$ALERT_WEBHOOK_URL" ]; then
+            curl -fsS -H "Title: Spendwise: restore drill failed" -H "Priority: high" \
+              -d "The monthly restore drill failed. Open the Actions tab of the repository for the log." "$ALERT_WEBHOOK_URL" || true
+          fi

@@ -20,7 +20,7 @@
 - `FILE_TOO_LARGE` 413
 - `UNSUPPORTED_FILE` 415
 - `STATEMENT_PROCESSING_FAILED` 422
-- `RATE_LIMITED` 429
+- `RATE_LIMITED` 429 (carries a `Retry-After` header in seconds; the message says how long to wait)
 - `AI_QUOTA_EXCEEDED` 429
 - `AI_UNAVAILABLE` 503
 - `FEATURE_UNAVAILABLE` 503 (an optional feature such as Sign in with Google is not set up on this server)

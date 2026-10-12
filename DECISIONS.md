@@ -714,3 +714,49 @@ Implementation-level decisions made while building, with the reasoning behind ea
 **Why.** The free server can take up to a minute to wake, and a frozen page after pressing "Log in" reads as broken. Skeletons also keep the page from jumping when data arrives.
 
 **Notes.** Pure CSS, no animation library; reduced-motion users get static versions. The dashboard no longer shows the inline tip under its skeleton (the tip strip above already shows one). The app's own layout is still not built for phone-width screens (a fixed sidebar), which this did not change.
+
+## Phase 15, slice 1: rate limiting and constant-time login
+
+**Decision.** Request limits live in one MVC interceptor over `/api/**` (not a servlet filter), counters in an in-memory fixed-window `RateLimiter` behind a port. Per address: general, sign-in/Google/password-reset, registration. Per user: upload, assistant, insight writing, category suggestions. Failed password guesses are counted inside the login itself.
+
+**Why an interceptor.** The browser can only read a 429's message when the CORS headers are on it, and Spring MVC adds those before interceptors run; a filter would have needed its own copy of the CORS logic (the CSRF filter's 403 has this gap today). It also sees unknown `/api` paths, so probing is counted.
+
+**Why the lockout is per address and account, plus a wider per-account ceiling.** A lockout keyed only on the email would let a stranger lock the real owner out by typing wrong passwords. Keyed on address and email, the stranger only blocks their own address; the per-account ceiling (25 an hour across all addresses) slows a guesser spread over many addresses without letting one person lock an account for long. Unknown emails are locked identically, so lockout does not reveal which accounts exist.
+
+**Constant-time login.** Every login runs one BCrypt check, against a decoy hash made at startup when the account is missing or Google-only, so response time does not reveal whether an email is registered.
+
+**Caller address.** `X-Forwarded-For` entries are appended on the right by each proxy and anything on the left is whatever the caller sent, so only the entry the trusted proxies added is believed: the Nth from the right (`RATE_LIMIT_PROXY_HOPS`, default 1). Too high trusts forgeable data; too low makes all visitors share the proxy's address, so the first request logs the entry count (no addresses) to confirm the setting on the real host.
+
+**Accepted limits.** Counters reset on restart and are per instance. A flood large enough to hurt before reaching this code can only be stopped at the edge (a CDN or firewall in front of the host).
+
+## Phase 15, slice 2: export and erasure of a person's data
+
+**Decision.** Deletion is immediate and complete, not a "deactivated for 30 days" state: one transaction deletes the person's rows table by table (children before parents, the account last), then the stored statement files. It needs the word DELETE and fresh proof of identity: the password, or for an account that only signs in with Google, a fresh Google credential that must belong to the same Google account. Export is one JSON document built from the same table list.
+
+**Why immediate.** Erasure on request is the point of the DPDP deletion path, and a grace period would mean holding financial data the person asked us to remove. The cost is that a mistaken deletion cannot be undone, so the dialog says so, offers the export first, and asks for the typed word and the password.
+
+**Why plain SQL and a database-enforced check.** Every table that holds a person's data must be covered, and the models are spread across many features. The foreign keys already refuse to delete a user row while another row points at it, so `UserDataIT` deleting a populated account is a complete test: a table someone adds later and forgets here makes that test fail (checked by removing a table on purpose). Row-level security stays in force: the delete runs as the signed-in person.
+
+**What is exported.** Their own rows as stored, minus the internal user id, the password hash and file storage paths. A person's custom categories are exported; the shared built-in ones are not theirs.
+
+**Limits.** Rate limited (5 an hour each) because a stolen session could otherwise guess the password through the delete form. Files that cannot be removed from storage are counted in a log line and do not undo the deletion.
+
+## Phase 15, slice 3: monitoring that cannot wake the database, deleting imported PDFs, redacting what the assistant sends
+
+**Monitoring.** Counters and the alert check live in memory and never query the database, because on the free tiers a database that sleeps when idle must be allowed to sleep; a monitor that polled it would burn the free compute hours. Alerts go to a webhook (ntfy.sh needs no account) and are deduplicated per hour; AI cap alerts fire from the AI usage limiter when usage grows, again with no extra polling. Uptime monitoring is external and must hit `/health` (liveness), never `/health/ready`.
+
+**D-06: raw PDFs are deleted once imported.** The uploaded statement is the largest store of a person's financial detail and nothing reads it after import (only a FAILED statement is re-read, for a retry). It is removed after the import transaction commits, so a rollback keeps the file; it stays while a statement awaits review. Rows already extracted stay until the person deletes them. This also lets the privacy policy make a short, true promise.
+
+**A real gap found by writing the policy.** Categorisation redacted descriptions before sending them to the model, but the assistant's transaction-search tool did not: reference and phone numbers went through. `UntrustedText.of`, the one function every model-bound name or description already passes through, now applies the same redaction. A privacy statement is only as honest as the code path it describes, so the policy was written after checking each path.
+
+**Backups.** The VPS-era scripts assumed a self-hosted database. The real setup is Neon plus Render, so `restore-drill-neon.sh` was added: it restores a dump into a scratch container and verifies row counts, migrations, and above all that row-level security survived, because a restore that loses the policies silently turns a multi-user database into a shared one. It passed on local test data; the signed-off drill against Neon is the owner's, recorded in `backup-and-restore.md`.
+
+**Breach plan and policy.** Both are drafts that say what the system does and what to do; neither is legal advice. The notification deadlines are left blank on purpose rather than quoted from memory, and the policy carries a visible "not yet reviewed" notice until a qualified person has read it.
+
+## Progress while saving: one global bar, plus spinners where a person is waiting on a click
+
+**Decision.** Instead of adding an indicator to every save, delete and load by hand (and missing some, as happened: icon-button deletes and row actions had none), the API client counts calls in flight and one thin bar at the top of the page shows whenever any are. On top of that: `Button` shows a spinner whenever its label ends in an ellipsis (the app's existing convention for "in progress"), so about twenty existing buttons gained one with no per-site change; a dimmed overlay covers the few slow, state-changing actions (statement reading, AI suggestions, import, retry); and the review screen's per-row actions and the "Paid from" choice show their own small spinners.
+
+**Why delays live in CSS.** The bar and overlay fade in after 0.25-0.3 seconds through an animation delay, so a quick save never flashes them and no timer or state is needed.
+
+**Limit.** The bar says "something is happening", not which thing; the button or overlay of the action the person took says that.

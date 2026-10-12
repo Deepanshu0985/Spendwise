@@ -25,6 +25,8 @@ Estimates assume the decisions in `open-decisions.md` are used as scoped: three 
 | 13b | Semantic Search (later) | 1.5–2 weeks | 13a, D-20 to D-23 |
 | 14 | AI Insights | 3–5 days | 12 |
 | 15 | Beta Readiness | 1.5–2 weeks | 14 |
+| 16a | Bulk Categorization | 3–5 days | 15 |
+| 16b | Assistant Proposals | 1 week | 16a, D-24 |
 
 **Total: ~19–22 weeks solo full-time.** Phase 5 and Phase 8 are calendar soak time more than build effort and can overlap with early work on the following phase where the roadmap allows it (Phase 5 findings should still land before Phase 6 design is final). Phase 10 has no dependency on Phase 6–9 and can run in parallel with Phases 6–9 if a second contributor is available.
 
@@ -185,6 +187,30 @@ Estimates assume the decisions in `open-decisions.md` are used as scoped: three 
 **Depends on:** Phase 14 (and 13a).
 
 **Exit gate:** the internal-to-beta checklist in `development-roadmap.md` is complete.
+
+## Phase 16a — Bulk Categorization
+
+**Duration:** 3–5 days
+
+**Why.** On the statement review screen a category (or merchant) is set one row at a time, and the same choice is often wanted for several rows ("all the small payments to people are Food"). This is the deterministic version of the work, with no AI involved, and it is the base the assistant version builds on.
+
+**Tasks:** select several rows on the review screen and on the Transactions list; set a category (and optionally a merchant) for all of them in one action; a "remember this payee" choice that creates the existing payee rule so the next statement is filled in; select-all-matching a filter or text; one server operation that checks every row belongs to the person and, on the review screen, is still awaiting review, and applies the change atomically; a visible result ("12 rows set to Food & Dining") with undo for the last bulk change.
+
+**Depends on:** Phase 15.
+
+**Exit gate:** a row from another person, or one already imported, can never be changed by the bulk operation (tested); the whole batch applies or none of it does.
+
+## Phase 16b — Assistant Proposals
+
+**Duration:** 1 week
+
+**Why.** People want to say "put the car wash and the grocery store in Personal Care" or "everything under ₹100 is Food" in the assistant panel instead of selecting rows. The assistant's tools are read-only on purpose: transaction descriptions are text other people choose, and a model that could write might be talked into it. So the assistant never writes. It returns a proposal.
+
+**Tasks:** a proposal result type the panel draws as a preview card (the exact rows found, the category it would set, and Apply and Cancel); the same Phase 16a server operation behind Apply, with arguments re-validated and the person taken from the session, never from the model; proposals expire and apply once; the card always lists the specific rows so an ambiguous request ("the big one") is caught by the person; counted against the existing chat allowance; grounding and injection tests extended to cover proposals (a hostile description cannot cause a change, and cannot widen what a proposal covers).
+
+**Depends on:** Phase 16a; decision D-24 (the read-only rule is changed deliberately, recorded in `DECISIONS.md`).
+
+**Exit gate:** with a scripted hostile model and hostile descriptions, nothing changes without an Apply, and Apply changes exactly what the card showed.
 
 ## Remaining Open Decision
 

@@ -330,4 +330,64 @@ Planned for later, only if real use of 13a shows structured search is not enough
 - [x] Motion is switched off for people who ask their system for less motion; skeletons carry a hidden "Loading ..." label for screen readers
 
 ## Phase 15 — Beta Readiness
-Not started.
+
+Built in slices, each committed on its own. Checklist (from `development-roadmap.md`): rate limiting, quota enforcement, observability and alerting, privacy policy, export and deletion, breach response plan, restore drill, uptime monitoring.
+
+**Slice 1 - rate limiting and constant-time login: done**
+- [x] Per address: a general ceiling (300/min), a tighter one for sign-in, Google sign-in and password reset (20 per 5 min), and one for registration (10/hour)
+- [x] Per signed-in user: statement uploads (10/hour), the assistant (20/min), insight writing and category suggestions (10/min), on top of the existing daily and monthly AI caps
+- [x] Failed password guesses: 5 per 15 minutes per address and account, and 25 per hour per account across all addresses; the lockout applies to unknown emails exactly as to known ones, and a successful login clears it
+- [x] A login always runs one password check (against a decoy hash when the account is unknown or Google-only), so an unknown email no longer answers faster than a known one
+- [x] 429 responses carry `Retry-After`, a readable message, and the CORS headers (so the browser can show the message); only the rule name is logged, never an address or account
+- [x] Caller address read from `X-Forwarded-For` by counting trusted proxy hops from the right (`RATE_LIMIT_PROXY_HOPS`), so a forged header cannot pick its own address
+- [x] 9 unit + 10 integration tests (lockout, unknown email, owner not locked out by a stranger, spoofed header, per-user upload limit, CORS on a refusal); full suite 210 unit + 133 integration green
+
+**Left in this slice:**
+- [ ] Set `RATE_LIMIT_PROXY_HOPS` for Render (likely 2: Cloudflare then Render's proxy) and confirm from the one-time log line that the entry count matches; without it every visitor would share one address
+- [ ] The counters are in memory per instance and reset on restart (fine for one free-tier instance)
+
+**Slice 2 - data export and account deletion, with a Settings page: done**
+- [x] `GET /users/me/export`: one JSON file with the profile (sign-in methods, never the password hash) and every table of the person's data; internal ids and storage paths left out; rate limited
+- [x] `POST /users/me/delete`: needs the word DELETE plus proof it is them (their password, or for a Google-only account a fresh Google credential for the same Google account); erases every row in foreign-key order, the account last, in one transaction, then removes the uploaded statement files; ends the session; rate limited
+- [x] Deletion is checked by the database itself: the user row cannot be deleted while any row still points at it, so a table added later and forgotten here fails `UserDataIT` (confirmed by removing one table on purpose and watching the test fail)
+- [x] Settings page (replaces the "coming soon" placeholder, sidebar link added): account facts, Download my data, Sign out everywhere, and a Delete account dialog; a wrong password leaves everything untouched
+- [x] 7 new integration tests (export content and exclusions, bystander untouched, files removed, email reusable, wrong proof deletes nothing, CSRF and session required, Google-only proof); full suite 210 unit + 140 integration green
+
+**Left in this slice:**
+- [ ] Export is JSON only (no CSV), built in memory (fine for personal volumes, not for hundreds of thousands of rows)
+- [ ] Statement files on the free host live on its temporary disk; erasure removes what is there
+
+**Slice 3 - monitoring, retention, privacy and the written plans: done**
+- [x] Request metrics in memory (requests, server errors, rate-limit refusals, failed sign-ins, latency histogram) and an `ops-metrics` log line every five minutes with traffic
+- [x] Alerts to a webhook of your choice (`ALERT_WEBHOOK_URL`; ntfy.sh needs no account; Slack and Discord supported): sustained server errors, a burst of rate-limit refusals, and AI use at 50%, 80% and 100% of each monthly cap; deduplicated, never carrying personal data; log-only when no URL is set
+- [x] Liveness (`/health`, no database) and readiness (`/health/ready`, checks the database) are separate; AI is in neither
+- [x] D-06 decided and built: the uploaded PDF is deleted as soon as its import commits (kept while awaiting review, since a failed statement is re-read from it); account deletion removes any file still held
+- [x] Found while writing the policy: transaction descriptions returned by the assistant's search tools went to the model unredacted (only categorisation redacted). Now every name and description the assistant or the insights send passes through `PiiRedactor` (long digit runs and the bank part of UPI ids removed) inside `UntrustedText`; test added
+- [x] Public privacy policy page (`/privacy`, linked from sign-in, sign-up and Settings), written to match what the code does and marked as a draft pending legal review; contact address in `lib/legal.ts` still to be set
+- [x] `docs/07-quality/incident-response.md` (breach plan) and `docs/08-devops/backup-and-restore.md` for the real Neon setup, plus `scripts/restore-drill-neon.sh`, which checks row counts and that RLS policies, forced RLS and foreign keys survive a restore; run once on local test data (passed)
+- [x] Full suite 226 unit + 142 integration green
+
+**Left before the beta opens (these need you):**
+- [ ] Set `RATE_LIMIT_PROXY_HOPS` on both Render services (probably 2) and confirm from the one-time `Rate limiting: first X-Forwarded-For had N entries` log line
+- [ ] Choose an alert channel: make an ntfy topic, set `ALERT_WEBHOOK_URL` on Render, and test it
+- [ ] Uptime monitoring: `.github/workflows/uptime.yml` checks `/api/v1/health` every five minutes once merged into `main` (not `/health/ready`); add the `ALERT_WEBHOOK_URL` repository secret to be pushed a message
+- [ ] Run `restore-drill-neon.sh` against Neon (a past-point branch and the live branch) and record it in `backup-and-restore.md`; fill in Neon's restore window there
+- [x] `PRIVACY_CONTACT_EMAIL` set (Deepanshu.dev.ai098@gmail.com); policy re-read against the code on 13 October 2026 and four inaccuracies fixed. Still open: the other contacts in `incident-response.md`, and a review by someone qualified of the privacy policy, the deletion path and the breach notification steps (the plan names this explicitly)
+- [ ] Walk the first-hour steps of the incident plan once on staging
+
+**Phase 15 exit gate:** the internal-to-beta checklist above is complete.
+
+## Progress while saving (after Phase 15)
+
+**Done:**
+- [x] A thin progress bar across the top of the page whenever any call to the server is in flight (saving, deleting, loading), so every action shows it is working with no per-button code; it appears only if the call takes more than a moment
+- [x] Every button whose label says it is working ("Saving…", "Uploading…", "Confirming…") now shows a spinner and cannot be clicked twice
+- [x] A dimmed overlay with a message for the slow actions that change things: reading an uploaded statement, suggesting categories, importing, retrying a failed statement
+- [x] Per-row feedback on the review screen ("Import anyway", "Skip this row", "Undo") and a spinner beside the "Paid from" choice while it saves
+- [x] Verified in a browser with the network slowed on purpose; motion is off for people who ask for less
+
+## Phase 16a — Bulk Categorization
+Not started. Plan in `docs/09-project/phase-plan.md`: select several rows, set a category or merchant for all, optional "remember this payee", undo; deterministic, no AI.
+
+## Phase 16b — Assistant Proposals
+Not started. The assistant proposes (preview card of exact rows and change), the person's Apply click writes via the 16a operation; the assistant itself stays read-only (D-24).

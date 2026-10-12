@@ -43,10 +43,12 @@ function loadGoogleScript(): Promise<void> {
 
 interface Props {
   onCredential: (credential: string) => void
+  /** The "or" line that separates the button from a form below it. Off when the button stands alone. */
+  withDivider?: boolean
 }
 
 /** Draws nothing at all unless this server has Google sign-in set up and Google's script is reachable. */
-export function GoogleSignIn({ onCredential }: Props) {
+export function GoogleSignIn({ onCredential, withDivider = true }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const handlerRef = useRef(onCredential)
   const [visible, setVisible] = useState(false)
@@ -94,9 +96,11 @@ export function GoogleSignIn({ onCredential }: Props) {
   return (
     <div className="google-signin" hidden={!visible}>
       <div ref={containerRef} className="google-signin-button" />
-      <div className="auth-divider">
-        <span>or</span>
-      </div>
+      {withDivider && (
+        <div className="auth-divider">
+          <span>or</span>
+        </div>
+      )}
     </div>
   )
 }

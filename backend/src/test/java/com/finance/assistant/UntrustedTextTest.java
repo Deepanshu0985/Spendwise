@@ -34,6 +34,14 @@ class UntrustedTextTest {
     }
 
     @Test
+    void personalIdentifiersNeverReachTheModel() throws Exception {
+        assertThat(of("UPI/615023242614/Swiggy")).isEqualTo("UPI/[number]/Swiggy");
+        assertThat(of("Paid to rahul@okhdfcbank")).isEqualTo("Paid to rahul");
+        assertThat(of("Card 4111 1111 1111 1111 Amazon")).isEqualTo("Card [number] Amazon");
+        assertThat(of("7-Eleven store 24")).as("short numbers are not identifiers").isEqualTo("7-Eleven store 24");
+    }
+
+    @Test
     void controlCharactersAreStrippedAndLongNamesAreCut() throws Exception {
         assertThat(of("Shop\nName\u0000")).isEqualTo("Shop Name");
         assertThat(of("x".repeat(200))).hasSize(81).endsWith("…");

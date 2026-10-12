@@ -12,6 +12,7 @@ import { useReferenceData } from '../data/ReferenceDataContext'
 import { formatDate, formatSignedCurrency } from '../lib/format'
 import { isDebit, MANUALLY_ASSIGNABLE_TYPES, TRANSACTION_TYPE_LABELS } from '../lib/labels'
 import { TableSkeleton } from '../components/ui/Skeletons'
+import { BusyOverlay } from '../components/ui/BusyOverlay'
 
 const STATUS_LABELS: Record<StatementStatus, string> = {
   UPLOADED: 'Uploaded',
@@ -180,7 +181,8 @@ function UploadStatementModal({ onClose, onUploaded }: { onClose: () => void; on
   }
 
   return (
-    <Modal title="Upload a statement" onClose={onClose}>
+    <Modal title="Upload a statement" onClose={submitting ? () => undefined : onClose}>
+      <BusyOverlay active={submitting} title="Reading your statement" detail="Finding the transactions in your PDF - a minute at most" />
       <form onSubmit={(e) => void handleSubmit(e)} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         {error && <div className="form-error-banner">{error}</div>}
 
@@ -237,6 +239,7 @@ function StatementReview({ statementId, onBack }: { statementId: string; onBack:
   const [retryPassword, setRetryPassword] = useState('')
   const [suggesting, setSuggesting] = useState(false)
   const [suggestNote, setSuggestNote] = useState<string | null>(null)
+  const [rowBusy, setRowBusy] = useState<string | null>(null)
 
   async function reload() {
     setLoading(true)
@@ -303,21 +306,27 @@ function StatementReview({ statementId, onBack }: { statementId: string; onBack:
 
   async function handleKeepDuplicate(row: StatementTransaction) {
     setActionError(null)
+    setRowBusy(row.id)
     try {
       const updated = await statementsApi.keepDuplicate(statementId, row.id)
       setRows((current) => current.map((r) => (r.id === updated.id ? updated : r)))
     } catch (err) {
       setActionError(err instanceof ApiRequestError ? err.message : 'Something went wrong. Please try again.')
+    } finally {
+      setRowBusy(null)
     }
   }
 
   async function handleSkip(row: StatementTransaction, skip: boolean) {
     setActionError(null)
+    setRowBusy(row.id)
     try {
       const updated = skip ? await statementsApi.skipRow(statementId, row.id) : await statementsApi.restoreRow(statementId, row.id)
       setRows((current) => current.map((r) => (r.id === updated.id ? updated : r)))
     } catch (err) {
       setActionError(err instanceof ApiRequestError ? err.message : 'Something went wrong. Please try again.')
+    } finally {
+      setRowBusy(null)
     }
   }
 
@@ -366,6 +375,13 @@ function StatementReview({ statementId, onBack }: { statementId: string; onBack:
 
   return (
     <div>
+      <BusyOverlay
+        active={suggesting}
+        title="Suggesting categories"
+        detail="Checking each row against known brands, then asking the AI - this can take a few seconds"
+      />
+      <BusyOverlay active={confirming} title="Importing your transactions" detail="Adding them to your ledger" />
+      <BusyOverlay active={retrying} title="Reading your statement again" />
       <div className="page-header">
         <div>
           <button type="button" onClick={onBack} style={{ background: 'none', border: 'none', padding: 0, marginBottom: 6, cursor: 'pointer', color: 'var(--accent)' }}>
@@ -439,6 +455,7 @@ function StatementReview({ statementId, onBack }: { statementId: string; onBack:
                 <div style={{ minWidth: 220 }}>
                   {group.label} <span className="page-subtitle">({group.count} {group.count === 1 ? 'row' : 'rows'})</span>
                 </div>
+                {mappingLabel === group.label && <span className="spinner spinner-sm" aria-label="Saving" />}
                 <select
                   aria-label={`Account for ${group.label}`}
                   value={group.accountId ?? ''}
@@ -513,9 +530,10 @@ function StatementReview({ statementId, onBack }: { statementId: string; onBack:
                                   e.stopPropagation()
                                   void handleKeepDuplicate(row)
                                 }}
+                                disabled={rowBusy !== null}
                                 style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--accent)', fontSize: 12, whiteSpace: 'nowrap' }}
                               >
-                                Import anyway
+                                {rowBusy === row.id ? <><span className="spinner spinner-sm" /> Working…</> : 'Import anyway'}
                               </button>
                             )}
                           </div>
@@ -532,9 +550,10 @@ function StatementReview({ statementId, onBack }: { statementId: string; onBack:
                                   e.stopPropagation()
                                   void handleSkip(row, true)
                                 }}
+                                disabled={rowBusy !== null}
                                 style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--accent)', fontSize: 12, whiteSpace: 'nowrap' }}
                               >
-                                Skip this row
+                                {rowBusy === row.id ? <><span className="spinner spinner-sm" /> Working…</> : 'Skip this row'}
                               </button>
                             )}
                           </div>
@@ -549,9 +568,10 @@ function StatementReview({ statementId, onBack }: { statementId: string; onBack:
                                   e.stopPropagation()
                                   void handleSkip(row, false)
                                 }}
+                                disabled={rowBusy !== null}
                                 style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--accent)', fontSize: 12, whiteSpace: 'nowrap' }}
                               >
-                                Undo
+                                {rowBusy === row.id ? <><span className="spinner spinner-sm" /> Working…</> : 'Undo'}
                               </button>
                             )}
                           </div>

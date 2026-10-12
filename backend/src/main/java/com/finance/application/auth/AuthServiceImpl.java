@@ -3,7 +3,10 @@ package com.finance.application.auth;
 import com.finance.application.exception.ApiError;
 import com.finance.application.exception.ConflictException;
 import com.finance.application.exception.DomainValidationException;
+import com.finance.application.exception.RateLimitedException;
 import com.finance.application.exception.UnauthorizedException;
+import com.finance.application.ratelimit.RateDecision;
+import com.finance.application.ratelimit.RateLimiter;
 import com.finance.domain.user.User;
 import com.finance.domain.user.UserRepository;
 import com.finance.infrastructure.mail.EmailSender;
@@ -30,6 +33,14 @@ public class AuthServiceImpl implements AuthService {
 
     private static final String GENERIC_LOGIN_FAILURE = "Invalid email or password.";
 
+    // Failed password guesses: a few per address and account in a quarter of an hour, and a wider ceiling per account across
+    // all addresses so a spread-out guesser is still slowed. The per-address key means a stranger cannot lock the real owner
+    // out from the owner's own address.
+    private static final int MAX_FAILURES_PER_ADDRESS_AND_ACCOUNT = 5;
+    private static final Duration FAILURE_WINDOW = Duration.ofMinutes(15);
+    private static final int MAX_FAILURES_PER_ACCOUNT = 25;
+    private static final Duration ACCOUNT_FAILURE_WINDOW = Duration.ofHours(1);
+
     private final UserRepository userRepository;
     private final SessionRepository sessionRepository;
     private final PasswordResetTokenRepository passwordResetTokenRepository;
@@ -39,6 +50,9 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordEncoder passwordEncoder;
     private final EmailSender emailSender;
     private final GoogleIdentityVerifier googleVerifier;
+    private final RateLimiter rateLimiter;
+    /** Checked against when the account does not exist (or has no password), so every login costs the same time. */
+    private final String decoyPasswordHash;
     private final Duration passwordResetTtl;
     private final String appBaseUrl;
 
@@ -52,6 +66,7 @@ public class AuthServiceImpl implements AuthService {
             PasswordEncoder passwordEncoder,
             EmailSender emailSender,
             GoogleIdentityVerifier googleVerifier,
+            RateLimiter rateLimiter,
             @Value("${password-reset.ttl}") Duration passwordResetTtl,
             @Value("${APP_BASE_URL:http://localhost:5173}") String appBaseUrl) {
         this.userRepository = userRepository;
@@ -63,6 +78,8 @@ public class AuthServiceImpl implements AuthService {
         this.passwordEncoder = passwordEncoder;
         this.emailSender = emailSender;
         this.googleVerifier = googleVerifier;
+        this.rateLimiter = rateLimiter;
+        this.decoyPasswordHash = passwordEncoder.encode(UUID.randomUUID().toString());
         this.passwordResetTtl = passwordResetTtl;
         this.appBaseUrl = appBaseUrl;
     }
@@ -80,15 +97,30 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @Transactional
-    public LoginResult login(String email, String rawPassword, String userAgent) {
-        User user = userRepository.findByEmail(email.strip().toLowerCase())
-                .orElseThrow(() -> new UnauthorizedException(GENERIC_LOGIN_FAILURE));
+    public LoginResult login(String email, String rawPassword, String userAgent, String clientIp) {
+        String normalizedEmail = email.strip().toLowerCase();
+        String addressKey = "login-fail:" + clientIp + "|" + normalizedEmail;
+        String accountKey = "login-fail-account:" + normalizedEmail;
 
-        // An account made through Google has no password, so password login can never succeed for it.
-        if (!user.hasPassword() || !passwordEncoder.matches(rawPassword, user.getPasswordHash())) {
+        // Refused the same way whether or not the account exists, before any password is checked.
+        RateDecision addressDecision = rateLimiter.check(addressKey, MAX_FAILURES_PER_ADDRESS_AND_ACCOUNT);
+        RateDecision accountDecision = rateLimiter.check(accountKey, MAX_FAILURES_PER_ACCOUNT);
+        if (!addressDecision.allowed() || !accountDecision.allowed()) {
+            throw new RateLimitedException(Math.max(addressDecision.retryAfterSeconds(), accountDecision.retryAfterSeconds()));
+        }
+
+        User user = userRepository.findByEmail(normalizedEmail).orElse(null);
+        boolean usable = user != null && user.hasPassword(); // a Google-only account has no password to match
+        // Always run one password check, against a decoy when there is no real hash, so an unknown address does not answer
+        // faster than a known one (which would reveal which emails are registered).
+        boolean matches = passwordEncoder.matches(rawPassword, usable ? user.getPasswordHash() : decoyPasswordHash);
+        if (!usable || !matches) {
+            rateLimiter.hit(addressKey, FAILURE_WINDOW);
+            rateLimiter.hit(accountKey, ACCOUNT_FAILURE_WINDOW);
             throw new UnauthorizedException(GENERIC_LOGIN_FAILURE);
         }
 
+        rateLimiter.reset(addressKey);
         CreatedSession created = sessionStore.create(user.getId(), userAgent);
         return new LoginResult(user, created.rawToken(), created.session().getExpiresAt());
     }

@@ -65,6 +65,12 @@ Rate limiting, quota enforcement, observability and alerting, privacy policy, ex
 
 **Gate:** the internal-to-beta checklist is complete.
 
+## Phase 16a — Bulk Categorization
+Select several rows (statement review and Transactions), set a category or merchant for all of them at once, optionally remember the payee for next time, with undo. Deterministic, no AI; the base for 16b.
+
+## Phase 16b — Assistant Proposals
+Natural-language bulk edits in the assistant panel ("put the car wash and the grocery store in Personal Care"). The assistant never writes: it returns a preview card of the exact rows and the change, and the person's Apply click runs the same Phase 16a operation. See D-24.
+
 ## Ordering Rationale
 
 - Deployment moved to Phase 0 so that deploying is routine before it carries real data. A first deploy at the end of the project is a large, avoidable risk.

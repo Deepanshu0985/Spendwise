@@ -34,7 +34,7 @@ public class CorsConfig implements WebMvcConfigurer {
                 .allowedHeaders("Content-Type", "X-CSRF-Token", "Idempotency-Key")
                 // Response headers are opaque to cross-origin JS unless explicitly exposed -
                 // the frontend reads this one to learn the CSRF token (see CsrfTokenFilter).
-                .exposedHeaders("X-CSRF-Token")
+                .exposedHeaders("X-CSRF-Token", "Retry-After")
                 .allowCredentials(true);
     }
 }

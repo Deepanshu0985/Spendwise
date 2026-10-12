@@ -2,6 +2,7 @@ package com.finance.infrastructure.web.auth;
 
 import com.finance.application.auth.AuthService;
 import com.finance.application.exception.FeatureUnavailableException;
+import com.finance.infrastructure.ratelimit.ClientIpResolver;
 import com.finance.infrastructure.tenancy.TenantContext;
 import com.finance.infrastructure.web.common.ApiResponse;
 import com.finance.infrastructure.web.common.CurrentUserGuard;
@@ -32,11 +33,14 @@ public class AuthController {
     private final AuthService authService;
     private final TenantContext tenantContext;
     private final SessionCookieFactory cookieFactory;
+    private final ClientIpResolver ipResolver;
 
-    public AuthController(AuthService authService, TenantContext tenantContext, SessionCookieFactory cookieFactory) {
+    public AuthController(
+            AuthService authService, TenantContext tenantContext, SessionCookieFactory cookieFactory, ClientIpResolver ipResolver) {
         this.authService = authService;
         this.tenantContext = tenantContext;
         this.cookieFactory = cookieFactory;
+        this.ipResolver = ipResolver;
     }
 
     @PostMapping("/register")
@@ -49,7 +53,8 @@ public class AuthController {
     public ApiResponse<UserProfileResponse> login(
             @Valid @RequestBody LoginRequest request, HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
         AuthService.LoginResult result =
-                authService.login(request.email(), request.password(), httpRequest.getHeader(HttpHeaders.USER_AGENT));
+                authService.login(
+                        request.email(), request.password(), httpRequest.getHeader(HttpHeaders.USER_AGENT), ipResolver.resolve(httpRequest));
         httpResponse.addHeader(
                 HttpHeaders.SET_COOKIE,
                 cookieFactory.create(result.rawSessionToken(), result.expiresAt()).toString());

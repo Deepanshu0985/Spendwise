@@ -64,7 +64,34 @@ function csrfHeaders(): Record<string, string> {
   return cachedCsrfToken ? { 'X-CSRF-Token': cachedCsrfToken } : {}
 }
 
+// How many calls to the server are in flight right now, so one thin progress bar at the top of the page can show that the app
+// is working on something (saving, deleting, loading) without every button having to draw its own indicator.
+let inFlight = 0
+const inFlightListeners = new Set<() => void>()
+
+function trackInFlight<T>(work: () => Promise<T>): Promise<T> {
+  inFlight += 1
+  inFlightListeners.forEach((listener) => listener())
+  return work().finally(() => {
+    inFlight -= 1
+    inFlightListeners.forEach((listener) => listener())
+  })
+}
+
+export function subscribeInFlight(listener: () => void): () => void {
+  inFlightListeners.add(listener)
+  return () => inFlightListeners.delete(listener)
+}
+
+export function getInFlight(): number {
+  return inFlight
+}
+
 async function request<T>(path: string, init: RequestInit): Promise<ApiEnvelope<T>> {
+  return trackInFlight(() => doRequest<T>(path, init))
+}
+
+async function doRequest<T>(path: string, init: RequestInit): Promise<ApiEnvelope<T>> {
   // FormData (multipart uploads) must never get an explicit Content-Type - the browser
   // sets one itself with the correct random boundary; overriding it breaks the upload.
   const isFormData = init.body instanceof FormData
@@ -105,7 +132,24 @@ function query(params?: Record<string, string | number | undefined>): string {
   return `?${search.toString()}`
 }
 
+/** A file the server sends back (the data export): the raw bytes, with the same cookie and error handling as every call. */
+async function download(path: string): Promise<Blob> {
+  return trackInFlight(() => doDownload(path))
+}
+
+async function doDownload(path: string): Promise<Blob> {
+  const response = await fetch(`${BASE_PATH}${path}`, { method: 'GET', credentials: 'include', headers: csrfHeaders() })
+  const freshToken = response.headers.get('X-CSRF-Token')
+  if (freshToken) cachedCsrfToken = freshToken
+  if (!response.ok) {
+    const body = (await response.json()) as { error: ApiErrorBody }
+    throw new ApiRequestError(body.error)
+  }
+  return response.blob()
+}
+
 export const apiClient = {
+  download,
   get: <T>(path: string, params?: Record<string, string | number | undefined>) =>
     request<T>(`${path}${query(params)}`, { method: 'GET' }).then((e) => e.data),
   getWithMeta: <T, M>(path: string, params?: Record<string, string | number | undefined>) =>

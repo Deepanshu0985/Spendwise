@@ -9,7 +9,7 @@ Decisions that are not yet made, and the phases they block. An undecided item th
 | D-03 | LLM provider and model | Phase 11 | Decided: Mistral (the user has an API account with credits). Model to be chosen at implementation; Mistral Small tier is the starting point for classification-style calls |
 | D-04 | Email provider for password reset and verification | Phase 1 | Decided: ADR-016, Resend |
 | D-05 | Hosting provider, instance size and region | Phase 0 | Decided: ADR-017, DigitalOcean droplet, Bangalore (BLR1) for V1 production; interim pre-beta hosting on Railway (see ADR-017's update note) |
-| D-06 | Are raw statement PDFs retained after successful import | Phase 6, privacy | Open |
+| D-06 | Are raw statement PDFs retained after successful import | Phase 6, privacy | Decided: no - deleted as soon as the import commits (Phase 15) |
 | D-07 | Retention periods: staging rows, audit logs, AI conversations, deleted-user data | Privacy | Open |
 | D-08 | Is AI chat history persisted, or stateless per request | Phase 12 | Decided: stateless - the browser sends the last ten turns each time and the server stores none |
 | D-09 | AI cost caps: per-user daily quota and global monthly ceiling | Phase 11 | Decided (defaults, adjustable): 100 rows per user per day and 20,000 rows per month overall, counted in rows sent to the model; see DECISIONS.md |
@@ -27,6 +27,7 @@ Decisions that are not yet made, and the phases they block. An undecided item th
 | D-21 | What the RAG index contains | Phase 13b | Open - recommendation: confirmed transactions only |
 | D-22 | Vector store | Phase 13b | Open - recommendation: pgvector in the existing PostgreSQL with row-level security |
 | D-23 | Embedding spend caps | Phase 13b | Open - recommendation: a third usage kind with per-user daily and global monthly caps |
+| D-24 | May the assistant change data | Phase 16b | Open - recommendation: never directly; it returns a proposal (preview of the exact rows and change) and only the person's Apply click writes, through the same server operation as manual bulk edit. Changes the Phase 12 "read-only tools" rule on purpose, so record it in `DECISIONS.md` when decided |
 
 ## Gating Decisions
 

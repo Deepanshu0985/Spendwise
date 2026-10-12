@@ -22,4 +22,9 @@ public record ApiResult(int status, HttpHeaders headers, JsonNode body) {
         JsonNode error = error();
         return error == null ? null : error.get("code").asText();
     }
+
+    public String errorMessage() {
+        JsonNode error = error();
+        return error == null ? null : error.get("message").asText();
+    }
 }

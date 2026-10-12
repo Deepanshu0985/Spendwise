@@ -1,5 +1,6 @@
 package com.finance.application.ai;
 
+import com.finance.application.ops.AlertService;
 import com.finance.domain.ai.AiUsageKind;
 import com.finance.domain.ai.AiUsageRepository;
 import org.springframework.stereotype.Service;
@@ -15,11 +16,13 @@ public class AiUsageLimiterImpl implements AiUsageLimiter {
     private final AiUsageRepository usageRepository;
     private final AiSettings settings;
     private final Clock clock;
+    private final AlertService alerts;
 
-    public AiUsageLimiterImpl(AiUsageRepository usageRepository, AiSettings settings, Clock clock) {
+    public AiUsageLimiterImpl(AiUsageRepository usageRepository, AiSettings settings, Clock clock, AlertService alerts) {
         this.usageRepository = usageRepository;
         this.settings = settings;
         this.clock = clock;
+        this.alerts = alerts;
     }
 
     @Override
@@ -37,12 +40,14 @@ public class AiUsageLimiterImpl implements AiUsageLimiter {
             return true;
         }
         if (!usageRepository.tryReserveMonthly(kind, firstOfMonth(), units, monthlyLimit(kind))) {
+            alerts.aiMonthlyUsage(kind, firstOfMonth(), monthlyLimit(kind), monthlyLimit(kind)); // the shared cap is full
             return false;
         }
         if (!usageRepository.tryReserveDaily(userId, kind, today(), units, dailyLimit(kind))) {
             usageRepository.releaseMonthly(kind, firstOfMonth(), units);
             return false;
         }
+        alerts.aiMonthlyUsage(kind, firstOfMonth(), usageRepository.usedThisMonth(kind, firstOfMonth()), monthlyLimit(kind));
         return true;
     }
 
