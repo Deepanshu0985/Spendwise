@@ -369,9 +369,10 @@ Built in slices, each committed on its own. Checklist (from `development-roadmap
 
 **Left before the beta opens (these need you):**
 - [ ] Set `RATE_LIMIT_PROXY_HOPS` on both Render services (probably 2) and confirm from the one-time `Rate limiting: first X-Forwarded-For had N entries` log line
-- [ ] Choose an alert channel: make an ntfy topic, set `ALERT_WEBHOOK_URL` on Render, and test it
+- [x] Alert channel: ntfy topic set as `ALERT_WEBHOOK_URL` on both Render services and as a GitHub secret; a test message was sent (13 October 2026) - confirm it reached your phone
 - [ ] Uptime monitoring: `.github/workflows/uptime.yml` checks `/api/v1/health` every five minutes once merged into `main` (not `/health/ready`); add the `ALERT_WEBHOOK_URL` repository secret to be pushed a message
-- [ ] Run `restore-drill-neon.sh` against Neon (a past-point branch and the live branch) and record it in `backup-and-restore.md`; fill in Neon's restore window there
+- [x] Restore drill against Neon ran through GitHub Actions and passed (recorded in `backup-and-restore.md`); the monthly schedule is live on `main`
+- [ ] Still to do by hand: one rehearsal from a Neon branch made from a past point in time, and fill in Neon's restore window
 - [x] `PRIVACY_CONTACT_EMAIL` set (Deepanshu.dev.ai098@gmail.com); policy re-read against the code on 13 October 2026 and four inaccuracies fixed. Still open: the other contacts in `incident-response.md`, and a review by someone qualified of the privacy policy, the deletion path and the breach notification steps (the plan names this explicitly)
 - [ ] Walk the first-hour steps of the incident plan once on staging
 
