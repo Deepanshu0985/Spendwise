@@ -95,7 +95,9 @@ export function LoginPage() {
           </form>
           <div className="auth-form-footer">
             Don&rsquo;t have an account? <Link to="/register">Create one</Link>
-            <div className="auth-legal"><Link to="/privacy">Privacy policy</Link></div>
+            <div className="auth-legal">
+              <Link to="/privacy">Privacy policy</Link> &middot; Continuing with Google creates an account if you do not have one, and covers you by it.
+            </div>
           </div>
         </div>
       </div>

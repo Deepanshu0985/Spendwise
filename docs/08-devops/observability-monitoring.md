@@ -41,7 +41,7 @@ Separate liveness and readiness checks, with dependency health reported on readi
 
 ## Uptime monitoring
 
-Use a free external monitor (UptimeRobot or similar) on the **liveness** URL, `https://<backend>/api/v1/health`, every 5 minutes, alerting to email or the same ntfy topic. Two cautions for the free tiers:
+`.github/workflows/uptime.yml` does this with no account: every five minutes it calls the production liveness URL, retries three times over about a minute (a cold start is not an outage), and on failure GitHub emails the owner and the `ALERT_WEBHOOK_URL` secret, if set, gets a push message. It runs from `main` once merged. A free external monitor (UptimeRobot or similar) is an alternative on the same **liveness** URL, `https://<backend>/api/v1/health`, every 5 minutes, alerting to email or the same ntfy topic. Two cautions for the free tiers:
 
 - Do **not** point it at `/health/ready`: that queries the database and would keep a scale-to-zero Neon database awake around the clock and use up its free compute hours.
 - A 5-minute ping also keeps the free Render service from sleeping, which uses its monthly instance hours (750 hours is enough for exactly one always-on service). Monitor only the production backend, not staging, unless you accept staging sleeping.

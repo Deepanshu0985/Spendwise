@@ -27,9 +27,15 @@ SOURCE_URL='postgresql://USER:PASSWORD@HOST/DB?sslmode=require' ./scripts/restor
 
 `.github/workflows/restore-drill.yml` runs the drill on the 1st of every month (and on demand: repository, Actions tab, "Restore drill", "Run workflow"). A failed drill fails the run and GitHub emails the repository owner; if you also add the `ALERT_WEBHOOK_URL` secret it posts to your ntfy topic. One-time setup:
 
-1. In Neon, create a role just for this (SQL editor): `CREATE ROLE drill_reader WITH LOGIN PASSWORD '<long random>' BYPASSRLS; GRANT pg_read_all_data TO drill_reader;`. It must bypass row security or the dump would come back empty, and it can read but never write. Do not reuse the application or migration role.
-2. In the repository, Settings, Secrets and variables, Actions, add a secret named `DRILL_SOURCE_URL` with that role's connection string (`postgresql://drill_reader:<password>@<host>/<db>?sslmode=require`). Secrets are not exposed to pull requests from forks.
-3. Start it once by hand from the Actions tab to confirm it passes, then note the result in the drill log.
+1. In the Neon console open the project, choose the branch you want checked (the production branch), and use **Connect** to copy a connection string. Pick the **direct** connection (the host does *not* contain `-pooler`): the pooled address goes through a connection pooler that `pg_dump` can fail on. The role must be one that bypasses row-level security, or the dump comes back empty; the owner role Neon creates with the project (the one used for migrations) does. It can also write, so this is a powerful secret: treat it as you would the production database password, and rotate it (Neon console, reset password) if the repository's secrets are ever exposed.
+2. Save it as a repository secret. Either in GitHub (repository, Settings, Secrets and variables, Actions, New repository secret, name `DRILL_SOURCE_URL`), or from a terminal, which asks for the value without echoing it:
+
+   ```bash
+   gh secret set DRILL_SOURCE_URL --repo Deepanshu0985/Spendwise
+   ```
+
+   Secrets are not exposed to pull requests from forks.
+3. GitHub only runs scheduled workflows from the default branch, so this starts once the workflow is merged into `main`. Start it once by hand from the Actions tab to confirm it passes, then note the result in the drill log.
 
 The workflow dumps the live branch (proving a fresh dump restores). The point-in-time rehearsal still needs a Neon branch made from a past moment; run the script by hand against that once before the beta.
 

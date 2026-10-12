@@ -50,7 +50,7 @@ If a provider (Neon, Render, Vercel, Google, Mistral) caused it, follow their in
 
 | Who | How |
 |---|---|
-| Owner / operator | ______ |
+| Owner / operator | Deepanshu.dev.ai098@gmail.com |
 | Someone qualified to advise on notification | ______ |
 | Neon support | console.neon.tech, project support |
 | Render support | dashboard.render.com, service support |

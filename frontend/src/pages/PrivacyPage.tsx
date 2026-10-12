@@ -35,12 +35,23 @@ export function PrivacyPage() {
           </li>
           <li>
             <strong>Statements you upload:</strong> the PDF is read to extract its transactions. The file itself is deleted as
-            soon as you confirm the import (or when you delete your account); the extracted rows stay in your account until you
+            soon as you confirm the import. A statement you upload but never confirm keeps its file until you delete your
+            account (there is not yet a way to remove a single statement). The extracted rows stay in your account until you
             delete them.
           </li>
           <li>
+            <strong>Sign-in sessions:</strong> for each device you are signed in on, the time and the browser and device type
+            your browser reports, so you can see and end your sessions.
+          </li>
+          <li>
+            <strong>AI use counts:</strong> how many AI requests you have made each day, so daily limits can be applied. The
+            questions themselves are not stored (the assistant keeps no chat history on our side); insights written for you are
+            kept with your data.
+          </li>
+          <li>
             <strong>Technical records:</strong> short-lived security and operating logs kept by our hosting providers, and counters
-            of requests in memory used to limit abuse. They are kept free of your transactions, passwords and statement contents.
+            of requests held in memory for a few minutes (including your IP address) to limit abuse and guessing of passwords.
+            They are kept free of your transactions, passwords and statement contents.
           </li>
         </ul>
         <p>We do not sell your data, show advertising, or run analytics or advertising trackers.</p>
@@ -95,7 +106,8 @@ export function PrivacyPage() {
             <strong>See and take your data:</strong> Settings, then Download my data, gives you everything in one file.
           </li>
           <li>
-            <strong>Correct it:</strong> you can edit what you entered in the app. For anything else, contact us.
+            <strong>Correct it:</strong> you can edit the transactions, accounts, budgets and goals you entered in the app. To
+            change your name or email, contact us.
           </li>
           <li>
             <strong>Erase it:</strong> Settings, then Delete account.
