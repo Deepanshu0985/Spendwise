@@ -431,3 +431,13 @@ Not started. The assistant proposes (preview card of exact rows and change), the
 - [ ] Try login on the iPhone on the staging site; a statement upload of several MB (the limit of Vercel's forwarding is not documented); a cold start after the backend has slept
 - [ ] After merging: delete `VITE_API_BASE_URL` from the Vercel project (no longer used)
 
+## Assistant on a phone
+
+**Done:**
+- [x] The panel's height follows the part of the screen actually visible (the browser's own bars and the on-screen keyboard take some), so the question box is no longer hidden underneath them; it also keeps clear of the notch and home bar
+- [x] On a phone the question box is not focused on opening (that raised the keyboard and covered the suggestions), the page behind stops scrolling while the assistant is open, and the buttons and suggestion chips are bigger
+- [x] Every form field is at least 16px on phones; below that iPhones zoom the page in when a field is tapped and leave it zoomed (this affects all forms, not only the assistant)
+
+**Left:**
+- [ ] Checked at phone size in a desktop browser; the on-screen keyboard behaviour can only be confirmed on a real iPhone and Android phone
+

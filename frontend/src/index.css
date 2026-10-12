@@ -2597,3 +2597,72 @@ tbody tr:last-child td {
     vertical-align: top;
   }
 }
+
+/* ---------- Assistant on a phone ---------- */
+
+@media (max-width: 900px) {
+  /* A form field under 16px makes iPhones zoom the whole page in when it is tapped, and the page stays zoomed. */
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+
+  body.assistant-open {
+    overflow: hidden;
+  }
+
+  .assistant-panel {
+    top: var(--assistant-top, 0);
+    height: var(--assistant-vh, 100dvh);
+    width: 100vw;
+    border-left: none;
+    box-shadow: none;
+  }
+
+  .assistant-header {
+    padding: calc(12px + env(safe-area-inset-top)) 14px 12px;
+  }
+
+  .assistant-header .icon-button {
+    width: 44px;
+    height: 44px;
+  }
+
+  .assistant-link {
+    padding: 12px 6px;
+    font-size: 14px;
+  }
+
+  .assistant-messages {
+    padding: 14px;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .assistant-msg {
+    max-width: 94%;
+  }
+
+  .assistant-chip {
+    font-size: 14px;
+    padding: 12px 14px;
+  }
+
+  .assistant-composer {
+    padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
+  }
+
+  .assistant-composer textarea {
+    font-size: 16px;
+  }
+
+  .assistant-send {
+    width: 46px;
+    height: 46px;
+  }
+
+  .assistant-allowance {
+    padding-bottom: calc(10px + env(safe-area-inset-bottom));
+  }
+}
