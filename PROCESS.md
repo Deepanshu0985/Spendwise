@@ -441,3 +441,17 @@ Not started. The assistant proposes (preview card of exact rows and change), the
 **Left:**
 - [ ] Checked at phone size in a desktop browser; the on-screen keyboard behaviour can only be confirmed on a real iPhone and Android phone
 
+## Bank of Baroda mobile-app statements (found with a real upload)
+
+**What happened.** A statement from the Bank of Baroda mobile app (bob World) was refused with "This PDF doesn't allow its text to be read". Opened with its password the file has perfectly readable text, but it carries a "no copying" permission flag, which the app treated as a lock. Once past that, the BOB reader did not recognise the layout either: this app produces a different document from the net-banking export the reader was built from.
+
+**Done:**
+- [x] A "no copying" permission flag no longer blocks a statement the person opens with their password: it is the bank's request to a viewer, not a lock, and the account holder is importing their own statement (test with a synthetic restricted PDF, red before the change)
+- [x] New `BobWorldStatementParser` (bank key `BOB_WORLD`, shown as "Bank of Baroda (bob World app)") for the app's layout: transactions arrive as blocks (balance run together with the Sr.No, then both dates, the narration over one or more lines, then the debit and credit columns with a dash for the empty one), so direction is read from the statement itself and not inferred; its own cleaner reuses the BOB narration cleaning
+- [x] Verified on the real statement locally through the whole app: 22 transactions (17 expenses, 5 income) found, every running balance agrees with every amount and direction, nothing dropped; the temporary copy and database were deleted afterwards
+- [x] Tests: 9 parser tests on a synthetic sample (`BOB_WORLD.txt`, invented names and figures), the contract test over all banks, and an end-to-end test that uploads a synthetic password-protected, copy-restricted bob World PDF; full suite 237 unit + 157 integration green
+
+**Left:**
+- [ ] A scanned (picture-only) statement still cannot be read; Excel/CSV import and OCR remain open ideas
+- [ ] Other banks' mobile-app statements may differ from their net-banking ones in the same way
+

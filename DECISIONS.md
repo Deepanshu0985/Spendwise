@@ -791,3 +791,11 @@ Implementation-level decisions made while building, with the reasoning behind ea
 
 **Unknowns, to be settled on staging before production.** How large a request Vercel's forwarding accepts (statement uploads reach 15MB), and behaviour while the free backend wakes (Vercel waits up to 120 seconds for the first byte, longer than a cold start).
 
+## A "no copying" PDF permission is not a reason to refuse a statement
+
+**Decision.** `PdfTextExtractor` no longer rejects a PDF whose permissions switch off text extraction, provided the file opens (with its password where it has one). The earlier rule was "an encrypted file is fine, but refuse if its text may not be read".
+
+**Why.** A real Bank of Baroda app statement carries that flag and reads perfectly once opened; refusing it turned away the account holder from their own bank statement, with a message that sounded like a defect in the file. The flag is advisory - a request to PDF viewers - and the person importing the statement is the account holder, so honouring it protects nothing and only blocks the product's purpose. A file that cannot be opened at all (wrong or missing password, scanned picture) is still refused with its own clear message.
+
+**Alongside it.** A second finding from the same file: the same bank's mobile app and net banking produce different layouts, so each gets its own reader (`BOB_WORLD` beside `BOB`) with its own sample, rather than one reader stretched over two layouts. The older reader cannot claim the new layout and the new one cannot claim the old (tested both ways), per the lesson that detection must require a bank's own structure, not its name.
+

@@ -46,7 +46,8 @@ and check the row count and totals against the totals the statement itself print
 | Code | Bank | Verified on a real statement |
 |---|---|---|
 | `PAYTM_WALLET` | Paytm Wallet | Yes |
-| `BOB` | Bank of Baroda | Yes |
+| `BOB` | Bank of Baroda (net-banking export) | Yes |
+| `BOB_WORLD` | Bank of Baroda (bob World mobile app) | Yes |
 | `AXIS_BANK` | Axis Bank | Not yet (synthetic only) |
 | `UJJIVAN` | Ujjivan Small Finance Bank | Not yet (synthetic only) |
 | `HDFC_BANK` | HDFC Bank | Not yet (synthetic only) |

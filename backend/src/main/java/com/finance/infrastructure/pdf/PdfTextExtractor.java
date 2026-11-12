@@ -38,11 +38,11 @@ public class PdfTextExtractor {
     /** password (nullable) opens the PDF in memory only; it is never stored or logged, and never put in an error message. */
     public ExtractionResult extract(byte[] content, String password) {
         try (PDDocument document = Loader.loadPDF(content, password == null ? "" : password)) {
-            // Opening succeeded, so any password needed was supplied. An encrypted file is fine on its own (many
-            // banks only restrict printing/copying); what matters is whether its text may be read at all.
-            if (document.isEncrypted() && !document.getCurrentAccessPermission().canExtractContent()) {
-                throw new StatementProcessingFailedException("This PDF doesn't allow its text to be read, so it can't be imported.");
-            }
+            // Opening succeeded, so any password needed was supplied. An encrypted file is fine on its own. Many banks
+            // also switch off the "copy text" permission on statements they let the account holder open with the password
+            // (a real bank-app statement did exactly this and was refused here); that flag is a request to the viewer, not
+            // a lock - the text is readable once the file is open - and the person importing is the account holder reading
+            // their own statement, so it is not treated as a reason to refuse.
             int pageCount = document.getNumberOfPages();
             if (pageCount > maxPages) {
                 throw new FileTooLargeException("The statement has " + pageCount + " pages; the limit is " + maxPages + ".");
