@@ -57,6 +57,46 @@ class StatementFlowIT {
     }
 
     @Test
+    void aBankAppStatementThatForbidsCopyingTextAndNeedsAPasswordImportsCleanly() throws Exception {
+        // The two things a real Bank of Baroda mobile-app statement did at once: protected by a password whose permissions
+        // switch off "copy text" (refused as "doesn't allow its text to be read"), and laid out in the bob World format the
+        // older BOB reader did not recognise. Synthetic lines, ASCII only (the Hindi headings cannot be drawn with the
+        // fixture's font and carry nothing the parser reads).
+        List<String> lines = new java.util.ArrayList<>();
+        boolean started = false;
+        try (var in = StatementFlowIT.class.getResourceAsStream("/statements/samples/BOB_WORLD.txt")) {
+            for (String line : new String(in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8).split("\n")) {
+                started = started || line.contains("Opening Balance");
+                if (started && !line.isBlank() && line.chars().allMatch(c -> c < 128)) {
+                    lines.add(line);
+                }
+            }
+        }
+        byte[] pdf = PdfFixtures.copyRestrictedStatementPdf("Account Statement from 01-10-2026 to 31-10-2026", lines, "statement-password");
+
+        ApiResult withoutPassword = client.postMultipart("/statements/upload", Map.of("accountId", accountId), "file", "bob-app.pdf", pdf);
+        assertThat(withoutPassword.status()).isEqualTo(200);
+        assertThat(withoutPassword.data().get("status").asText()).isEqualTo("FAILED");
+        assertThat(withoutPassword.data().get("errorMessage").asText()).contains("password");
+
+        ApiResult upload = client.postMultipart(
+                "/statements/upload", Map.of("accountId", accountId, "password", "statement-password"), "file", "bob-app.pdf", pdf);
+        assertThat(upload.status()).isEqualTo(200);
+        assertThat(upload.data().get("status").asText()).isEqualTo("READY_FOR_REVIEW");
+        String statementId = upload.data().get("id").asText();
+
+        var rows = client.get("/statements/" + statementId + "/transactions").data();
+        assertThat(rows).hasSize(11);
+        int debits = 0;
+        for (var row : rows) {
+            if (row.get("suggestedTransactionType").asText().equals("EXPENSE")) {
+                debits++;
+            }
+        }
+        assertThat(debits).as("debits and credits read from the statement's own columns").isGreaterThanOrEqualTo(7);
+    }
+
+    @Test
     void uploadReviewConfirmPromotesStagedRowsIntoRealTransactions() {
         byte[] pdf = PdfFixtures.statementPdf(
                 "HDFC BANK Statement of Account",

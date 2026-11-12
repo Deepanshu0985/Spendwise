@@ -93,6 +93,15 @@ class PdfProcessingTest {
     }
 
     @Test
+    void readsAStatementWhoseBankSwitchedOffTextCopyingOnceTheAccountHolderGivesThePassword() {
+        // Found with a real bank-app statement: opened with the password it has perfectly readable text, but its permissions say
+        // "no copying". That flag is the bank's wish, not a lock; refusing the account holder their own statement helps no one.
+        byte[] pdf = PdfFixtures.copyRestrictedStatementPdf(
+                "BOB statement of account", List.of("15/09/26 TEST REF 15/09/26 100.00 0.00 900.00"), "user-secret");
+        assertThat(extractor.extract(pdf, "user-secret").text()).contains("BOB statement of account");
+    }
+
+    @Test
     void rejectsAScannedLookingPdfWithNoExtractableText() {
         byte[] pdf = PdfFixtures.scannedLookingPdf();
         assertThatThrownBy(() -> extractor.extract(pdf))

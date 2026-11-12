@@ -1,0 +1,94 @@
+Account Statement from 01-10-2026 to 31-10-2026
+01-10-2026 से 31-10-2026 तक की खाता
+/ Account Name
+/ Account Number
+/ Account Type
+/ Customer Address
+/ Branch Name
+/ IFSC Code
+/ MICR Code
+/ Branch Address
+TEST ACCOUNT HOLDER
+00000000000000
+TEST CITY, TEST STATE
+TEST ROAD NEAR TEST MARKET
+TEST BRANCH
+TEST STATE 000000 UL
+BARB0TESTBR
+000000000SBA
+गाहक का नाम
+खाता संरया
+खाता पकार
+गाहक का पता
+शाखा का नाम
+एमआईसीआर कोड
+शाखा का पता
+आईएफएससी कोड
+पभाव तारीख
+Sr.No Transaction
+Date
+Value
+Date
+Description Cheque
+Number
+Debit Credit Balance
+क.सं लेनदेन की
+तारीख
+चेक नंबर नामे जमा शेषववरण
+5,000.000 01-10-2026 Opening Balance - -
+4,900.001 02-10-2026 02-10-2026
+UPI/200000000001/10:00:00/UPI/shopone@ptybl/Sent u
+100.00 -
+5,150.002 03-10-2026 03-10-2026
+UPI/200000000002/11:15:30/UPI/9999900000@ptyes/
+NA
+- 250.00
+17,150.003 05-10-2026 05-10-2026
+NEFT-AXODH0000000000-EXAMPLE REVENUE 
+MANAGERS INDIA P
+- 12,000.00
+11,594.004 06-10-2026 06-10-2026 ACHDR/EMIDUE/1234567890/111397544160 5,556.00 -
+11,274.005 07-10-2026 07-10-2026
+UPI/200000000003/09:05:01/UPI/blinkit.rzp@hdfcban
+320.00 -
+11,224.006 08-10-2026 08-10-2026
+UPI/200000000004/20:45:10/UPI/priyanshu0000@o
+ks
+50.00 -
+This is a computer-generated statement hence does not require signature. Statement is generated on 01/11/2026 10:00:00 AM (through bob World mobile app) from the system
+maintained in the bank containing transactions carried out in normal course of business.
+Page 1 of 2
+01/11/2026 10:00:00 AM
+Account Statement from 01-10-2026 to 31-10-2026
+01-10-2026 से 31-10-2026 तक की खाता
+पभाव तारीख
+Sr.No Transaction
+Date
+Value
+Date
+Description Cheque
+Number
+Debit Credit Balance
+क.सं लेनदेन की
+तारीख
+चेक नंबर नामे जमा शेषववरण
+10,925.007 09-10-2026 09-10-2026
+UPI/200000000005/08:00:00/UPI/airtelprepaidUPWest
+299.00 -
+10,425.008 10-10-2026 10-10-2026
+UPI/200000000006/12:30:00/UPI/UPILITE/LOAD/LITE
+500.00 -
+10,500.009 11-10-2026 11-10-2026
+UPI/200000000007/13:10:45/UPI/friend0000@axl/Pa
+ym
+- 75.00
+10,512.3410 12-10-2026 12-10-2026
+9999999999999:Int.Pd:01-07-2026 to 30-09-2026
+- 12.34
+9,012.3411 13-10-2026 13-10-2026
+UPI/200000000008/19:20:00/UPI/ccbillpay@ptybl/Sen
+1,500.00 -
+This is a computer-generated statement hence does not require signature. Statement is generated on 01/11/2026 10:00:00 AM (through bob World mobile app) from the system
+maintained in the bank containing transactions carried out in normal course of business.
+Page 2 of 2
+01/11/2026 10:00:00 AM

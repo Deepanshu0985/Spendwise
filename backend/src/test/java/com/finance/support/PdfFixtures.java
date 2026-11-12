@@ -28,15 +28,23 @@ public final class PdfFixtures {
 
     /** One line of text per row, matching the exact column layout HdfcBankStatementParser/SbiStatementParser/AxisBankStatementParser expect. */
     public static byte[] statementPdf(String headerLine, List<String> rowLines) {
-        return buildStatementPdf(headerLine, rowLines, null);
+        return buildStatementPdf(headerLine, rowLines, null, true);
     }
 
     /** Same as statementPdf, but opening it requires userPassword - a made-up test value, never a real one. */
     public static byte[] encryptedStatementPdf(String headerLine, List<String> rowLines, String userPassword) {
-        return buildStatementPdf(headerLine, rowLines, userPassword);
+        return buildStatementPdf(headerLine, rowLines, userPassword, true);
     }
 
-    private static byte[] buildStatementPdf(String headerLine, List<String> rowLines, String userPassword) {
+    /**
+     * Like encryptedStatementPdf, but the bank has switched off "copy text" in the PDF's permissions (many banks do, on
+     * statements they otherwise let the account holder open and read with the password).
+     */
+    public static byte[] copyRestrictedStatementPdf(String headerLine, List<String> rowLines, String userPassword) {
+        return buildStatementPdf(headerLine, rowLines, userPassword, false);
+    }
+
+    private static byte[] buildStatementPdf(String headerLine, List<String> rowLines, String userPassword, boolean mayCopyText) {
         try (PDDocument document = new PDDocument()) {
             PDPage page = new PDPage(PDRectangle.A4);
             document.addPage(page);
@@ -58,7 +66,9 @@ public final class PdfFixtures {
                 }
             }
             if (userPassword != null) {
-                StandardProtectionPolicy policy = new StandardProtectionPolicy("owner-" + userPassword, userPassword, new AccessPermission());
+                AccessPermission permission = new AccessPermission();
+                permission.setCanExtractContent(mayCopyText);
+                StandardProtectionPolicy policy = new StandardProtectionPolicy("owner-" + userPassword, userPassword, permission);
                 policy.setEncryptionKeyLength(128);
                 document.protect(policy);
             }
